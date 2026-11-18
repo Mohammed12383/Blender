@@ -672,7 +672,7 @@ function updateHud() {
     }
   }
 }
-const m3d = () => player.mode === 'chase' || player.mode === 'bridge';
+const m3d = () => player.mode === 'chase' || player.mode === 'bridge' || player.mode === 'scope';
 
 function objective() {
   const s = sim.sub;
