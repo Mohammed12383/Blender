@@ -111,7 +111,7 @@ def grab_rail(p, a, b, standoff=0.06, r=0.016, parent=None, m="Chrome", axis_out
 
 # ----------------------------------------------------------------- props
 
-def bulkhead_lamp(name="CeilingLamp", glow="LightWarm", energy=90, color="#ffe7c2"):
+def bulkhead_lamp(name="CeilingLamp", glow="LightWarm", energy=130, color="#ffe7c2"):
     """Caged ceiling lamp; origin at the ceiling mount, hangs down -Z."""
     p = Prop(name, category="light")
     p.cyl(0.11, 0.035, (0, 0, -0.0175), "PaintCream", segs=32, bevel=0.008)
@@ -405,4 +405,44 @@ def air_tanks(name="AirTanks", n=3):
     for z in (0.35, 1.05):
         p.box((n * 0.28 + 0.1, 0.04, 0.05), (0, -0.02, z), "PaintGraphite", bevel=0.006)
     gauge(p, (0.55, -0.08, 1.62), r=0.06, face="gauge_air", name="Gauge", needle_deg=30)
+    return p.finish()
+
+
+def pipe_riser(name="PipeRiser", height=2.9, r=0.05, m="PaintRed"):
+    """Vertical pipe in a corner with a gate valve, a tee + gauge and wall clamps (back on y=0)."""
+    p = Prop(name, category="station", station="valve")
+    y = -0.12
+    p.cyl(r, height, (0, y, height / 2), m, segs=16)
+    for z in (0.05, height - 0.05):
+        p.cyl(r * 1.8, 0.04, (0, y, z), m, segs=20, bevel=0.005)
+    for z in (0.5, 1.9, 2.55):
+        p.add(bm_torus(r + 0.008, 0.008, 20, 6), "DarkSteel", (0, y, z), smooth=180)
+        p.box((0.03, abs(y) - r, 0.02), (0, y / 2 - r / 2 + 0.0, z), "DarkSteel", bevel=0.004)
+        p.box((0.1, 0.012, 0.06), (0, -0.006, z), "DarkSteel", bevel=0.003)
+    # gate valve body
+    p.cyl(r * 1.9, 0.04, (0, y, 1.08), m, segs=20, bevel=0.005)
+    p.cyl(r * 1.9, 0.04, (0, y, 1.32), m, segs=20, bevel=0.005)
+    p.add(bm_sphere(r * 1.7, 20, 10, (1, 1, 1.3)), m, (0, y, 1.2), smooth=180)
+    p.cyl(0.02, 0.2, (0, y - 0.15, 1.2), "Steel", axis="Y", segs=10)
+    handwheel(p, (0, y - 0.26, 1.2), r=0.1, name="Valve", interact="valve_wheel", m="PaintMustard")
+    p.cyl(r * 0.7, 0.12, (0.09, y, 1.65), m, axis="X", segs=12)
+    gauge(p, (0.17, y, 1.65), rot=(0, 0, 0), r=0.055, face="gauge_pressure", name="Gauge", needle_deg=25)
+    p.box((0.18, 0.003, 0.04), (0, y - r - 0.002, 0.8), "PaintWhite", bevel=0)
+    p.anchor("operate", (0, -0.75, 0))
+    return p.finish()
+
+
+def floor_hatch(name="FloorHatch", w=0.7):
+    """Bilge access plate flush with the deck: bevelled lid (pivot on one edge) with lift rings."""
+    p = Prop(name, category="door", interact="hatch")
+    p.add(bm_plate_with_holes(rect(w + 0.08, w + 0.08), [rect(w + 0.005, w + 0.005)], 0.006), "PaintGraphite",
+          (0, 0, 0.0), bevel=0.002, name="frame")
+    lid = p.pivot("Lid", (-w / 2, 0, 0.006), interact="hatch", rotate_axis="Y", min_deg=-100, max_deg=0)
+    p.box((w, w, 0.008), (w / 2, 0, -0.002), "FloorPlate", parent=lid, bevel=0.002)
+    for dy in (-w / 4, w / 4):
+        p.box((0.1, 0.04, 0.003), (w - 0.1, dy, 0.003), "DarkSteel", parent=lid, bevel=0)
+        p.add(bm_torus(0.03, 0.005, 16, 6, "Y", angle=math.pi), "Steel", (w - 0.1, dy, 0.0035), (0, 0, 0), parent=lid,
+              smooth=180)
+    p.bolts([(sx * (w / 2 + 0.02), sy * (w / 2 + 0.02), 0.007) for sx in (-1, 1) for sy in (-1, 1)], axis="Z", r=0.01, h=0.004)
+    p.box((w * 0.6, 0.004, 0.0015), (w / 2, w / 2 - 0.06, 0.003), "Hazard", parent=lid, bevel=0)
     return p.finish()

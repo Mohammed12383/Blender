@@ -140,3 +140,50 @@ def shot(name, loc, target, filepath, lens=20, samples=96, res=(1600, 900)):
     sc.render.filepath = filepath
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     bpy.ops.render.render(write_still=True)
+
+
+def cutaway(rooms, filepath, samples=96, res=(1600, 900)):
+    """Bird's-eye view of the whole level with walls, ceiling and ceiling clutter hidden."""
+    hidden = []
+    for r in rooms:
+        for o in r.col.objects:
+            n = o.name
+            hide = n.endswith(("_Shell_Body", "_Structure")) or "CeilingLamp" in n or "ChainHoist" in n \
+                or "PendantLamp" in n or "CeilingHatch" in n or ("Bulkhead" in n and n.endswith("_Body"))
+            if o.parent and ("CeilingLamp" in o.parent.name or "PendantLamp" in o.parent.name
+                             or "ChainHoist" in o.parent.name or "CeilingHatch" in o.parent.name):
+                hide = True
+            if hide and not o.hide_render:
+                o.hide_render = True
+                hidden.append(o)
+    col = core.collection("RenderOnly")
+    sun = bpy.data.objects.get("CutawaySun")
+    if sun is None:
+        ld = bpy.data.lights.new("CutawaySun", "SUN")
+        ld.energy = 3.0
+        ld.angle = R(8)
+        sun = bpy.data.objects.new("CutawaySun", ld)
+        col.objects.link(sun)
+    sun.rotation_euler = (R(40), R(10), R(-150))
+    sun.hide_render = False
+    cam = bpy.data.objects.get("Cam_cutaway") or bpy.data.objects.new("Cam_cutaway", bpy.data.cameras.new("Cam_cutaway"))
+    if cam.name not in col.objects:
+        col.objects.link(cam)
+    cam.data.type = "ORTHO"
+    cam.data.ortho_scale = 29.5
+    center = Vector((13.7, 0.0, 0.6))
+    d = Vector((-0.18, 1.0, 1.05)).normalized()
+    cam.location = center + d * 40
+    cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
+    cam.data.clip_end = 200
+    sc = bpy.context.scene
+    sc.camera = cam
+    old = (sc.world.node_tree.nodes["Background"].inputs["Strength"].default_value,)
+    world("#9fb4c4", 0.6)
+    setup_cycles(samples, res)
+    sc.render.filepath = filepath
+    bpy.ops.render.render(write_still=True)
+    for o in hidden:
+        o.hide_render = False
+    sun.hide_render = True
+    world("#0d1216", old[0])

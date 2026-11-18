@@ -281,7 +281,7 @@ def mug(name="Mug", m="EnamelBlue", full=True):
     p.add(bm_lathe([(0, 0), (0.04, 0.0), (0.042, 0.004), (0.042, 0.095), (0.045, 0.1), (0.039, 0.1), (0.038, 0.006), (0, 0.006)], 32),
           m, smooth=50)
     p.add(bm_torus(0.0425, 0.003, 32, 6), "EnamelCream", (0, 0, 0.099), smooth=180)
-    p.add(bm_torus(0.026, 0.006, 16, 6, "Y", angle=math.pi), m, (0.042, 0, 0.052), (0, 90, 0), smooth=180)
+    p.add(bm_torus(0.026, 0.006, 16, 6, "Y", angle=math.pi), m, (0.042, 0, 0.052), (0, -90, 0), smooth=180)
     if full:
         p.cyl(0.037, 0.004, (0, 0, 0.085), "Coffee", segs=24)
     return p.finish()
