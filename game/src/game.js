@@ -580,4 +580,4 @@ function applyTest(name) {
 
 document.querySelectorAll('#roles button').forEach((b) => b.addEventListener('click', () => start(b.dataset.role)));
 if (PARAMS.get('role')) start(PARAMS.get('role'));
-window.__game = { sim, player, inn, ext, enterStation, leaveStation, interact, keys };
+window.__game = { sim, player, inn, ext, enterStation, leaveStation, interact, keys, get net() { return net; } };

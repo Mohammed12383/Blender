@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { ROOMS } from './sim.js';
 import { DROP } from './exterior.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const MODELS = '../submarine/models/';
 const BULKHEADS = [7.0, 16.3, 22.6];        // x of the doors between rooms (three.js X = Blender X)
@@ -36,6 +37,7 @@ export class Interior {
     this.root.updateMatrixWorld(true);
     this.indexScene();
     this.setupScreens();
+    this.mergeStatic();
     this.makeWater();
     const [wrench, crack, patch, torpedo] = await Promise.all(['Wrench', 'HullCrack', 'HullPatch', 'Torpedo']
       .map((n) => this.loader.loadAsync(`${MODELS}props/${n}.glb`)));
@@ -131,6 +133,40 @@ export class Interior {
     add(/^WallMonitor/, 'EXTERNAL CAMERA view', 'chase', 1.8, 1.0);
     add(/^MessTable/, 'EAT cooked food', 'eat', 0.8, 1.4);
     add(/^BunkBed/, 'Rest (restore stamina)', 'rest', 0.6, 1.2);
+  }
+
+  // Merge every non-moving mesh by material: ~850 draw calls -> ~120.
+  mergeStatic() {
+    const keep = (o) => {
+      for (let p = o; p; p = p.parent) {
+        const ud = p.userData || {};
+        if (ud.interact || /^Torpedo(\.\d+)?$/.test(p.name) || /Leaf|Door\d|Head$|Joystick|Wheel/.test(p.name)) return true;
+      }
+      return false;
+    };
+    const groups = new Map();
+    const remove = [];
+    this.root.updateMatrixWorld(true);
+    this.root.traverse((o) => {
+      if (!o.isMesh || o.isSkinnedMesh || Array.isArray(o.material) || keep(o)) return;
+      const g = o.geometry.clone().applyMatrix4(o.matrixWorld);
+      for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'tangent'].includes(k)) g.deleteAttribute(k);
+      if (!g.attributes.uv) return;
+      g.computeBoundingBox();
+      const room = Math.max(0, Math.min(3, ROOMS.findIndex((r) => (g.boundingBox.min.x + g.boundingBox.max.x) / 2 <= r.x1 + 0.15)));
+      const key = o.material.uuid + (g.index ? 'i' : 'n') + (g.attributes.tangent ? 't' : '') + room;
+      if (!groups.has(key)) groups.set(key, { mat: o.material, geos: [] });
+      groups.get(key).geos.push(g);
+      remove.push(o);
+    });
+    for (const o of remove) o.parent.remove(o);
+    for (const { mat, geos } of groups.values()) {
+      const merged = mergeGeometries(geos, false);
+      if (!merged) continue;
+      const m = new THREE.Mesh(merged, mat);
+      m.matrixAutoUpdate = false;
+      this.scene.add(m);
+    }
   }
 
   // --------------------------------------------------------------- screens

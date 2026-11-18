@@ -40,6 +40,7 @@ export class Net {
   }
   receive(m) {
     const sim = this.sim;
+    if (window.__netlog && m.t !== 'state' && m.t !== 'pos') console.log('net <-', m.t, JSON.stringify(m).slice(0, 120));
     if (m.t === 'welcome') { this.id = m.id; this.isHost = m.host; sim.message(this.isHost ? 'You are hosting the boat.' : 'Joined the crew!'); }
     if (m.t === 'host') { this.isHost = m.id === this.id; if (this.isHost) sim.message('You are now hosting the boat.'); }
     if (m.t === 'players') {
