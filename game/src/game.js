@@ -277,12 +277,12 @@ function stationKey(k, down) {
   if (!down) return;
   if (k === 'c' && (key === 'helm' || key === 'chart')) { player.mode = 'chase'; return; }
   if (key === 'helm') {
-    if (k === 'w') sim.setTelegraph(s.telegraph + 1);
-    if (k === 's') sim.setTelegraph(s.telegraph - 1);
+    if (k === 'w') { sim.setTelegraph(s.telegraph + 1); sound.bell(); }
+    if (k === 's') { sim.setTelegraph(s.telegraph - 1); sound.bell(); }
     if (k === 'x') sim.setRudder(0);
     sound.click();
   } else if (key === 'ballast') {
-    if (k === 'f') sim.setValve('flood');
+    if (k === 'f') { if (s.valve !== 'flood') sound.klaxon(); sim.setValve('flood'); }
     if (k === 'b') sim.setValve('blow');
     if (k === 'h') sim.setValve('hold');
     if (k === 'x') sim.setPlanes(0);

@@ -27,6 +27,16 @@ export class Sound {
   click() { this.tone(2200, 0.03, 'square', 0.05); }
   clunk() { this.tone(120, 0.25, 'square', 0.15); this.noise(0.2, 600, 0.2); }
   zap() { this.noise(0.6, 4000, 0.4, 'highpass'); this.tone(60, 0.6, 'sawtooth', 0.3); }
+  klaxon() {
+    if (!this.ctx) return;
+    for (let i = 0; i < 2; i++) setTimeout(() => {
+      const t = this.ctx.currentTime, o = this.ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(420, t + 0.9);
+      const f = this.ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 600; f.Q.value = 2;
+      o.connect(f); this.env(f, t, 0.05, 0.4, 0.9); o.start(t); o.stop(t + 1.1);
+    }, i * 1200);
+  }
+  bell() { this.tone(1760, 0.6, 'sine', 0.15); setTimeout(() => this.tone(1760, 0.6, 'sine', 0.12), 180); }
   alarm() { for (let i = 0; i < 4; i++) setTimeout(() => this.tone(i % 2 ? 640 : 880, 0.25, 'square', 0.12), i * 280); }
   update(sim, player, dt) {
     if (!this.ctx) return;
