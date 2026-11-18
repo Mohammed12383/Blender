@@ -30,8 +30,9 @@ export class Interior {
     this.alarm = new THREE.PointLight(0xff2010, 0, 30, 1.2);
     this.alarm.position.set(12, 2.6, 0);
     this.scene.add(this.alarm);
+    this.lights = [];
     this.root.traverse((o) => {
-      if (o.isLight) { o.intensity *= 0.0035; o.castShadow = false; o.distance = o.distance || 9; }
+      if (o.isLight) { o.intensity *= 0.0035; o.castShadow = false; o.distance = o.distance || 9; o.userData.base = o.intensity; this.lights.push(o); }
       if (o.isMesh) { o.frustumCulled = true; }
     });
     this.root.updateMatrixWorld(true);
@@ -217,6 +218,8 @@ export class Interior {
         ctx.beginPath(); ctx.arc(px, pz, e.id === sim.weapons.lock ? 9 : 6, 0, 7); ctx.fill();
         ctx.font = '16px monospace'; ctx.fillText(e.kind.toUpperCase(), px + 9, pz - 6);
       }
+      const lk = sim.entities.find((q) => q.id === sim.weapons.lock && q.alive);
+      if (lk) { ctx.setLineDash([8, 6]); ctx.strokeStyle = round ? '#ffe0a0' : '#c62828'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo((lk.x - s.x) * scale, (lk.z - s.z) * scale); ctx.stroke(); ctx.setLineDash([]); }
       for (const tp of sim.torpedoes) { ctx.fillStyle = tp.owner === 'player' ? '#1565c0' : '#ff1744'; ctx.fillRect((tp.x - s.x) * scale - 2, (tp.z - s.z) * scale - 2, 4, 4); }
       ctx.rotate(-s.heading); ctx.fillStyle = round ? '#ffe0a0' : '#0d47a1';
       ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-10, -7); ctx.lineTo(-10, 7); ctx.fill();
@@ -367,6 +370,10 @@ export class Interior {
     // alarm when damaged / under attack
     const danger = sim.leaks.some((l) => !l.fixed) || sim.sub.hull < 40 || sim.torpedoes.some((t) => t.owner !== 'player') || sim.sub.lost;
     this.alarm.intensity = danger ? (Math.sin(this.time * 6) > 0 ? 40 : 4) : 0;
+    // lights stutter after a hit, and dim as the hull weakens
+    this.flicker = Math.max(0, (this.flicker || 0) - dt);
+    const dim = 0.55 + 0.45 * sim.sub.hull / 100;
+    for (const l of this.lights) l.intensity = l.userData.base * dim * (this.flicker > 0 && Math.random() < 0.5 ? Math.random() * 0.3 : 1);
   }
 
   collide(pos, radius, sim) {

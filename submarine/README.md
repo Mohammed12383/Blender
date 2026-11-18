@@ -1,8 +1,10 @@
 # Submarine: 4-player co-op crew game (3D assets)
 
-An original, stylised submarine interior for a co-op game where four players crew one boat.
+An original submarine interior for a co-op game where four players crew one boat.
 Every model, texture and character is generated from Python scripts that drive Blender, so
 the whole set can be rebuilt, restyled or extended from code.
+
+**These assets already run in a playable browser game: see [`../game`](../game/README.md).**
 
 ![Control room](renders/control_room.png)
 
@@ -56,8 +58,8 @@ submarine/
     Submarine_Interior.blend the Blender scene (open in Blender 4.2+ / 5.x)
     rooms/              one GLB per compartment (they snap together; shared world coordinates)
     props/              every prop on its own, origin at its base (73 props)
-    characters/         4 rigged crew members (T-pose)
-    exterior/           our submarine's hull, an enemy frigate and a cargo freighter
+    characters/         4 rigged crew members (Crew_*.glb, T-pose) + first-person arms (FPArms_*.glb)
+    exterior/           our sub, enemy sub, frigate, freighter, giant squid and shark (creatures are rigged)
     manifest.json       machine-readable list of props, moving parts and interaction points
   renders/              the images above, plus renders/props/ (one preview per prop)
   ASSETS.md             human-readable asset list (generated)
@@ -78,6 +80,11 @@ Conventions the game code can rely on:
   - `interact`: what the part does (`door`, `button`, `toggle`, `valve_wheel`, `joystick`, `fire`, `pickup`, `carry`…)
   - `rotate_axis` / `translate_axis` plus `min_deg`/`max_deg` or `min`/`max`: allowed motion (Blender axes; glTF converts Z-up to Y-up)
   - `tube`: tube number (1–4), `item`: food or tool type, `cook_state`: `raw` or `cooked`
+- **Station cameras**: every station has a glTF camera named `*_CAM_use` (the torpedo tubes have
+  `TorpedoTubes_CAM_tube1..4`). When a player uses the station, move the view to it.
+- **Hand targets**: empty nodes named `*_HAND_L` / `*_HAND_R` sit on the controls (joystick, dials,
+  FIRE button, valve wheels, periscope handles). Their extras give `hand_pose` (`grip`, `pinch`,
+  `press`, `palm`) and the `control` they belong to. Drive the first-person arms there with two-bone IK.
 - **Interaction points** are empty nodes named `*_INTERACT_<what>` (for example `NavConsole_INTERACT_operate`,
   `TorpedoTubes_INTERACT_tube3`, `Griddle_INTERACT_cook_slot2`). They mark where a player
   stands, or where an item snaps into place.
@@ -92,11 +99,31 @@ Conventions the game code can rely on:
 
 ### Crew characters
 
-`models/characters/Crew_*.glb` each contain one skinned mesh and a 19-bone humanoid skeleton:
-Hips, Spine, Chest, Neck, Head, plus Shoulder, UpperArm, LowerArm and Hand, and UpperLeg, LowerLeg and Foot, each with `.L`/`.R`.
-They are built in T-pose facing -Y, so animation libraries such as Mixamo can be retargeted onto them.
-The meshes are rigidly skinned: each body part follows exactly one bone, like a toy figure,
-which suits the chunky style. No animations are included yet.
+Four crew members with realistic proportions: the navigator (captain's uniform, beard), the
+weapons officer (knit sweater, beanie), the torpedo loader (overalls, gloves, goggles) and the
+cook (chef's jacket, striped apron, glasses). They're sculpted with signed-distance shapes:
+faces with eyelids, iris textures, lips, nose and ears; five-finger hands with fingernails;
+clothing shaped to the body. Skin uses subsurface scattering. Each has about 35–40k triangles.
+
+- `Crew_*.glb`: one skinned mesh on a **51-bone** humanoid rig. That's Hips, Spine, Chest, Neck and Head;
+  Shoulder, UpperArm, LowerArm and Hand; Thumb, Index, Middle, Ring and Pinky 1–3; and UpperLeg, LowerLeg, Foot and Toes, all with `.L`/`.R`.
+  T-pose, facing -Y, ready for retargeted animations.
+- `FPArms_*.glb`: first-person arms (hands and sleeves) on the same skeleton. Parent them to the
+  game camera (the eye sits at `eye_offset` in the extras) and IK the hands onto the `HAND_*` targets.
+
+### Wall machinery
+
+Every free stretch of wall and bulkhead is filled with full-height equipment racks (28 variants)
+built from random modules: gauge rows, switch banks, LED strips, reel-to-reel recorders, small
+screens, breaker grids, patch panels with cables, fans, meters. Shallow instrument boxes sit above
+the lower consoles, a ventilation duct runs along each ceiling, and cable looms run into the overhead.
+This is set dressing only. The racks are exported as `props/Rack_*.glb` and `props/WallBox_*.glb`.
+
+### Combat and repair props
+
+`exterior/EnemySubmarine.glb`, `exterior/GiantSquid.glb` (bones `Arm1_1…`, `TentacleL_1…` for
+procedural swimming), `exterior/Shark.glb` (6-bone spine), and `props/Wrench.glb`,
+`props/HullCrack.glb` (torn plate where water sprays in), `props/HullPatch.glb` (bolted repair).
 
 ## Rebuilding
 
@@ -104,7 +131,7 @@ Blender runs as a Python module (`bpy` from PyPI, Python 3.13). No Blender windo
 
 ```bash
 python3.13 -m venv .venv
-.venv/bin/pip install bpy==5.3.0 pillow
+.venv/bin/pip install bpy==5.3.0 pillow scikit-image
 .venv/bin/python submarine/scripts/build.py --sheet
 .venv/bin/python submarine/scripts/manifest.py
 ```
@@ -122,12 +149,14 @@ Where to change things:
 | Material colour, roughness and so on | `MATLIB` in `sublib/core.py` |
 | A prop's shape | `sublib/props_*.py` (one function per prop) |
 | Where things go in the rooms, room sizes | `sublib/level.py`, `sublib/shell.py` |
-| The crew | `CREW` in `sublib/crew.py` |
+| The crew (faces, outfits, builds) | `CREW` in `sublib/humans.py` |
+| Wall machinery modules | `sublib/props_machinery.py` |
 | Ships and the outside of the sub | `sublib/exterior.py` |
+| Creatures, enemy sub, wrench | `sublib/creatures.py` |
 
 ## Known gaps and next steps
 
 - Collision meshes and LODs aren't included yet.
 - The escape-trunk hatch in the control-room ceiling is decorative. The ceiling has no hole.
-- Characters have a skeleton but no animations.
+- Characters have a full skeleton but no baked animations. The game poses arms and fingers procedurally.
 - Exterior: the ocean and sky in `exterior.png` are render-only. The game engine provides its own water.

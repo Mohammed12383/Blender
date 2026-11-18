@@ -12,6 +12,16 @@ four rigged crew characters and exterior ships. See **[submarine/README.md](subm
 
 ![Submarine control room](submarine/renders/control_room.png)
 
+### Deepwater Crew: the playable game
+
+A browser game that uses these models: 1–4 players crew the submarine, drive and dive it, hunt
+convoys through the periscope, reload torpedoes by hand, fight enemy subs, sharks and a giant
+squid, and fix hull leaks with a wrench. See **[game/README.md](game/README.md)**.
+
+```bash
+cd game && npm install && npm start      # then open http://localhost:8080/game/
+```
+
 ### Small models
 
 | Model | Script | Files |

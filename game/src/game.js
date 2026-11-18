@@ -40,10 +40,32 @@ let mouseDX = 0, mouseDY = 0, wheel = 0, clicked = false;
 const griddle = { power: false, slots: [null, null, null, null] };   // {state:'raw'|'cooked'|'burnt', t}
 
 // --------------------------------------------------------------- loading
+const extReady = ext.load();
+let menuCine = true;
+extReady.then(() => {
+  const t0 = performance.now();
+  const cine = () => {
+    if (!menuCine) return;
+    const t = (performance.now() - t0) / 1000;
+    sim.update(1 / 60);
+    sim.events.length = 0;
+    ext.sync(sim, 1 / 60);
+    ext.orbit.yaw = 2.2 + t * 0.05; ext.orbit.pitch = 0.12 + Math.sin(t * 0.1) * 0.06; ext.orbit.dist = 60;
+    renderer.setSize(innerWidth, innerHeight, false);
+    ext.chaseCamera(sim, innerWidth / innerHeight);
+    ext.render();
+    requestAnimationFrame(cine);
+  };
+  sim.setTelegraph(2);
+  cine();
+});
+
 async function start(role) {
   player.role = role;
   $('loading').textContent = 'Loading the submarine...';
-  await Promise.all([inn.load(), ext.load(), loadHands(role), loadFood()]);
+  await Promise.all([inn.load(), extReady, loadHands(role), loadFood()]);
+  menuCine = false;
+  sim.setTelegraph(0);
   $('menu').classList.add('hidden');
   $('hud').classList.remove('hidden');
   const url = $('server').value.trim();
@@ -126,6 +148,7 @@ function solveArm(S, target, pose, dt) {
   aimBone(S.up, sh, elbow, S.lo.getWorldPosition(new THREE.Vector3()));
   const el = S.lo.getWorldPosition(new THREE.Vector3());
   aimBone(S.lo, el, T, S.hand.getWorldPosition(new THREE.Vector3()));
+  orientHand(S, pose);
   const [c1, c2] = CURL[pose] || CURL.relax;
   for (const f of S.fingers) {
     let amt = f.f === 'Thumb' ? c2 : c1;
@@ -133,6 +156,23 @@ function solveArm(S, target, pose, dt) {
     if (pose === 'pinch' && (f.f === 'Ring' || f.f === 'Pinky')) amt = 1.3;
     f.b.quaternion.copy(f.rest).multiply(_q1.setFromAxisAngle(_v3.set(1, 0, 0), amt * (f.k === 1 ? 0.8 : 1)));
   }
+}
+
+// Point the hand along the view with the palm facing the control.
+const ROLL = { relax: 0.5, grip: 1.25, pinch: 0.9, press: 0.35, palm: 0.0, carry: Math.PI };
+function orientHand(S, pose) {
+  const fwd = camera.getWorldDirection(new THREE.Vector3());
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+  const side = new THREE.Vector3().crossVectors(fwd, up).normalize().multiplyScalar(S.s * -1);
+  const y = fwd.clone().multiplyScalar(0.85).addScaledVector(up, -0.35).addScaledVector(side, 0.15).normalize();
+  const roll = (ROLL[pose] ?? 0.5) * S.s;
+  let z = up.clone().applyAxisAngle(y, roll);
+  z.sub(y.clone().multiplyScalar(z.dot(y))).normalize();
+  const x = new THREE.Vector3().crossVectors(y, z).normalize();
+  const want = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+  const parentQ = S.hand.parent.getWorldQuaternion(new THREE.Quaternion());
+  S.hand.quaternion.copy(parentQ.invert().multiply(want));
+  S.hand.updateMatrixWorld(true);
 }
 
 function updateHands(dt) {
@@ -286,7 +326,7 @@ function updateGriddle(dt) {
     if (v && v.userData.kind !== want) { inn.scene.remove(v); griddle.views[i] = null; }
     if (want && !griddle.views[i]) {
       const m = food[want].clone(); m.userData.kind = want;
-      const local = new THREE.Vector3(-0.45 + i * 0.3, 0.92, 0.42);   // along the plate (room-relative, griddle faces +Z here)
+      const local = new THREE.Vector3(-0.45 + i * 0.3, 0.925, -0.4);   // along the plate (the griddle faces -Z, into the galley)
       m.position.copy(base).add(local);
       if (sl && sl.state === 'burnt') m.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.setHex(0x222222); } });
       inn.scene.add(m); griddle.views[i] = m;
@@ -421,8 +461,23 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
+// gauges, wheels and other instruments follow the simulation
+const Z_AXIS = new THREE.Vector3(0, 0, -1);
+function animateInstruments(dt) {
+  const s = sim.sub, bp = inn.stations.ballast;
+  if (!bp) return;
+  const set = (o, axis, ang) => { if (!o) return; o.userData.rest ||= o.quaternion.clone(); o.quaternion.copy(o.userData.rest).multiply(new THREE.Quaternion().setFromAxisAngle(axis, ang)); };
+  set(bp.parts.DepthGaugeNeedle, Z_AXIS, (Math.min(300, s.depth) / 300) * 4.7 - 2.35 + 1.4);
+  set(bp.parts.PressureGaugeNeedle, Z_AXIS, s.air / 100 * 3 - 1.5);
+  bp.spin = (bp.spin || 0) + dt * (s.valve === 'flood' ? 3 : s.valve === 'blow' ? -3 : 0);
+  set(bp.parts.FloodValve, Z_AXIS, s.valve === 'flood' ? bp.spin : 0);
+  set(bp.parts.BlowValve, Z_AXIS, s.valve === 'blow' ? bp.spin : 0);
+  set(bp.parts.TrimLever1, new THREE.Vector3(0, 0, 1), s.planes * 0.5);
+}
+
 function continuousInput(dt) {
   const s = sim.sub;
+  animateInstruments(dt);
   if (player.mode === 'station' && player.station === 'helm') {
     if (keys.has('a')) sim.setRudder(s.rudder + dt * 1.2);
     if (keys.has('d')) sim.setRudder(s.rudder - dt * 1.2);
@@ -504,7 +559,7 @@ function handleEvents() {
     if (ev.type === 'message') pushMessage(ev.text, ev.level);
     if (ev.type === 'leak') { inn.spawnLeak(ev.leak); }
     if (ev.type === 'leakFixed') inn.fixLeakView(ev.leak);
-    if (ev.type === 'hit') { player.shake = Math.min(2, 0.6 + ev.amount / 15); flash(); sound.boom(1); }
+    if (ev.type === 'hit') { player.shake = Math.min(2, 0.6 + ev.amount / 15); flash(); sound.boom(1); inn.flicker = 1.2; }
     if (ev.type === 'explosion') {
       ext.explosion(ev.x, -ev.depth, ev.z, ev.surface, ev.surface ? 1.2 : 0.8);
       if (ev.charge) { player.shake = Math.max(player.shake, Math.max(0, 1.2 - ev.dist / 80)); sound.boom(Math.max(0.2, 1 - ev.dist / 120)); }
@@ -544,7 +599,7 @@ function updateHud() {
     leaks.length ? `<span style="color:#ff6b5b">LEAKS: ${leaks.map((l) => ROOMS[l.room].label).join(', ')}</span>` : 'NO LEAKS',
     sim.water.some((w) => w > 0.05) ? `<span style="color:#64b5f6">FLOODING ${sim.water.map((w) => w.toFixed(1)).join(' / ')} m</span>` : '',
   ].filter(Boolean).join('<br>');
-  $('score').textContent = `WAVE ${sim.score.wave} · SHIPS SUNK ${sim.score.sunk}`;
+  $('score').innerHTML = `WAVE ${sim.score.wave} · SHIPS SUNK ${sim.score.sunk}<br><span style="color:#f2ead6;font-weight:500">${objective()}</span>`;
   $('carry').textContent = player.carry ? `CARRYING: ${player.carry.replace('food_', '').toUpperCase()} (Q drop${player.carry.startsWith('food_c') || player.carry === 'food_burnt' ? ', F eat' : ''})` : '';
   const it = nearest();
   $('prompt').textContent = it ? `[E] ${it.label}` : '';
@@ -557,6 +612,40 @@ function updateHud() {
     $('scopeinfo').innerHTML = `BRG ${sim.deg(s.heading + s.periscopeBearing)}° · ZOOM ${s.periscopeZoom.toFixed(1)}x<br>${lock ? `LOCKED: ${lock.kind.toUpperCase()} ${Math.hypot(lock.x - s.x, lock.z - s.z).toFixed(0)} m` : 'CLICK TO MARK A TARGET'}`;
   }
   $('crosshair').classList.toggle('hidden', player.mode !== 'walk');
+  if (net) {
+    const st = { helm: 'HELM', chart: 'CHART', weapons: 'FIRE CONTROL', periscope: 'PERISCOPE', sonar: 'SONAR', ballast: 'BALLAST', griddle: 'GRIDDLE' };
+    $('carry').title = '';
+    $('crew').innerHTML = ['<b>CREW</b>', `${$('pname').value} (you) · ${st[player.station] || 'walking'}`,
+      ...[...net.peers.values()].map((p) => `${p.name} · ${p.role.replace('_', ' ')} · ${st[p.station] || (p.carry ? 'carrying ' + p.carry : 'walking')}`)].join('<br>');
+  }
+  // labels over ships in the outside views
+  const labels = $('labels');
+  labels.innerHTML = '';
+  if (m3d()) {
+    for (const e of sim.entities) {
+      if (!e.alive || !sim.contacts.has(e.id)) continue;
+      const p = new THREE.Vector3(e.x, -(e.depth || 0) + 8, e.z).project(ext.camera);
+      if (p.z > 1 || Math.abs(p.x) > 1 || Math.abs(p.y) > 1) continue;
+      const d = document.createElement('div');
+      d.className = 'tag' + (e.id === sim.weapons.lock ? ' locked' : '');
+      d.style.left = `${(p.x + 1) / 2 * 100}%`; d.style.top = `${(1 - p.y) / 2 * 100}%`;
+      d.textContent = `${e.kind.toUpperCase()} ${Math.hypot(e.x - s.x, e.z - s.z).toFixed(0)}m`;
+      labels.appendChild(d);
+    }
+  }
+}
+const m3d = () => player.mode === 'chase' || player.mode === 'bridge';
+
+function objective() {
+  const s = sim.sub;
+  const open = sim.leaks.filter((l) => !l.fixed);
+  if (open.length) return `▸ Fix ${open.length} leak${open.length > 1 ? 's' : ''} with a wrench (${ROOMS[open[0].room].label})`;
+  if (sim.entities.some((e) => e.alive && e.attached)) return '▸ Squid on the hull! HULL SHOCK in the control room';
+  if (sim.torpedoes.some((t) => t.owner !== 'player')) return '▸ Incoming torpedo: turn hard, noisemaker at fire control';
+  if (player.hunger < 25) return '▸ You are starving: cook and eat (galley)';
+  if (!sim.tubes.some((t) => t.loaded)) return '▸ All tubes empty: reload in the torpedo room';
+  if (!sim.weapons.lock) return s.depth > PERISCOPE_DEPTH ? '▸ Rise to periscope depth (14 m) or use sonar to find targets' : '▸ Find a target: periscope or sonar, then mark it';
+  return '▸ Target locked: flood, open door, arm and FIRE at fire control';
 }
 
 function applyTest(name) {

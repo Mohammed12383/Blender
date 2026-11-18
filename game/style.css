@@ -40,3 +40,8 @@ canvas#view { position: fixed; inset: 0; width: 100vw; height: 100vh; display: b
 #net input { background: #0008; color: #fff; border: 1px solid #fff4; border-radius: 6px; padding: 6px 8px; min-width: 200px; }
 .hint { font-size: 13px; opacity: .7; }
 #loading { min-height: 20px; color: #9effc0; font: 13px monospace; }
+#labels { position: absolute; inset: 0; }
+#labels .tag { position: absolute; transform: translate(-50%, -100%); font: 700 12px monospace; color: #ff8a7a; background: #000a; padding: 2px 6px; border-radius: 4px; border: 1px solid #ff8a7a66; white-space: nowrap; }
+#labels .tag.locked { color: #fff; border-color: #fff; }
+#crew { position: absolute; left: 20px; top: 100px; font: 12px/1.5 monospace; background: #0007; padding: 6px 10px; border-radius: 6px; }
+#crew:empty { display: none; }
