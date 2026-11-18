@@ -3,9 +3,16 @@
 3D models built with Python scripts that drive Blender's API (`bpy`). Each
 model is a script, so it can be regenerated, tweaked and version-controlled.
 
-![Toy rocket](renders/rocket.png)
+## Projects
 
-## Models
+### Submarine: 4-player co-op crew game
+
+A complete, game-ready submarine interior: four compartments, 73 props with moving parts,
+four rigged crew characters and exterior ships. See **[submarine/README.md](submarine/README.md)**.
+
+![Submarine control room](submarine/renders/control_room.png)
+
+### Small models
 
 | Model | Script | Files |
 |-------|--------|-------|

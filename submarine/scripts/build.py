@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402  (must load before bmesh/mathutils users)
 
-from sublib import core, level, render, tex  # noqa: E402
+from sublib import core, crew, exterior, level, render, tex  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 SUB = core.SUB_DIR
@@ -37,6 +37,12 @@ def main():
     core.reset_scene()
     lib = level.build_library()
     log(f"built {len(lib)} props")
+    ext = {}
+    for fn in (exterior.submarine, exterior.frigate, exterior.freighter):
+        root = fn()
+        ext[root.name] = root
+        core.export_glb(core.hierarchy(root), os.path.join(MODELS, "exterior", root.name + ".glb"))
+    log("built + exported exterior models")
 
     if "--sheet" in ARGS:
         out = os.path.join(SUB, "renders", "props")
@@ -54,10 +60,36 @@ def main():
         core.export_glb(core.hierarchy(root), os.path.join(MODELS, "props", name + ".glb"))
     log("exported prop GLBs")
 
+    # crew: rigged characters (exported in rest T-pose) + a posed lineup render
+    cast = {a["role"]: a for a in crew.build_all(core.collection("Crew"))}
+    for a in cast.values():
+        core.export_glb(core.hierarchy(a), os.path.join(MODELS, "characters", a.name + ".glb"))
+    log("built + exported crew")
+    rc = core.collection("RenderCrew")
     core.layer_collection("Library").exclude = True
+    core.layer_collection("Crew").exclude = True
+    if "--no-render" not in ARGS:
+        line = bpy.data.objects.new("CrewLineup", None)
+        rc.objects.link(line)
+        for i, (role, pose) in enumerate([("navigator", "wave"), ("weapons_officer", "relaxed"),
+                                          ("torpedo_loader", "operate"), ("cook", "relaxed")]):
+            crew.place_copy(cast[role], rc, (-1.35 + i * 0.9, 0, 0), 0, pose).parent = line
+        render.preview(line, os.path.join(RENDERS, "crew_lineup.png"), samples=48 if "--quick" not in ARGS else 16,
+                       size=(1600, 900), view=(0, -1, 0.15))
+        for o in core.hierarchy(line):
+            bpy.data.objects.remove(o)
+        log("rendered crew lineup")
     if render._rig:
         core.layer_collection("PreviewRig").exclude = True
     rooms = level.build_level(lib)
+    # crew at their stations (render-only, not part of the room exports)
+    for role, loc, rz, pose in [("navigator", (12.0, 0.4, 0), 0, "operate"),
+                                ("weapons_officer", (9.05, 1.4, 0), 180, "operate"),
+                                ("torpedo_loader", (2.45, 0.15, 0), 20, "operate"),
+                                ("cook", (25.35, -1.3, 0), 0, "operate"),
+                                ("navigator", (19.75, 0.75, 0), 110, "wave"),
+                                ("weapons_officer", (18.35, -0.05, 0), 70, "relaxed")]:
+        crew.place_copy(cast[role], rc, loc, rz, pose)
     log("level assembled")
 
     everything = []
@@ -74,11 +106,11 @@ def main():
 
     if "--no-render" not in ARGS:
         quick = "--quick" in ARGS
-        spp = 24 if quick else 128
+        spp = 24 if quick else 56
         res = (960, 540) if quick else (1600, 900)
         shots = [
             ("control_room", (15.6, -0.75, 1.7), (9.2, 0.85, 1.0), 17),
-            ("control_room_fwd", (7.85, 1.75, 1.7), (13.5, -1.2, 1.0), 17),
+            ("control_room_fwd", (7.75, -0.95, 1.7), (13.5, 1.1, 1.0), 17),
             ("torpedo_room", (6.5, 1.35, 1.65), (0.6, -0.5, 1.15), 17),
             ("crew_mess", (22.2, 1.0, 1.6), (17.6, -0.9, 0.95), 17),
             ("galley", (23.25, 1.35, 1.65), (26.2, -1.75, 1.15), 17),
@@ -92,6 +124,9 @@ def main():
         if not only or "cutaway" in only:
             render.cutaway(rooms, os.path.join(RENDERS, "cutaway.png"), samples=spp, res=res)
             log("rendered cutaway")
+        if not only or "exterior" in only:
+            render.exterior_shot(rooms, ext, os.path.join(RENDERS, "exterior.png"), samples=spp, res=res)
+            log("rendered exterior")
     log("done")
 
 

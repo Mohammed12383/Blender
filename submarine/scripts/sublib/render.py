@@ -187,3 +187,91 @@ def cutaway(rooms, filepath, samples=96, res=(1600, 900)):
         o.hide_render = False
     sun.hide_render = True
     world("#0d1216", old[0])
+
+
+def exterior_shot(rooms, ext, filepath, samples=64, res=(1600, 900)):
+    """Our sub surfaced at sea, with the two target ships on the horizon (render only)."""
+    for r in rooms:
+        core.layer_collection(r.col.name).exclude = True
+    lc = core.layer_collection("RenderCrew")
+    if lc:
+        lc.exclude = True
+    col = core.collection("ExteriorScene")
+    sub = core.instance(ext["SubmarineExterior"], col, (0, 0, -0.2), (0, 0, 0))
+    core.instance(ext["EnemyFrigate"], col, (201, 125, 0), (0, 0, 205))
+    core.instance(ext["CargoFreighter"], col, (190, 420, 0), (0, 0, -15))
+    # ocean
+    import bmesh
+    me = bpy.data.meshes.new("Ocean")
+    bm = bmesh.new()
+    bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=3000)
+    bm.to_mesh(me)
+    bm.free()
+    ocean = bpy.data.objects.new("Ocean", me)
+    col.objects.link(ocean)
+    m = bpy.data.materials.new("OceanWater")
+    m.use_nodes = True
+    nt = m.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*tex.hex_rgb("#1a4a66") ** 2.2, 1)
+    bsdf.inputs["Roughness"].default_value = 0.2
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (0.9, 0.35, 0.9)
+    nz = nt.nodes.new("ShaderNodeTexNoise")
+    nz.inputs["Scale"].default_value = 2.0
+    nz.inputs["Detail"].default_value = 8
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.5
+    nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
+    nt.links.new(mp.outputs["Vector"], nz.inputs["Vector"])
+    nt.links.new(nz.outputs["Fac"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    me.materials.append(m)
+    ld = bpy.data.lights.new("ExtSun", "SUN")
+    ld.energy = 4.0
+    ld.angle = R(2)
+    ld.color = tuple(tex.hex_rgb("#fff1dc") ** 2.2)
+    sun = bpy.data.objects.new("ExtSun", ld)
+    col.objects.link(sun)
+    sun.rotation_euler = (R(58), R(0), R(-35))
+    ld.energy = 5.0
+    # gradient sky: pale at the horizon, deeper blue overhead
+    w = bpy.context.scene.world
+    nt = w.node_tree
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.5
+    ramp.color_ramp.elements[0].color = (*tex.hex_rgb("#dfe9ee") ** 2.2, 1)
+    ramp.color_ramp.elements[1].position = 0.64
+    ramp.color_ramp.elements[1].color = (*tex.hex_rgb("#4a8cc8") ** 2.2, 1)
+    nt.links.new(tc.outputs["Generated"], sep.inputs["Vector"])
+    math_n = nt.nodes.new("ShaderNodeMath")
+    math_n.operation = "MULTIPLY_ADD"
+    math_n.inputs[1].default_value = 0.5
+    math_n.inputs[2].default_value = 0.5
+    nt.links.new(sep.outputs["Z"], math_n.inputs[0])
+    nt.links.new(math_n.outputs["Value"], ramp.inputs["Fac"])
+    bg = nt.nodes["Background"]
+    nt.links.new(ramp.outputs["Color"], bg.inputs["Color"])
+    bg.inputs["Strength"].default_value = 0.9
+    cam = bpy.data.objects.new("Cam_exterior", bpy.data.cameras.new("Cam_exterior"))
+    col.objects.link(cam)
+    cam.data.lens = 30
+    cam.data.clip_end = 3000
+    cam.location = (-27, -31, 4.6)
+    cam.rotation_euler = (Vector((2.0, 0, 2.4)) - cam.location).to_track_quat("-Z", "Y").to_euler()
+    sc = bpy.context.scene
+    sc.camera = cam
+    setup_cycles(samples, res)
+    sc.render.filepath = filepath
+    bpy.ops.render.render(write_still=True)
+    for r in rooms:
+        core.layer_collection(r.col.name).exclude = False
+    if lc:
+        lc.exclude = False
+    core.layer_collection("ExteriorScene").exclude = True
+    for n in [n for n in nt.nodes if n.type in ("TEX_COORD", "SEPXYZ", "VALTORGB", "MATH")]:
+        nt.nodes.remove(n)
+    world("#0d1216", 0.15)

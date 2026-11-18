@@ -845,6 +845,9 @@ def generate_all():
     for nm, txt in [("view", "VIEW"), ("zoom", "ZOOM"), ("fire", "FIRE"), ("arm", "ARM"), ("flood", "FLOOD"),
                     ("vent", "VENT"), ("blow", "BLOW")]:
         label_plate("label_" + nm, txt, fg="#f3ead2", bg="#222426", w=512, h=160, border=False, font_fn=BOLD)
+    label_plate("hull_number", "27", fg="#f3ead2", bg="#244f55", w=512, h=384, border=False, font_fn=BLACK)
+    label_plate("frigate_number", "F 41", fg="#f4f4f0", bg="#7d858c", w=768, h=256, border=False, font_fn=BLACK)
+    label_plate("freighter_name", "KESTREL BAY", fg="#f4f4f0", bg="#2b3a52", w=1024, h=160, border=False, font_fn=BOLD)
     warning_sign("sign_hot", "CAUTION", "HOT SURFACE", "heat")
     warning_sign("sign_voltage", "DANGER", "HIGH VOLTAGE", "bolt")
     warning_sign("sign_explosive", "DANGER", "LIVE WARHEADS", "blast", color="#f08a24")
