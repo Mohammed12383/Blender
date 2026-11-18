@@ -105,6 +105,9 @@ def tube_bank(name="TorpedoTubes"):
         p.tube([(vx, 0.0, z - 0.1), (vx, -0.25, z - 0.1), (vx, -0.25, z - 0.25)], 0.022, "Copper", round_r=0.06)
         handwheel(p, (vx, -0.25, z - 0.27), rot=(90, 0, 0), r=0.06, name=f"Tube{n}Flood", interact="tube_flood", tube=n, m="PaintRed")
         p.anchor(f"tube{n}", (x, -1.3, 0), tube=n)
+        p.use_camera((x, -1.4, z + 0.35), (x, -0.5, z), lens=30, name=f"CAM_tube{n}")
+        p.hand("L", (x - 0.12, -0.7, z), "grip", control=f"Door{n}Wheel")
+        p.hand("R", (x + 0.12, -0.7, z), "grip", control=f"Door{n}Wheel")
     # support saddles and a centre frame
     for x, _ in TUBE_POS[2:]:
         p.box((0.7, 0.5, 0.3), (x, -0.25, 0.15), "PaintGraphite", bevel=0.01)
@@ -185,6 +188,7 @@ def loading_cradle(name="LoadingCradle", rail_len=3.0):
         yy = -0.55 + k * 0.22
         for sx in (-1, 1):
             p.cyl(0.03, 0.18, (sx * 0.1, yy, 0.12), "Rubber", axis="X", rot=(0, sx * 30, 0), segs=12, parent=tray)
+    p.hand("R", (0.42, 0.4, 0.45), "grip", parent=car, control="LiftCrank")
     p.anchor("operate", (0.9, -1.5, 0))
     return p.finish()
 

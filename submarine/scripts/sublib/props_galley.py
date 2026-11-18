@@ -59,6 +59,9 @@ def griddle(name="Griddle"):
     for k in range(4):
         x = -W / 2 + 0.16 + (k % 2) * 0.3 + (0 if k < 2 else W / 2)
         p.anchor(f"cook_slot{k + 1}", (x - (0.0 if k < 2 else 0.04), -D / 2 - 0.02, H + 0.03), slot=k + 1)
+    p.use_camera((0, -D - 0.45, 1.65), (0, -D / 2, H), lens=26)
+    p.hand("R", (0.25, -D / 2, H + 0.05), "grip", control="cook_slots")
+    p.hand("L", (0.32, -D - 0.1, H - 0.05), "press", control="PowerButton")
     p.anchor("operate", (0, -D - 0.5, 0))
     return p.finish()
 
@@ -384,6 +387,7 @@ def coffee_station(name="CoffeeStation", W=1.1, D=0.6, H=0.9):
         p.tube([(mx, -0.3, H + 0.2 + k * 0.04), (mx + math.cos(a) * 0.09, -0.3 + math.sin(a) * 0.09, H + 0.25 + k * 0.04)], 0.006, "Wood")
     p.add(bm_lathe([(0, 0), (0.05, 0), (0.05, 0.11), (0.035, 0.13), (0, 0.13)], 24), "Glass", (0.45, -0.45, H), smooth=50)
     p.add(bm_lathe([(0, 0.11), (0.04, 0.11), (0.04, 0.13), (0, 0.13)], 24), "Brass", (0.45, -0.45, H), smooth=50)
+    p.hand("R", (ux, -0.55, H + 0.15), "pinch", control="Tap")
     p.anchor("use", (ux, -D - 0.5, 0))
     return p.finish()
 

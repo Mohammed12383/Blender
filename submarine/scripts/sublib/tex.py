@@ -446,9 +446,10 @@ def sea_chart(name="screen_chart", w=1536, h=1024, seed=3):
         d.ellipse([p[0] - 9, p[1] - 9, p[0] + 9, p[1] + 9], outline=(40, 40, 50), width=3)
     for p in [(980, 260), (1100, 380), (700, 300)]:
         d.polygon([(p[0], p[1] - 16), (p[0] + 14, p[1] + 10), (p[0] - 14, p[1] + 10)], fill=(200, 40, 40))
-    for p in [(520, 380), (1300, 720)]:
-        d.ellipse([p[0] - 26, p[1] - 26, p[0] + 26, p[1] + 26], outline=(210, 150, 20), width=6)
-        d.text((p[0] - 8, p[1] - 15), "$", fill=(210, 150, 20), font=BOLD(26))
+    for p in [(520, 380), (1300, 720)]:  # engagement zones
+        d.ellipse([p[0] - 60, p[1] - 60, p[0] + 60, p[1] + 60], outline=(200, 40, 40), width=4)
+        d.line([(p[0] - 18, p[1] - 18), (p[0] + 18, p[1] + 18)], fill=(200, 40, 40), width=5)
+        d.line([(p[0] - 18, p[1] + 18), (p[0] + 18, p[1] - 18)], fill=(200, 40, 40), width=5)
     d.text((40, h - 60), "SOUNDINGS IN FATHOMS  ·  CHART 7-B  ·  KELPWATER STRAIT", fill=(60, 60, 60), font=SEMI(22))
     img.save(path(name))
 
@@ -792,6 +793,26 @@ def posters():
         _age(img, 4).save(path("poster_crew"))
 
 
+def iris(name, color, size=512):
+    """Eyeball texture viewed from the front: sclera, iris with radial fibres, pupil, limbal ring."""
+    if not needed(name):
+        return
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float32)
+    u, v = (xx / size - 0.5) * 2, (yy / size - 0.5) * 2
+    r = np.sqrt(u * u + v * v)
+    a = np.arctan2(v, u)
+    sclera = np.array([0.93, 0.91, 0.88]) * (1 - 0.06 * smoothstep(0.5, 1.0, r))[..., None]
+    veins = smoothstep(0.85, 0.97, noise(size, 24, 3, octaves=3)) * smoothstep(0.5, 0.95, r) * 0.25
+    sclera = sclera * (1 - veins[..., None]) + np.array([0.8, 0.3, 0.3]) * veins[..., None]
+    c = hex_rgb(color)
+    fib = 0.75 + 0.25 * np.sin(a * 60 + noise(size, 8, 4) * 6) * noise(size, 32, 5)
+    ir = c * fib[..., None] * (0.7 + 0.5 * smoothstep(0.42, 0.12, r))[..., None]
+    ir = ir * (1 - 0.6 * smoothstep(0.36, 0.42, r))[..., None]
+    col = np.where((r < 0.42)[..., None], ir, sclera)
+    col = np.where((r < 0.15)[..., None], np.array([0.02, 0.02, 0.025]), col)
+    save_rgb(name, col)
+
+
 # ------------------------------------------------------------- generate
 
 def generate_all():
@@ -853,6 +874,10 @@ def generate_all():
     warning_sign("sign_explosive", "DANGER", "LIVE WARHEADS", "blast", color="#f08a24")
     warning_sign("sign_pressure", "WARNING", "HIGH PRESSURE", "pressure")
     posters()
+    iris("eye_brown", "#6b3d1f")
+    iris("eye_blue", "#3f6f9e")
+    iris("eye_green", "#4f7a4a")
+    iris("eye_hazel", "#8a6a33")
 
 
 if __name__ == "__main__":

@@ -303,6 +303,8 @@ def watertight_door(name="WatertightDoor", w=0.9, h=1.8, sill=0.12, corner=0.4, 
     handwheel(p, (-hx, 0.09, cz), rot=(0, 0, 180), r=0.16, parent=leaf, name="WheelBack", interact="door_lock")
     p.cyl(0.03, 0.1, (-hx, 0.04, cz), "Steel", axis="Y", segs=16, parent=leaf)
     p.cyl(0.03, 0.12, (-hx, -0.05, cz), "Steel", axis="Y", segs=16, parent=leaf)
+    p.hand("L", (-hx - 0.12, -0.13, cz), "grip", parent=leaf, control="WheelFront")
+    p.hand("R", (-hx + 0.12, -0.13, cz), "grip", parent=leaf, control="WheelFront")
     p.anchor("open_front", (0, -0.9, 0), (0, 0, 0))
     p.anchor("open_back", (0, 0.9, 0), (0, 0, 180))
     return p.finish()

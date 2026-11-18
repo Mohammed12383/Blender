@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402  (must load before bmesh/mathutils users)
 
-from sublib import core, crew, exterior, level, render, tex  # noqa: E402
+from sublib import core, exterior, humans, level, render, tex  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 SUB = core.SUB_DIR
@@ -61,10 +61,13 @@ def main():
     log("exported prop GLBs")
 
     # crew: rigged characters (exported in rest T-pose) + a posed lineup render
-    cast = {a["role"]: a for a in crew.build_all(core.collection("Crew"))}
+    cast = {a["role"]: a for a in humans.build_all(core.collection("Crew"))}
     for a in cast.values():
         core.export_glb(core.hierarchy(a), os.path.join(MODELS, "characters", a.name + ".glb"))
-    log("built + exported crew")
+    for spec in humans.CREW:
+        fp = humans.build_fp_arms(spec, core.collection("Crew"))
+        core.export_glb(core.hierarchy(fp), os.path.join(MODELS, "characters", fp.name + ".glb"))
+    log("built + exported crew and first-person arms")
     rc = core.collection("RenderCrew")
     core.layer_collection("Library").exclude = True
     core.layer_collection("Crew").exclude = True
@@ -73,7 +76,7 @@ def main():
         rc.objects.link(line)
         for i, (role, pose) in enumerate([("navigator", "wave"), ("weapons_officer", "relaxed"),
                                           ("torpedo_loader", "operate"), ("cook", "relaxed")]):
-            crew.place_copy(cast[role], rc, (-1.35 + i * 0.9, 0, 0), 0, pose).parent = line
+            humans.place_copy(cast[role], rc, (-1.35 + i * 0.9, 0, 0), 0, pose).parent = line
         render.preview(line, os.path.join(RENDERS, "crew_lineup.png"), samples=48 if "--quick" not in ARGS else 16,
                        size=(1600, 900), view=(0, -1, 0.15))
         for o in core.hierarchy(line):
@@ -89,7 +92,7 @@ def main():
                                 ("cook", (25.35, -1.3, 0), 0, "operate"),
                                 ("navigator", (19.75, 0.75, 0), 110, "wave"),
                                 ("weapons_officer", (18.35, -0.05, 0), 70, "relaxed")]:
-        crew.place_copy(cast[role], rc, loc, rz, pose)
+        humans.place_copy(cast[role], rc, loc, rz, pose)
     log("level assembled")
 
     everything = []

@@ -514,6 +514,34 @@ class Prop:
             e[k] = v
         return e
 
+    def use_camera(self, loc, target, lens=28, name="CAM_use", parent=None):
+        """Zoomed first-person camera for using this station (exported as a glTF camera)."""
+        cd = bpy.data.cameras.new(f"{self.name}_{name}")
+        cd.lens = lens
+        cd.clip_start = 0.02
+        o = bpy.data.objects.new(f"{self.name}_{name}", cd)
+        self.col.objects.link(o)
+        o.parent = parent or self.root
+        o.location = loc
+        o.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
+        o["interaction"] = "station_camera"
+        return o
+
+    def hand(self, side, loc, pose="grip", parent=None, control=None):
+        """Hand target for first-person IK: where the hand goes and which finger pose it uses."""
+        e = bpy.data.objects.new(f"{self.name}_HAND_{side}" + (f"_{control}" if control else ""), None)
+        e.empty_display_type = "SPHERE"
+        e.empty_display_size = 0.03
+        self.col.objects.link(e)
+        e.parent = parent or self.root
+        e.location = loc
+        e["interaction"] = "hand_target"
+        e["hand"] = side
+        e["hand_pose"] = pose
+        if control:
+            e["control"] = control
+        return e
+
     def light(self, name, kind="POINT", energy=100, color="#fff1d6", loc=(0, 0, 0), rot=(0, 0, 0),
               radius=0.05, spot=60, parent=None):
         ld = bpy.data.lights.new(f"{self.name}_{name}", kind)
@@ -680,5 +708,5 @@ def export_glb(objs, filepath):
     select_only(objs)
     bpy.ops.export_scene.gltf(
         filepath=filepath, export_format="GLB", use_selection=True, export_apply=True,
-        export_extras=True, export_lights=True, export_cameras=False, export_yup=True,
+        export_extras=True, export_lights=True, export_cameras=True, export_yup=True,
         export_image_format="JPEG", export_image_quality=88)

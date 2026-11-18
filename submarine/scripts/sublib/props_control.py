@@ -60,6 +60,10 @@ def nav_table(name="NavTable"):
     # end stand with NAVIGATION plate
     p.box((0.05, 0.4, 0.3), (L / 2 + 0.04, 0, H + 0.08), "PaintGraphite", rot=(0, -12, 0), bevel=0.008)
     p.plate(0.36, 0.068, (L / 2 + 0.07, 0, H + 0.14), "label_navigation", rot=(0, 0, 90))
+    p.use_camera((0, -W / 2 - 0.42, 1.68), (0, 0.02, H - 0.02), lens=24)
+    p.use_camera((0, W / 2 + 0.42, 1.68), (0, -0.02, H - 0.02), lens=24, name="CAM_use_back")
+    p.hand("L", (-0.35, -W / 2 + 0.04, H + 0.02), "palm")
+    p.hand("R", (0.32, -W / 2 + 0.05, H + 0.02), "palm")
     p.anchor("use_front", (0, -W / 2 - 0.5, 0))
     p.anchor("use_back", (0, W / 2 + 0.5, 0), (0, 0, 180))
     return p.finish()
@@ -98,6 +102,9 @@ def nav_console(name="NavConsole"):
     p.plate(0.6, 0.11, (0, D / 2 - 0.25 - 0.004, 1.58), "label_navigation")
     for k in range(4):
         indicator(p, (-0.3 + k * 0.2, D / 2 - 0.252, 1.38), m=["LampGreen", "LampGreen", "LampAmber", "LampGreen"][k], r=0.014)
+    p.use_camera((0, -0.62, 1.62), (0, -0.02, 1.2), lens=26)
+    p.hand("R", (0.22, -0.3, 1.28), "grip", control="Joystick")
+    p.hand("L", (-0.24, -0.235, 1.15), "pinch", control="ZoomDial")
     p.anchor("operate", (0, -D / 2 - 0.45, 0))
     return p.finish()
 
@@ -142,6 +149,9 @@ def fire_control(name="FireControl"):
     louver(p, (0, -D / 2 - 0.002, 0.32), w=0.8, h=0.2, n=5)
     for side in (-1, 1):
         grab_rail(p, (side * (W / 2 + 0.01), -0.25, 0.85), (side * (W / 2 + 0.01), 0.2, 0.85), standoff=0.05, axis_out=(side, 0, 0))
+    p.use_camera((0, -0.75, 1.62), (0, -0.05, 1.12), lens=24)
+    p.hand("R", (0.2, -0.13, 1.08), "press", control="FireButton")
+    p.hand("L", (-0.38, -0.13, 1.05), "pinch", control="ArmKey")
     p.anchor("operate", (0, -D / 2 - 0.45, 0))
     return p.finish()
 
@@ -184,6 +194,9 @@ def periscope(name="Periscope", ceiling=2.9):
               "Rubber", (side * 0.18 if side > 0 else -0.36, 0, 0), parent=h)
         push_button(p, (side * 0.13 - 0.0 + side * 0.24, 0, 0), rot=(0, 0, side * 90), m="PaintRed", r=0.014, parent=h,
                     name="Mark" if side > 0 else "Zoom", interact="mark_target" if side > 0 else "zoom")
+    p.use_camera((0, -0.5, 1.6), (0, 0.5, 1.6), lens=35, parent=head)
+    p.hand("L", (-0.36, -0.15, 1.52), "grip", parent=head, control="HandleL")
+    p.hand("R", (0.36, -0.15, 1.52), "grip", parent=head, control="HandleR")
     p.anchor("operate", (0, -0.85, 0), note="anchor rotates with Head in game")
     return p.finish()
 
@@ -216,6 +229,9 @@ def sonar_station(name="SonarStation"):
         p.cyl(0.045, 0.035, (0, sy * 0.095, -0.03), "Leather", axis="Y", segs=20, parent=hp, bevel=0.01)
     p.tube([(0, 0.11, -0.05), (0.02, 0.12, -0.25), (-0.05, 0.05, -0.62), (-0.2, 0.05, -0.7)], 0.004, "BlackPlastic",
            round_r=0.1, parent=hp)
+    p.use_camera((0, -0.9, 1.55), (0, -0.3, 1.32), lens=26)
+    p.hand("R", (0.4, -0.345, 1.5), "pinch", control="RangeKnob")
+    p.hand("L", (-0.4, -0.345, 1.3), "pinch", control="BearingKnob")
     p.anchor("operate", (0, -D - 0.35, 0))
     return p.finish()
 
@@ -257,5 +273,8 @@ def ballast_panel(name="BallastPanel"):
     for x, m in [(-0.6, "PaintRed"), (-0.2, "PaintMustard"), (0.2, "PaintTeal"), (0.6, "Copper")]:
         p.cyl(0.03, z0, (x, -0.06, z0 / 2), m, segs=12)
         p.cyl(0.045, 0.03, (x, -0.06, z0 - 0.06), m, segs=16, bevel=0.004)
+    p.use_camera((0, -1.0, 1.55), (0, -0.2, 1.12), lens=24)
+    p.hand("L", (-0.1, -0.335, z0 + 0.4), "grip", control="VentValve")
+    p.hand("R", (0.1, -0.335, z0 + 0.4), "grip", control="VentValve")
     p.anchor("operate", (0, -0.75, 0))
     return p.finish()
