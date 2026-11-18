@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402  (must load before bmesh/mathutils users)
 
-from sublib import core, exterior, humans, level, render, tex  # noqa: E402
+from sublib import core, creatures, exterior, humans, level, render, tex  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 SUB = core.SUB_DIR
@@ -38,11 +38,16 @@ def main():
     lib = level.build_library()
     log(f"built {len(lib)} props")
     ext = {}
-    for fn in (exterior.submarine, exterior.frigate, exterior.freighter):
+    lib_col = core.collection("Library")
+    for fn in (exterior.submarine, exterior.frigate, exterior.freighter, creatures.enemy_submarine,
+               lambda: creatures.giant_squid(lib_col), lambda: creatures.shark(lib_col)):
         root = fn()
         ext[root.name] = root
         core.export_glb(core.hierarchy(root), os.path.join(MODELS, "exterior", root.name + ".glb"))
-    log("built + exported exterior models")
+    for fn in (creatures.wrench, creatures.leak_patch, creatures.leak_crack):
+        root = fn()
+        lib[root.name] = root
+    log("built + exported exterior models, creatures and repair props")
 
     if "--sheet" in ARGS:
         out = os.path.join(SUB, "renders", "props")
