@@ -1,0 +1,14 @@
+{
+  "name": "deepwater-crew",
+  "version": "0.1.0",
+  "private": true,
+  "description": "4-player co-op submarine combat game prototype (three.js) using the generated submarine models",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "three": "0.170.0",
+    "ws": "8.18.0"
+  }
+}

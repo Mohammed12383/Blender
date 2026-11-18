@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deepwater Crew</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="hud" class="hidden">
+  <div id="bars">
+    <div class="bar"><span>STAMINA</span><div class="track"><div id="stamina" class="fill blue"></div></div></div>
+    <div class="bar"><span>HUNGER</span><div class="track"><div id="hunger" class="fill yellow"></div></div></div>
+    <div class="bar"><span>HULL</span><div class="track"><div id="hullbar" class="fill green"></div></div></div>
+  </div>
+  <div id="status"></div>
+  <div id="score"></div>
+  <div id="carry"></div>
+  <div id="crosshair">+</div>
+  <div id="prompt"></div>
+  <div id="progress" class="hidden"><div id="progressfill"></div></div>
+  <div id="messages"></div>
+  <div id="station" class="hidden"><h2 id="stationtitle"></h2><pre id="stationhelp"></pre></div>
+  <div id="scope" class="hidden"><div class="reticle"></div><div id="scopeinfo"></div></div>
+  <div id="flash"></div>
+</div>
+<div id="menu">
+  <h1>DEEPWATER CREW</h1>
+  <p class="sub">A co-op submarine combat game. Run the stations together, sink the convoy, keep the boat afloat.</p>
+  <div id="roles">
+    <button data-role="navigator">NAVIGATOR<small>helm · chart · ballast</small></button>
+    <button data-role="weapons_officer">WEAPONS OFFICER<small>periscope · sonar · fire control</small></button>
+    <button data-role="torpedo_loader">TORPEDO LOADER<small>reload tubes · repairs</small></button>
+    <button data-role="cook">COOK<small>feed the crew · repairs</small></button>
+  </div>
+  <div id="net">
+    <label>Multiplayer server <input id="server" placeholder="ws://host:8080 (empty = solo)"></label>
+    <label>Name <input id="pname" value="Sailor"></label>
+  </div>
+  <p class="hint">Any role can use any station. WASD move · Shift run · E use · Q drop · Esc leave station · M mute</p>
+  <div id="loading"></div>
+</div>
+<div id="lost" class="hidden"><h1>SUBMARINE LOST</h1><p id="lostreason"></p><button onclick="location.reload()">TRY AGAIN</button></div>
+<script type="module" src="src/game.js"></script>
+</body>
+</html>

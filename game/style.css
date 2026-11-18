@@ -1,0 +1,42 @@
+html, body { margin: 0; height: 100%; overflow: hidden; background: #05080a; font-family: "Inter", "Segoe UI", system-ui, sans-serif; color: #f2ead6; }
+canvas#view { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+.hidden { display: none !important; }
+#hud { position: fixed; inset: 0; pointer-events: none; }
+#bars { position: absolute; left: 20px; top: 18px; width: 240px; }
+.bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font: 700 11px/1 monospace; letter-spacing: .08em; text-shadow: 0 1px 2px #000; }
+.bar span { width: 64px; }
+.track { flex: 1; height: 12px; background: #0008; border: 1px solid #fff4; border-radius: 3px; overflow: hidden; }
+.fill { height: 100%; width: 100%; transition: width .2s; }
+.blue { background: linear-gradient(90deg, #1aa7d8, #4dd2ff); } .yellow { background: linear-gradient(90deg, #e3a51b, #ffd34d); } .green { background: linear-gradient(90deg, #2e9b57, #63e08f); }
+#status { position: absolute; right: 20px; top: 18px; text-align: right; font: 700 13px/1.5 monospace; text-shadow: 0 1px 3px #000; background: #0007; padding: 8px 12px; border-radius: 8px; border: 1px solid #ffffff22; }
+#score { position: absolute; right: 20px; top: 150px; font: 700 13px monospace; color: #ffd34d; text-shadow: 0 1px 3px #000; }
+#carry { position: absolute; left: 20px; bottom: 20px; font: 700 14px monospace; background: #0008; padding: 6px 10px; border-radius: 6px; }
+#carry:empty { display: none; }
+#crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 18px monospace; opacity: .7; }
+#prompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font: 700 15px sans-serif; background: #000a; padding: 6px 14px; border-radius: 6px; border: 1px solid #ffd34d88; }
+#prompt:empty { display: none; }
+#progress { position: absolute; left: 50%; top: 64%; transform: translateX(-50%); width: 240px; height: 10px; background: #0009; border: 1px solid #fff6; border-radius: 5px; overflow: hidden; }
+#progressfill { height: 100%; width: 0; background: #63e08f; }
+#messages { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); width: min(720px, 80vw); text-align: center; }
+#messages div { margin: 4px auto; padding: 6px 12px; border-radius: 6px; background: #0009; font: 600 14px sans-serif; width: fit-content; animation: fade 7s forwards; }
+#messages .alert { color: #ffd34d; } #messages .warn { color: #ffb37a; } #messages .danger { color: #ff6b5b; border: 1px solid #ff6b5b88; }
+@keyframes fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+#station { position: absolute; right: 20px; bottom: 20px; max-width: 420px; background: #000c; border: 1px solid #ffd34d66; border-radius: 10px; padding: 10px 16px; }
+#station h2 { margin: 0 0 6px; font: 800 16px sans-serif; color: #ffd34d; letter-spacing: .06em; }
+#station pre { margin: 0; font: 13px/1.5 monospace; white-space: pre-wrap; }
+#scope { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0 38vmin, #000 39vmin); }
+#scope .reticle { position: absolute; left: 50%; top: 50%; width: 76vmin; height: 76vmin; transform: translate(-50%, -50%); border-radius: 50%;
+  background: linear-gradient(#0000 calc(50% - 1px), #000c 50%, #0000 calc(50% + 1px)), linear-gradient(90deg, #0000 calc(50% - 1px), #000c 50%, #0000 calc(50% + 1px)); }
+#scopeinfo { position: absolute; left: 50%; bottom: 6vh; transform: translateX(-50%); font: 700 16px monospace; color: #9effc0; text-shadow: 0 0 6px #000; text-align: center; }
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; transition: opacity .6s; }
+#menu, #lost { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 30%, #12303b, #05080a 70%); text-align: center; padding: 16px; }
+#menu h1, #lost h1 { font: 900 clamp(32px, 7vw, 72px)/1 sans-serif; letter-spacing: .08em; margin: 0 0 10px; color: #ffd34d; }
+#menu .sub { max-width: 560px; opacity: .85; }
+#roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; width: min(820px, 92vw); margin: 22px 0; }
+#roles button, #lost button { font: 800 15px sans-serif; color: #05080a; background: #ffd34d; border: 0; border-radius: 10px; padding: 16px 10px; cursor: pointer; }
+#roles button small { display: block; font: 500 12px sans-serif; margin-top: 4px; opacity: .8; }
+#roles button:hover { background: #ffe58a; }
+#net { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; font-size: 13px; }
+#net input { background: #0008; color: #fff; border: 1px solid #fff4; border-radius: 6px; padding: 6px 8px; min-width: 200px; }
+.hint { font-size: 13px; opacity: .7; }
+#loading { min-height: 20px; color: #9effc0; font: 13px monospace; }
