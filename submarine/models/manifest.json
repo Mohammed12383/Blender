@@ -1,0 +1,2915 @@
+{
+ "props": [
+  {
+   "name": "AirTanks",
+   "category": "decor",
+   "parts": [
+    {
+     "name": "AirTanks_GaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "AirTanks_Valve1",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "AirTanks_Valve2",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "AirTanks_Valve3",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "AlarmBeacon",
+   "category": "light",
+   "note": "animate Reflector spin + light for battle stations",
+   "parts": [
+    {
+     "name": "AlarmBeacon_Reflector",
+     "interact": "spin",
+     "rotate_axis": "Z"
+    }
+   ],
+   "interaction_points": [],
+   "lights": [
+    "AlarmBeacon_Light"
+   ]
+  },
+  {
+   "name": "BallastPanel",
+   "category": "station",
+   "station": "ballast",
+   "parts": [
+    {
+     "name": "BallastPanel_AirGaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "BallastPanel_BlowValve",
+     "interact": "ballast_blow",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "BallastPanel_DepthGaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "BallastPanel_FloodValve",
+     "interact": "ballast_flood",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "BallastPanel_PressureGaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "BallastPanel_TrimLever1",
+     "interact": "lever",
+     "rotate_axis": "Y",
+     "min_deg": -35,
+     "max_deg": 35
+    },
+    {
+     "name": "BallastPanel_TrimLever2",
+     "interact": "lever",
+     "rotate_axis": "Y",
+     "min_deg": -35,
+     "max_deg": 35
+    },
+    {
+     "name": "BallastPanel_VentValve",
+     "interact": "ballast_vent",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "BallastPanel_HAND_L_VentValve",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "VentValve"
+    },
+    {
+     "name": "BallastPanel_HAND_R_VentValve",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "VentValve"
+    },
+    {
+     "name": "BallastPanel_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "BunkBed",
+   "category": "furniture",
+   "interact": "sleep",
+   "parts": [
+    {
+     "name": "BunkBed_Curtain_lower",
+     "interact": "curtain",
+     "scale_axis": "X"
+    },
+    {
+     "name": "BunkBed_Curtain_upper",
+     "interact": "curtain",
+     "scale_axis": "X"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "BunkBed_INTERACT_berth_lower",
+     "interaction": "berth_lower",
+     "berth": "lower"
+    },
+    {
+     "name": "BunkBed_INTERACT_berth_upper",
+     "interaction": "berth_upper",
+     "berth": "upper"
+    }
+   ],
+   "lights": [
+    "BunkBed_ReadingLight_lower",
+    "BunkBed_ReadingLight_upper"
+   ]
+  },
+  {
+   "name": "CargoFreighter",
+   "category": "vehicle",
+   "team": "neutral",
+   "target_type": "freighter",
+   "hit_points": 2,
+   "parts": [
+    {
+     "name": "CargoFreighter_Crane_17",
+     "interact": "crane",
+     "rotate_axis": "Z"
+    },
+    {
+     "name": "CargoFreighter_Crane_30",
+     "interact": "crane",
+     "rotate_axis": "Z"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "CargoFreighter_INTERACT_hit_center",
+     "interaction": "hit_center"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "CeilingHatch",
+   "category": "door",
+   "interact": "hatch",
+   "note": "decorative: the shell ceiling has no opening",
+   "parts": [
+    {
+     "name": "CeilingHatch_Lid",
+     "interact": "hatch",
+     "rotate_axis": "Y",
+     "min_deg": 0,
+     "max_deg": 100
+    },
+    {
+     "name": "CeilingHatch_LidWheel",
+     "interact": "hatch_lock",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "CeilingLamp",
+   "category": "light",
+   "parts": [],
+   "interaction_points": [],
+   "lights": [
+    "CeilingLamp_Light"
+   ]
+  },
+  {
+   "name": "ChainHoist",
+   "category": "station",
+   "station": "hoist",
+   "parts": [
+    {
+     "name": "ChainHoist_Trolley",
+     "interact": "slide",
+     "translate_axis": "Y",
+     "min": -2.9000000000000004,
+     "max": -0.3
+    },
+    {
+     "name": "ChainHoist_Hook",
+     "interact": "hook",
+     "translate_axis": "Z",
+     "min": -1.6,
+     "max": -0.4
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "CheckersBoard",
+   "category": "pickup",
+   "interact": "game",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "CoffeeStation",
+   "category": "station",
+   "station": "coffee",
+   "parts": [
+    {
+     "name": "CoffeeStation_Tap",
+     "interact": "pour",
+     "rotate_axis": "Y",
+     "min_deg": 0,
+     "max_deg": 90
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "CoffeeStation_HAND_R_Tap",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "pinch",
+     "control": "Tap"
+    },
+    {
+     "name": "CoffeeStation_INTERACT_use",
+     "interaction": "use"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "DrumstickCooked",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "drumstick_cooked",
+   "cook_state": "cooked",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "DrumstickRaw",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "drumstick_raw",
+   "cook_state": "raw",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "ElectricalCabinet",
+   "category": "decor",
+   "parts": [
+    {
+     "name": "ElectricalCabinet_Door",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": -110,
+     "max_deg": 0
+    },
+    {
+     "name": "ElectricalCabinet_GaugeANeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "ElectricalCabinet_GaugeBNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "ElectricalCabinet_Switch1",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "ElectricalCabinet_Switch2",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "ElectricalCabinet_Switch3",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "ElectricalCabinet_Switch4",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "ElectricalCabinet_Switch5",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "EnemyFrigate",
+   "category": "vehicle",
+   "team": "enemy",
+   "target_type": "frigate",
+   "hit_points": 3,
+   "parts": [
+    {
+     "name": "EnemyFrigate_Radar",
+     "interact": "spin",
+     "rotate_axis": "Z"
+    },
+    {
+     "name": "EnemyFrigate_Turret",
+     "interact": "turret",
+     "rotate_axis": "Z"
+    },
+    {
+     "name": "EnemyFrigate_Gun",
+     "interact": "gun",
+     "rotate_axis": "Y",
+     "min_deg": -35,
+     "max_deg": 5
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "EnemyFrigate_INTERACT_hit_center",
+     "interaction": "hit_center"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "EnemySubmarine",
+   "category": "vehicle",
+   "note": "surfaced: waterline at z=0; submerge by lowering ~3.5 m",
+   "team": "enemy",
+   "target_type": "submarine",
+   "hit_points": 3,
+   "parts": [
+    {
+     "name": "EnemySubmarine_Propeller",
+     "interact": "spin",
+     "rotate_axis": "X"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "EnemySubmarine_INTERACT_interior_origin",
+     "interaction": "interior_origin",
+     "note": "place the interior level here (bow room at +X after a 180\u00b0 turn)"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "EngineRoomDoor",
+   "category": "door",
+   "interact": "door",
+   "locked": true,
+   "parts": [
+    {
+     "name": "EngineRoomDoor_Leaf",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": -105,
+     "max_deg": 0,
+     "open_dir": "towards -Y"
+    },
+    {
+     "name": "EngineRoomDoor_WheelBack",
+     "interact": "door_lock",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "EngineRoomDoor_WheelFront",
+     "interact": "door_lock",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "EngineRoomDoor_INTERACT_open_back",
+     "interaction": "open_back"
+    },
+    {
+     "name": "EngineRoomDoor_INTERACT_open_front",
+     "interaction": "open_front"
+    },
+    {
+     "name": "EngineRoomDoor_HAND_L_WheelFront",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "WheelFront"
+    },
+    {
+     "name": "EngineRoomDoor_HAND_R_WheelFront",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "WheelFront"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "EquipmentRack",
+   "category": "decor",
+   "parts": [
+    {
+     "name": "EquipmentRack_Door",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": -110,
+     "max_deg": 0
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "ExhaustHood",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": [
+    "ExhaustHood_WorkLight"
+   ]
+  },
+  {
+   "name": "FireControl",
+   "category": "station",
+   "station": "weapons",
+   "parts": [
+    {
+     "name": "FireControl_ArmKey",
+     "interact": "key_switch",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "FireControl_FireButton",
+     "interact": "fire",
+     "translate_axis": "Y",
+     "travel": 0.006
+    },
+    {
+     "name": "FireControl_FireGuard",
+     "interact": "guard",
+     "rotate_axis": "X",
+     "min_deg": 0,
+     "max_deg": 110
+    },
+    {
+     "name": "FireControl_Handset",
+     "interact": "pickup"
+    },
+    {
+     "name": "FireControl_TubeSelect1",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "FireControl_TubeSelect2",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "FireControl_TubeSelect3",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "FireControl_TubeSelect4",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "FireControl_HAND_L_ArmKey",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "pinch",
+     "control": "ArmKey"
+    },
+    {
+     "name": "FireControl_HAND_R_FireButton",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "press",
+     "control": "FireButton"
+    },
+    {
+     "name": "FireControl_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "FireExtinguisher",
+   "category": "pickup",
+   "interact": "pickup",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "FloorHatch",
+   "category": "door",
+   "interact": "hatch",
+   "parts": [
+    {
+     "name": "FloorHatch_Lid",
+     "interact": "hatch",
+     "rotate_axis": "Y",
+     "min_deg": -100,
+     "max_deg": 0
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Fridge",
+   "category": "storage",
+   "interact": "open",
+   "parts": [
+    {
+     "name": "Fridge_FreezerDoor",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": 0,
+     "max_deg": 110
+    },
+    {
+     "name": "Fridge_FridgeDoor",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": 0,
+     "max_deg": 110
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "Fridge_INTERACT_use",
+     "interaction": "use"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Griddle",
+   "category": "station",
+   "station": "cooking",
+   "parts": [
+    {
+     "name": "Griddle_Door1",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": -100,
+     "max_deg": 0
+    },
+    {
+     "name": "Griddle_Door2",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": 0,
+     "max_deg": 100
+    },
+    {
+     "name": "Griddle_LeftHeatKnob",
+     "interact": "dial",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "Griddle_PowerButton",
+     "interact": "power",
+     "translate_axis": "Y",
+     "travel": 0.006
+    },
+    {
+     "name": "Griddle_RightHeatKnob",
+     "interact": "dial",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "Griddle_TimerKnob",
+     "interact": "dial",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "Griddle_HAND_L_PowerButton",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "press",
+     "control": "PowerButton"
+    },
+    {
+     "name": "Griddle_HAND_R_cook_slots",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "cook_slots"
+    },
+    {
+     "name": "Griddle_INTERACT_cook_slot1",
+     "interaction": "cook_slot1",
+     "slot": 1
+    },
+    {
+     "name": "Griddle_INTERACT_cook_slot2",
+     "interaction": "cook_slot2",
+     "slot": 2
+    },
+    {
+     "name": "Griddle_INTERACT_cook_slot3",
+     "interaction": "cook_slot3",
+     "slot": 3
+    },
+    {
+     "name": "Griddle_INTERACT_cook_slot4",
+     "interaction": "cook_slot4",
+     "slot": 4
+    },
+    {
+     "name": "Griddle_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "HullCrack",
+   "category": "decor",
+   "note": "spawned by the game at a leak; emit spray along -Y",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "HullCrack_INTERACT_spray",
+     "interaction": "spray"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "HullPatch",
+   "category": "decor",
+   "note": "spawned by the game after a repair",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Intercom",
+   "category": "station",
+   "interact": "intercom",
+   "parts": [
+    {
+     "name": "Intercom_TalkButton",
+     "interact": "intercom_talk",
+     "translate_axis": "Y",
+     "travel": 0.006
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "JunctionBox",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Ladder",
+   "category": "ladder",
+   "interact": "climb",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Ladder_INTERACT_climb",
+     "interaction": "climb"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "LoadingCradle",
+   "category": "station",
+   "station": "loader",
+   "parts": [
+    {
+     "name": "LoadingCradle_Carriage",
+     "interact": "push",
+     "translate_axis": "Y",
+     "min": -2.6,
+     "max": -0.9
+    },
+    {
+     "name": "LoadingCradle_LiftCrank",
+     "interact": "lift_crank",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "LoadingCradle_LiftTray",
+     "interact": "lift",
+     "translate_axis": "Z",
+     "min": 0.45,
+     "max": 1.45
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "LoadingCradle_HAND_R_LiftCrank",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "LiftCrank"
+    },
+    {
+     "name": "LoadingCradle_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Lockers",
+   "category": "storage",
+   "parts": [
+    {
+     "name": "Lockers_Door1",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": -110,
+     "max_deg": 0,
+     "locker": 1
+    },
+    {
+     "name": "Lockers_Door2",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": -110,
+     "max_deg": 0,
+     "locker": 2
+    },
+    {
+     "name": "Lockers_Door3",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": -110,
+     "max_deg": 0,
+     "locker": 3
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Loudspeaker",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "MessTable",
+   "category": "furniture",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "MugBlue",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "mug",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "MugCream",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "mug",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "MugRed",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "mug",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "NavConsole",
+   "category": "station",
+   "station": "navigation",
+   "parts": [
+    {
+     "name": "NavConsole_Button1",
+     "interact": "button",
+     "translate_axis": "Y",
+     "travel": 0.006
+    },
+    {
+     "name": "NavConsole_Button2",
+     "interact": "button",
+     "translate_axis": "Y",
+     "travel": 0.006
+    },
+    {
+     "name": "NavConsole_Button3",
+     "interact": "button",
+     "translate_axis": "Y",
+     "travel": 0.006
+    },
+    {
+     "name": "NavConsole_Button4",
+     "interact": "button",
+     "translate_axis": "Y",
+     "travel": 0.006
+    },
+    {
+     "name": "NavConsole_Joystick",
+     "interact": "joystick",
+     "rotate_axes": "XY",
+     "max_deg": 25
+    },
+    {
+     "name": "NavConsole_StickTrigger",
+     "interact": "button",
+     "translate_axis": "Y",
+     "travel": 0.006
+    },
+    {
+     "name": "NavConsole_ZoomDial",
+     "interact": "dial",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "NavConsole_HAND_L_ZoomDial",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "pinch",
+     "control": "ZoomDial"
+    },
+    {
+     "name": "NavConsole_HAND_R_Joystick",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "Joystick"
+    },
+    {
+     "name": "NavConsole_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "NavTable",
+   "category": "station",
+   "station": "navigation",
+   "parts": [
+    {
+     "name": "NavTable_Dividers",
+     "interact": "pickup"
+    },
+    {
+     "name": "NavTable_Marker1",
+     "interact": "map_marker"
+    },
+    {
+     "name": "NavTable_Marker2",
+     "interact": "map_marker"
+    },
+    {
+     "name": "NavTable_Marker3",
+     "interact": "map_marker"
+    },
+    {
+     "name": "NavTable_Marker4",
+     "interact": "map_marker"
+    },
+    {
+     "name": "NavTable_ParallelRuler",
+     "interact": "pickup"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "NavTable_HAND_L",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "palm"
+    },
+    {
+     "name": "NavTable_HAND_R",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "palm"
+    },
+    {
+     "name": "NavTable_INTERACT_use_back",
+     "interaction": "use_back"
+    },
+    {
+     "name": "NavTable_INTERACT_use_front",
+     "interaction": "use_front"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "NoticeBoard",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "PattyCooked",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "patty_cooked",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "PattyRaw",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "patty_raw",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "PendantLamp",
+   "category": "light",
+   "parts": [],
+   "interaction_points": [],
+   "lights": [
+    "PendantLamp_Light"
+   ]
+  },
+  {
+   "name": "Periscope",
+   "category": "station",
+   "station": "periscope",
+   "parts": [
+    {
+     "name": "Periscope_Head",
+     "interact": "periscope_train",
+     "rotate_axis": "Z"
+    },
+    {
+     "name": "Periscope_HandleL",
+     "interact": "periscope_handle",
+     "rotate_axis": "X",
+     "min_deg": -90,
+     "max_deg": 0,
+     "note": "fold down to stow"
+    },
+    {
+     "name": "Periscope_Zoom",
+     "interact": "zoom",
+     "translate_axis": "Y",
+     "travel": 0.006
+    },
+    {
+     "name": "Periscope_HandleR",
+     "interact": "periscope_handle",
+     "rotate_axis": "X",
+     "min_deg": -90,
+     "max_deg": 0,
+     "note": "fold down to stow"
+    },
+    {
+     "name": "Periscope_Mark",
+     "interact": "mark_target",
+     "translate_axis": "Y",
+     "travel": 0.006
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "Periscope_HAND_L_HandleL",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "HandleL"
+    },
+    {
+     "name": "Periscope_HAND_R_HandleR",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "HandleR"
+    },
+    {
+     "name": "Periscope_INTERACT_operate",
+     "interaction": "operate",
+     "note": "anchor rotates with Head in game"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "PipeRiser",
+   "category": "station",
+   "station": "valve",
+   "parts": [
+    {
+     "name": "PipeRiser_GaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "PipeRiser_Valve",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "PipeRiser_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "PipeRiserMustard",
+   "category": "station",
+   "station": "valve",
+   "parts": [
+    {
+     "name": "PipeRiserMustard_GaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "PipeRiserMustard_Valve",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "PipeRiserMustard_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Plate",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "plate",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Poster_Crew",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Poster_Dive",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Poster_Galley",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Poster_Quiet",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "PotRail",
+   "category": "decor",
+   "parts": [
+    {
+     "name": "PotRail_Ladle_35",
+     "interact": "pickup",
+     "item": "ladle"
+    },
+    {
+     "name": "PotRail_Pan_-50",
+     "interact": "pickup",
+     "item": "pan"
+    },
+    {
+     "name": "PotRail_Pan_12",
+     "interact": "pickup",
+     "item": "pan"
+    },
+    {
+     "name": "PotRail_Pot_-20",
+     "interact": "pickup",
+     "item": "pot"
+    },
+    {
+     "name": "PotRail_Whisk_52",
+     "interact": "pickup",
+     "item": "whisk"
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "PrepCounter",
+   "category": "station",
+   "station": "prep",
+   "parts": [
+    {
+     "name": "PrepCounter_ColdTap",
+     "interact": "tap",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "PrepCounter_HotTap",
+     "interact": "tap",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "PrepCounter_Knife",
+     "interact": "pickup",
+     "item": "knife"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "PrepCounter_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_50_0",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_50_0_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_50_1",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_50_1_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_50_2",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_50_2_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_50_3",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_50_3_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_50_4",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_50_4_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_50_5",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_50_5_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_50_6",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_50_6_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_60_0",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_60_0_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_60_1",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_60_1_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_60_2",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_60_2_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_60_3",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_60_3_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_60_4",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_60_4_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_60_5",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_60_5_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_60_6",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_60_6_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_75_0",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_75_0_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_75_1",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_75_1_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_75_2",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_75_2_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_75_3",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_75_3_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_75_4",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_75_4_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_75_5",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_75_5_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_75_6",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_75_6_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_90_0",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_90_0_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_90_1",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_90_1_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_90_2",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_90_2_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_90_3",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_90_3_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_90_4",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_90_4_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_90_5",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_90_5_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Rack_90_6",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Rack_90_6_INTERACT_cable_in",
+     "interaction": "cable_in"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "RoomSign_Control_Room",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "RoomSign_Crew_Mess",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "RoomSign_Engine_Room",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "RoomSign_Galley",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "RoomSign_Torpedo_Room",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "ShipClock",
+   "category": "decor",
+   "note": "Hour/Minute/Second hands rotate about Y",
+   "parts": [
+    {
+     "name": "ShipClock_HourHand",
+     "interact": "clock_hand",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "ShipClock_MinuteHand",
+     "interact": "clock_hand",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "ShipClock_SecondHand",
+     "interact": "clock_hand",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Sign_Explosive",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Sign_Hot",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Sign_Pressure",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Sign_Voltage",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "SonarStation",
+   "category": "station",
+   "station": "sonar",
+   "parts": [
+    {
+     "name": "SonarStation_BearingKnob",
+     "interact": "dial",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "SonarStation_FilterKnob",
+     "interact": "dial",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "SonarStation_GainKnob",
+     "interact": "dial",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "SonarStation_Headphones",
+     "interact": "pickup"
+    },
+    {
+     "name": "SonarStation_RangeKnob",
+     "interact": "dial",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "SonarStation_Switch1",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "SonarStation_Switch2",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "SonarStation_Switch3",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "SonarStation_Switch4",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "SonarStation_Switch5",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "SonarStation_HAND_L_BearingKnob",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "pinch",
+     "control": "BearingKnob"
+    },
+    {
+     "name": "SonarStation_HAND_R_RangeKnob",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "pinch",
+     "control": "RangeKnob"
+    },
+    {
+     "name": "SonarStation_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "SparePartsCrate",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "SteakCooked",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "steak_cooked",
+   "cook_state": "cooked",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "SteakRaw",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "steak_raw",
+   "cook_state": "raw",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Stool",
+   "category": "seat",
+   "interact": "sit",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "SubmarineExterior",
+   "category": "vehicle",
+   "note": "surfaced: waterline at z=0; submerge by lowering ~3.5 m",
+   "parts": [
+    {
+     "name": "SubmarineExterior_Propeller",
+     "interact": "spin",
+     "rotate_axis": "X"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "SubmarineExterior_INTERACT_interior_origin",
+     "interaction": "interior_origin",
+     "note": "place the interior level here (bow room at +X after a 180\u00b0 turn)"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "SupplyCrate",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Toolbox",
+   "category": "pickup",
+   "interact": "pickup",
+   "parts": [
+    {
+     "name": "Toolbox_Lid",
+     "interact": "lid",
+     "rotate_axis": "X",
+     "min_deg": 0,
+     "max_deg": 110
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Torpedo",
+   "category": "pickup",
+   "interact": "carry",
+   "item": "torpedo",
+   "mass_kg": 80,
+   "parts": [
+    {
+     "name": "Torpedo_Propeller1",
+     "interact": "spin",
+     "rotate_axis": "X"
+    },
+    {
+     "name": "Torpedo_Propeller2",
+     "interact": "spin",
+     "rotate_axis": "X"
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "TorpedoRack",
+   "category": "storage",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "TorpedoRack_INTERACT_slot_lower",
+     "interaction": "slot_lower",
+     "slot": "lower"
+    },
+    {
+     "name": "TorpedoRack_INTERACT_slot_upper",
+     "interaction": "slot_upper",
+     "slot": "upper"
+    },
+    {
+     "name": "TorpedoRack_INTERACT_use",
+     "interaction": "use"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "TorpedoTubes",
+   "category": "station",
+   "station": "torpedo_tubes",
+   "parts": [
+    {
+     "name": "TorpedoTubes_Door1",
+     "interact": "tube_door",
+     "tube": 1,
+     "rotate_axis": "Z",
+     "min_deg": -115,
+     "max_deg": 0,
+     "open_dir": "towards -Y"
+    },
+    {
+     "name": "TorpedoTubes_Door1Latch",
+     "interact": "latch",
+     "rotate_axis": "Y",
+     "min_deg": 0,
+     "max_deg": 60
+    },
+    {
+     "name": "TorpedoTubes_Door1Wheel",
+     "interact": "tube_lock",
+     "rotate_axis": "Y",
+     "tube": 1
+    },
+    {
+     "name": "TorpedoTubes_Door2",
+     "interact": "tube_door",
+     "tube": 2,
+     "rotate_axis": "Z",
+     "min_deg": -115,
+     "max_deg": 0,
+     "open_dir": "towards -Y"
+    },
+    {
+     "name": "TorpedoTubes_Door2Latch",
+     "interact": "latch",
+     "rotate_axis": "Y",
+     "min_deg": 0,
+     "max_deg": 60
+    },
+    {
+     "name": "TorpedoTubes_Door2Wheel",
+     "interact": "tube_lock",
+     "rotate_axis": "Y",
+     "tube": 2
+    },
+    {
+     "name": "TorpedoTubes_Door3",
+     "interact": "tube_door",
+     "tube": 3,
+     "rotate_axis": "Z",
+     "min_deg": -115,
+     "max_deg": 0,
+     "open_dir": "towards -Y"
+    },
+    {
+     "name": "TorpedoTubes_Door3Latch",
+     "interact": "latch",
+     "rotate_axis": "Y",
+     "min_deg": 0,
+     "max_deg": 60
+    },
+    {
+     "name": "TorpedoTubes_Door3Wheel",
+     "interact": "tube_lock",
+     "rotate_axis": "Y",
+     "tube": 3
+    },
+    {
+     "name": "TorpedoTubes_Door4",
+     "interact": "tube_door",
+     "tube": 4,
+     "rotate_axis": "Z",
+     "min_deg": -115,
+     "max_deg": 0,
+     "open_dir": "towards -Y"
+    },
+    {
+     "name": "TorpedoTubes_Door4Latch",
+     "interact": "latch",
+     "rotate_axis": "Y",
+     "min_deg": 0,
+     "max_deg": 60
+    },
+    {
+     "name": "TorpedoTubes_Door4Wheel",
+     "interact": "tube_lock",
+     "rotate_axis": "Y",
+     "tube": 4
+    },
+    {
+     "name": "TorpedoTubes_Interlock1",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "TorpedoTubes_Interlock2",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "TorpedoTubes_Interlock3",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "TorpedoTubes_Interlock4",
+     "interact": "toggle",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25
+    },
+    {
+     "name": "TorpedoTubes_ManualFire",
+     "interact": "manual_fire",
+     "translate_axis": "Y",
+     "travel": 0.006
+    },
+    {
+     "name": "TorpedoTubes_Tube1Flood",
+     "interact": "tube_flood",
+     "rotate_axis": "Y",
+     "tube": 1
+    },
+    {
+     "name": "TorpedoTubes_Tube1GaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "TorpedoTubes_Tube2Flood",
+     "interact": "tube_flood",
+     "rotate_axis": "Y",
+     "tube": 2
+    },
+    {
+     "name": "TorpedoTubes_Tube2GaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "TorpedoTubes_Tube3Flood",
+     "interact": "tube_flood",
+     "rotate_axis": "Y",
+     "tube": 3
+    },
+    {
+     "name": "TorpedoTubes_Tube3GaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "TorpedoTubes_Tube4Flood",
+     "interact": "tube_flood",
+     "rotate_axis": "Y",
+     "tube": 4
+    },
+    {
+     "name": "TorpedoTubes_Tube4GaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "TorpedoTubes_HAND_L_Door1Wheel",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "Door1Wheel"
+    },
+    {
+     "name": "TorpedoTubes_HAND_L_Door2Wheel",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "Door2Wheel"
+    },
+    {
+     "name": "TorpedoTubes_HAND_L_Door3Wheel",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "Door3Wheel"
+    },
+    {
+     "name": "TorpedoTubes_HAND_L_Door4Wheel",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "Door4Wheel"
+    },
+    {
+     "name": "TorpedoTubes_HAND_R_Door1Wheel",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "Door1Wheel"
+    },
+    {
+     "name": "TorpedoTubes_HAND_R_Door2Wheel",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "Door2Wheel"
+    },
+    {
+     "name": "TorpedoTubes_HAND_R_Door3Wheel",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "Door3Wheel"
+    },
+    {
+     "name": "TorpedoTubes_HAND_R_Door4Wheel",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "Door4Wheel"
+    },
+    {
+     "name": "TorpedoTubes_INTERACT_tube1",
+     "interaction": "tube1",
+     "tube": 1
+    },
+    {
+     "name": "TorpedoTubes_INTERACT_tube2",
+     "interaction": "tube2",
+     "tube": 2
+    },
+    {
+     "name": "TorpedoTubes_INTERACT_tube3",
+     "interaction": "tube3",
+     "tube": 3
+    },
+    {
+     "name": "TorpedoTubes_INTERACT_tube4",
+     "interaction": "tube4",
+     "tube": 4
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "TrayBlue",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "tray",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "TrayGreen",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "tray",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "ValveManifold",
+   "category": "decor",
+   "note": "set dressing",
+   "parts": [
+    {
+     "name": "ValveManifold_Gauge1Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "ValveManifold_Gauge3Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "ValveManifold_Valve1",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "ValveManifold_Valve2",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "ValveManifold_Valve3",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "ValveManifold_Valve4",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_50_0",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_50_1",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_50_2",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_50_3",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_75_0",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_75_1",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_75_2",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_75_3",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_90_0",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_90_1",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_90_2",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallBox_90_3",
+   "category": "decor",
+   "note": "set dressing; origin at its bottom-back edge",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallMonitorAft",
+   "category": "screen",
+   "feed": "screen_cam_aft",
+   "parts": [
+    {
+     "name": "WallMonitorAft_Knob1",
+     "interact": "knob",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "WallMonitorAft_Knob2",
+     "interact": "knob",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WallMonitorFwd",
+   "category": "screen",
+   "feed": "screen_cam_fwd",
+   "parts": [
+    {
+     "name": "WallMonitorFwd_Knob1",
+     "interact": "knob",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "WallMonitorFwd_Knob2",
+     "interact": "knob",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "WatertightDoor",
+   "category": "door",
+   "interact": "door",
+   "parts": [
+    {
+     "name": "WatertightDoor_Leaf",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": -105,
+     "max_deg": 0,
+     "open_dir": "towards -Y"
+    },
+    {
+     "name": "WatertightDoor_WheelBack",
+     "interact": "door_lock",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "WatertightDoor_WheelFront",
+     "interact": "door_lock",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "WatertightDoor_INTERACT_open_back",
+     "interaction": "open_back"
+    },
+    {
+     "name": "WatertightDoor_INTERACT_open_front",
+     "interaction": "open_front"
+    },
+    {
+     "name": "WatertightDoor_HAND_L_WheelFront",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "WheelFront"
+    },
+    {
+     "name": "WatertightDoor_HAND_R_WheelFront",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "WheelFront"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "WireShelf",
+   "category": "storage",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "WireShelf_INTERACT_shelf1",
+     "interaction": "shelf1",
+     "shelf": 1
+    },
+    {
+     "name": "WireShelf_INTERACT_shelf2",
+     "interaction": "shelf2",
+     "shelf": 2
+    },
+    {
+     "name": "WireShelf_INTERACT_shelf3",
+     "interaction": "shelf3",
+     "shelf": 3
+    },
+    {
+     "name": "WireShelf_INTERACT_shelf4",
+     "interaction": "shelf4",
+     "shelf": 4
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "Workbench",
+   "category": "decor",
+   "parts": [
+    {
+     "name": "Workbench_ViseJaw",
+     "interact": "crank",
+     "translate_axis": "Y",
+     "min": -0.1,
+     "max": 0
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "Wrench",
+   "category": "pickup",
+   "interact": "pickup",
+   "item": "wrench",
+   "parts": [
+    {
+     "name": "Wrench_Jaw",
+     "interact": "adjust",
+     "translate_axis": "X"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "Wrench_INTERACT_grip",
+     "interaction": "grip"
+    }
+   ],
+   "lights": []
+  }
+ ],
+ "characters": [
+  {
+   "name": "Crew_Cook",
+   "role": "cook",
+   "bones": [
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "Shoulder.L",
+    "UpperArm.L",
+    "LowerArm.L",
+    "Hand.L",
+    "Index1.L",
+    "Index2.L",
+    "Index3.L",
+    "Middle1.L",
+    "Middle2.L",
+    "Middle3.L",
+    "Ring1.L",
+    "Ring2.L",
+    "Ring3.L",
+    "Pinky1.L",
+    "Pinky2.L",
+    "Pinky3.L",
+    "Thumb1.L",
+    "Thumb2.L",
+    "Thumb3.L",
+    "Shoulder.R",
+    "UpperArm.R",
+    "LowerArm.R",
+    "Hand.R",
+    "Index1.R",
+    "Index2.R",
+    "Index3.R",
+    "Middle1.R",
+    "Middle2.R",
+    "Middle3.R",
+    "Ring1.R",
+    "Ring2.R",
+    "Ring3.R",
+    "Pinky1.R",
+    "Pinky2.R",
+    "Pinky3.R",
+    "Thumb1.R",
+    "Thumb2.R",
+    "Thumb3.R",
+    "UpperLeg.L",
+    "LowerLeg.L",
+    "Foot.L",
+    "Toes.L",
+    "UpperLeg.R",
+    "LowerLeg.R",
+    "Foot.R",
+    "Toes.R"
+   ]
+  },
+  {
+   "name": "Crew_Gunner",
+   "role": "weapons_officer",
+   "bones": [
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "Shoulder.L",
+    "UpperArm.L",
+    "LowerArm.L",
+    "Hand.L",
+    "Index1.L",
+    "Index2.L",
+    "Index3.L",
+    "Middle1.L",
+    "Middle2.L",
+    "Middle3.L",
+    "Ring1.L",
+    "Ring2.L",
+    "Ring3.L",
+    "Pinky1.L",
+    "Pinky2.L",
+    "Pinky3.L",
+    "Thumb1.L",
+    "Thumb2.L",
+    "Thumb3.L",
+    "Shoulder.R",
+    "UpperArm.R",
+    "LowerArm.R",
+    "Hand.R",
+    "Index1.R",
+    "Index2.R",
+    "Index3.R",
+    "Middle1.R",
+    "Middle2.R",
+    "Middle3.R",
+    "Ring1.R",
+    "Ring2.R",
+    "Ring3.R",
+    "Pinky1.R",
+    "Pinky2.R",
+    "Pinky3.R",
+    "Thumb1.R",
+    "Thumb2.R",
+    "Thumb3.R",
+    "UpperLeg.L",
+    "LowerLeg.L",
+    "Foot.L",
+    "Toes.L",
+    "UpperLeg.R",
+    "LowerLeg.R",
+    "Foot.R",
+    "Toes.R"
+   ]
+  },
+  {
+   "name": "Crew_Loader",
+   "role": "torpedo_loader",
+   "bones": [
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "Shoulder.L",
+    "UpperArm.L",
+    "LowerArm.L",
+    "Hand.L",
+    "Index1.L",
+    "Index2.L",
+    "Index3.L",
+    "Middle1.L",
+    "Middle2.L",
+    "Middle3.L",
+    "Ring1.L",
+    "Ring2.L",
+    "Ring3.L",
+    "Pinky1.L",
+    "Pinky2.L",
+    "Pinky3.L",
+    "Thumb1.L",
+    "Thumb2.L",
+    "Thumb3.L",
+    "Shoulder.R",
+    "UpperArm.R",
+    "LowerArm.R",
+    "Hand.R",
+    "Index1.R",
+    "Index2.R",
+    "Index3.R",
+    "Middle1.R",
+    "Middle2.R",
+    "Middle3.R",
+    "Ring1.R",
+    "Ring2.R",
+    "Ring3.R",
+    "Pinky1.R",
+    "Pinky2.R",
+    "Pinky3.R",
+    "Thumb1.R",
+    "Thumb2.R",
+    "Thumb3.R",
+    "UpperLeg.L",
+    "LowerLeg.L",
+    "Foot.L",
+    "Toes.L",
+    "UpperLeg.R",
+    "LowerLeg.R",
+    "Foot.R",
+    "Toes.R"
+   ]
+  },
+  {
+   "name": "Crew_Navigator",
+   "role": "navigator",
+   "bones": [
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "Shoulder.L",
+    "UpperArm.L",
+    "LowerArm.L",
+    "Hand.L",
+    "Index1.L",
+    "Index2.L",
+    "Index3.L",
+    "Middle1.L",
+    "Middle2.L",
+    "Middle3.L",
+    "Ring1.L",
+    "Ring2.L",
+    "Ring3.L",
+    "Pinky1.L",
+    "Pinky2.L",
+    "Pinky3.L",
+    "Thumb1.L",
+    "Thumb2.L",
+    "Thumb3.L",
+    "Shoulder.R",
+    "UpperArm.R",
+    "LowerArm.R",
+    "Hand.R",
+    "Index1.R",
+    "Index2.R",
+    "Index3.R",
+    "Middle1.R",
+    "Middle2.R",
+    "Middle3.R",
+    "Ring1.R",
+    "Ring2.R",
+    "Ring3.R",
+    "Pinky1.R",
+    "Pinky2.R",
+    "Pinky3.R",
+    "Thumb1.R",
+    "Thumb2.R",
+    "Thumb3.R",
+    "UpperLeg.L",
+    "LowerLeg.L",
+    "Foot.L",
+    "Toes.L",
+    "UpperLeg.R",
+    "LowerLeg.R",
+    "Foot.R",
+    "Toes.R"
+   ]
+  },
+  {
+   "name": "FPArms_Cook",
+   "role": "cook",
+   "bones": [
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "Shoulder.L",
+    "UpperArm.L",
+    "LowerArm.L",
+    "Hand.L",
+    "Index1.L",
+    "Index2.L",
+    "Index3.L",
+    "Middle1.L",
+    "Middle2.L",
+    "Middle3.L",
+    "Ring1.L",
+    "Ring2.L",
+    "Ring3.L",
+    "Pinky1.L",
+    "Pinky2.L",
+    "Pinky3.L",
+    "Thumb1.L",
+    "Thumb2.L",
+    "Thumb3.L",
+    "Shoulder.R",
+    "UpperArm.R",
+    "LowerArm.R",
+    "Hand.R",
+    "Index1.R",
+    "Index2.R",
+    "Index3.R",
+    "Middle1.R",
+    "Middle2.R",
+    "Middle3.R",
+    "Ring1.R",
+    "Ring2.R",
+    "Ring3.R",
+    "Pinky1.R",
+    "Pinky2.R",
+    "Pinky3.R",
+    "Thumb1.R",
+    "Thumb2.R",
+    "Thumb3.R",
+    "UpperLeg.L",
+    "LowerLeg.L",
+    "Foot.L",
+    "Toes.L",
+    "UpperLeg.R",
+    "LowerLeg.R",
+    "Foot.R",
+    "Toes.R"
+   ]
+  },
+  {
+   "name": "FPArms_Gunner",
+   "role": "weapons_officer",
+   "bones": [
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "Shoulder.L",
+    "UpperArm.L",
+    "LowerArm.L",
+    "Hand.L",
+    "Index1.L",
+    "Index2.L",
+    "Index3.L",
+    "Middle1.L",
+    "Middle2.L",
+    "Middle3.L",
+    "Ring1.L",
+    "Ring2.L",
+    "Ring3.L",
+    "Pinky1.L",
+    "Pinky2.L",
+    "Pinky3.L",
+    "Thumb1.L",
+    "Thumb2.L",
+    "Thumb3.L",
+    "Shoulder.R",
+    "UpperArm.R",
+    "LowerArm.R",
+    "Hand.R",
+    "Index1.R",
+    "Index2.R",
+    "Index3.R",
+    "Middle1.R",
+    "Middle2.R",
+    "Middle3.R",
+    "Ring1.R",
+    "Ring2.R",
+    "Ring3.R",
+    "Pinky1.R",
+    "Pinky2.R",
+    "Pinky3.R",
+    "Thumb1.R",
+    "Thumb2.R",
+    "Thumb3.R",
+    "UpperLeg.L",
+    "LowerLeg.L",
+    "Foot.L",
+    "Toes.L",
+    "UpperLeg.R",
+    "LowerLeg.R",
+    "Foot.R",
+    "Toes.R"
+   ]
+  },
+  {
+   "name": "FPArms_Loader",
+   "role": "torpedo_loader",
+   "bones": [
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "Shoulder.L",
+    "UpperArm.L",
+    "LowerArm.L",
+    "Hand.L",
+    "Index1.L",
+    "Index2.L",
+    "Index3.L",
+    "Middle1.L",
+    "Middle2.L",
+    "Middle3.L",
+    "Ring1.L",
+    "Ring2.L",
+    "Ring3.L",
+    "Pinky1.L",
+    "Pinky2.L",
+    "Pinky3.L",
+    "Thumb1.L",
+    "Thumb2.L",
+    "Thumb3.L",
+    "Shoulder.R",
+    "UpperArm.R",
+    "LowerArm.R",
+    "Hand.R",
+    "Index1.R",
+    "Index2.R",
+    "Index3.R",
+    "Middle1.R",
+    "Middle2.R",
+    "Middle3.R",
+    "Ring1.R",
+    "Ring2.R",
+    "Ring3.R",
+    "Pinky1.R",
+    "Pinky2.R",
+    "Pinky3.R",
+    "Thumb1.R",
+    "Thumb2.R",
+    "Thumb3.R",
+    "UpperLeg.L",
+    "LowerLeg.L",
+    "Foot.L",
+    "Toes.L",
+    "UpperLeg.R",
+    "LowerLeg.R",
+    "Foot.R",
+    "Toes.R"
+   ]
+  },
+  {
+   "name": "FPArms_Navigator",
+   "role": "navigator",
+   "bones": [
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "Shoulder.L",
+    "UpperArm.L",
+    "LowerArm.L",
+    "Hand.L",
+    "Index1.L",
+    "Index2.L",
+    "Index3.L",
+    "Middle1.L",
+    "Middle2.L",
+    "Middle3.L",
+    "Ring1.L",
+    "Ring2.L",
+    "Ring3.L",
+    "Pinky1.L",
+    "Pinky2.L",
+    "Pinky3.L",
+    "Thumb1.L",
+    "Thumb2.L",
+    "Thumb3.L",
+    "Shoulder.R",
+    "UpperArm.R",
+    "LowerArm.R",
+    "Hand.R",
+    "Index1.R",
+    "Index2.R",
+    "Index3.R",
+    "Middle1.R",
+    "Middle2.R",
+    "Middle3.R",
+    "Ring1.R",
+    "Ring2.R",
+    "Ring3.R",
+    "Pinky1.R",
+    "Pinky2.R",
+    "Pinky3.R",
+    "Thumb1.R",
+    "Thumb2.R",
+    "Thumb3.R",
+    "UpperLeg.L",
+    "LowerLeg.L",
+    "Foot.L",
+    "Toes.L",
+    "UpperLeg.R",
+    "LowerLeg.R",
+    "Foot.R",
+    "Toes.R"
+   ]
+  }
+ ]
+}
