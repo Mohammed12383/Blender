@@ -664,6 +664,7 @@ function updateHud() {
       if (!e.alive || !sim.contacts.has(e.id)) continue;
       const p = new THREE.Vector3(e.x, -(e.depth || 0) + 8, e.z).project(ext.camera);
       if (p.z > 1 || Math.abs(p.x) > 1 || Math.abs(p.y) > 1) continue;
+      if (player.mode === 'scope' && Math.hypot(p.x * innerWidth / 2, p.y * innerHeight / 2) > Math.min(innerWidth, innerHeight) * 0.37) continue;
       const d = document.createElement('div');
       d.className = 'tag' + (e.id === sim.weapons.lock ? ' locked' : '');
       d.style.left = `${(p.x + 1) / 2 * 100}%`; d.style.top = `${(1 - p.y) / 2 * 100}%`;
