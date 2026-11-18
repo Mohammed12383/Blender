@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { seabed } from './sim.js';
 
 const MODELS = '../submarine/models/';
 
@@ -66,6 +67,9 @@ export class Exterior {
     s.add(this.underside);
     this.snow = this.makeSnow();
     s.add(this.snow);
+    this.makeSeabed();
+    this.makeFish();
+    this.bubbles = this.trail();
     // models
     const names = ['SubmarineExterior', 'EnemyFrigate', 'CargoFreighter', 'EnemySubmarine', 'GiantSquid', 'Shark'];
     const gl = await Promise.all(names.map((n) => this.loader.loadAsync(`${MODELS}exterior/${n}.glb`)));
@@ -75,6 +79,77 @@ export class Exterior {
     this.player = this.templates.SubmarineExterior.clone();
     s.add(this.player);
     this.playerProp = this.player.getObjectByName('SubmarineExterior_Propeller');
+  }
+
+  makeSeabed() {
+    const size = 1600, seg = 128;
+    const g = new THREE.PlaneGeometry(size, size, seg, seg);
+    g.rotateX(-Math.PI / 2);
+    const col = new Float32Array(g.attributes.position.count * 3);
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    this.bed = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
+    this.bed.userData.base = g.attributes.position.array.slice();
+    this.scene.add(this.bed);
+    // rocks and kelp scattered on the bed (repositioned around the boat)
+    const rockGeo = new THREE.IcosahedronGeometry(1, 1);
+    this.rocks = new THREE.InstancedMesh(rockGeo, new THREE.MeshStandardMaterial({ color: 0x4a4f4a, roughness: 1, flatShading: true }), 260);
+    this.kelp = new THREE.InstancedMesh(new THREE.ConeGeometry(0.35, 9, 5, 4, true), new THREE.MeshStandardMaterial({ color: 0x3f6b2e, roughness: 0.8, side: THREE.DoubleSide }), 400);
+    this.scene.add(this.rocks); this.scene.add(this.kelp);
+    this.bedCenter = new THREE.Vector2(1e9, 1e9);
+  }
+
+  updateSeabed(cx, cz) {
+    if (Math.hypot(cx - this.bedCenter.x, cz - this.bedCenter.y) < 200) return;
+    this.bedCenter.set(Math.round(cx / 50) * 50, Math.round(cz / 50) * 50);
+    const p = this.bed.geometry.attributes.position, c = this.bed.geometry.attributes.color, b = this.bed.userData.base;
+    const sand = new THREE.Color(0xb8a77a), rock = new THREE.Color(0x585e5a), tmp = new THREE.Color();
+    for (let i = 0; i < p.count; i++) {
+      const x = b[i * 3] + this.bedCenter.x, z = b[i * 3 + 2] + this.bedCenter.y;
+      const y = -seabed(x, z);
+      p.array[i * 3] = x; p.array[i * 3 + 1] = y; p.array[i * 3 + 2] = z;
+      const k = Math.min(1, Math.max(0, (215 + y + 60) / 120)) * 0.7 + Math.sin(x * 0.3) * Math.cos(z * 0.27) * 0.08;
+      tmp.copy(sand).lerp(rock, Math.min(1, Math.max(0, k))); c.array.set([tmp.r, tmp.g, tmp.b], i * 3);
+    }
+    p.needsUpdate = true; c.needsUpdate = true;
+    this.bed.geometry.computeVertexNormals();
+    this.bed.geometry.computeBoundingSphere();
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
+    let seed = Math.floor(this.bedCenter.x * 7 + this.bedCenter.y * 13);
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed & 0xffff) / 0xffff; };
+    for (let i = 0; i < this.rocks.count; i++) {
+      const x = this.bedCenter.x + (rnd() - 0.5) * 1400, z = this.bedCenter.y + (rnd() - 0.5) * 1400;
+      pos.set(x, -seabed(x, z), z); q.setFromEuler(new THREE.Euler(rnd() * 3, rnd() * 3, rnd() * 3)); sc.set(1 + rnd() * 6, 0.6 + rnd() * 3, 1 + rnd() * 5);
+      this.rocks.setMatrixAt(i, m.compose(pos, q, sc));
+    }
+    for (let i = 0; i < this.kelp.count; i++) {
+      const x = this.bedCenter.x + (rnd() - 0.5) * 900, z = this.bedCenter.y + (rnd() - 0.5) * 900;
+      const h = 0.6 + rnd() * 1.8;
+      pos.set(x, -seabed(x, z) + 4.5 * h, z); q.setFromEuler(new THREE.Euler((rnd() - 0.5) * 0.3, rnd() * 6, (rnd() - 0.5) * 0.3)); sc.set(1, h, 1);
+      this.kelp.setMatrixAt(i, m.compose(pos, q, sc));
+    }
+    this.rocks.instanceMatrix.needsUpdate = true; this.kelp.instanceMatrix.needsUpdate = true;
+  }
+
+  makeFish() {
+    const geo = new THREE.ConeGeometry(0.12, 0.6, 5); geo.rotateZ(-Math.PI / 2);
+    this.fish = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: 0xa9c4cf, metalness: 0.6, roughness: 0.3 }), 360);
+    this.fish.frustumCulled = false;
+    this.fishState = Array.from({ length: 360 }, (_, i) => ({ school: i % 6, phase: Math.random() * 6.28, r: 3 + Math.random() * 6, h: (Math.random() - 0.5) * 4, sp: 0.6 + Math.random() * 0.5 }));
+    this.scene.add(this.fish);
+  }
+
+  updateFish(sim) {
+    const s = sim.sub, m = new THREE.Matrix4(), q = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3();
+    for (let i = 0; i < this.fishState.length; i++) {
+      const f = this.fishState[i];
+      const cx = s.x + Math.cos(f.school * 1.7 + this.time * 0.03) * (40 + f.school * 25), cz = s.z + Math.sin(f.school * 2.3 + this.time * 0.03) * (40 + f.school * 25);
+      const cy = -Math.min(seabed(cx, cz) - 10, 25 + f.school * 18);
+      const a = f.phase + this.time * f.sp;
+      p.set(cx + Math.cos(a) * f.r, cy + f.h + Math.sin(a * 2) * 0.6, cz - Math.sin(a) * f.r);
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), a + Math.PI / 2 + Math.PI);
+      this.fish.setMatrixAt(i, m.compose(p, q, one));
+    }
+    this.fish.instanceMatrix.needsUpdate = true;
   }
 
   makeSnow() {
@@ -169,6 +244,12 @@ export class Exterior {
     this.player.rotateZ(s.pitch);
     this.player.rotateX(s.roll);
     if (this.playerProp) this.playerProp.rotation.x += s.speed * dt * 1.2;
+    this.updateSeabed(s.x, s.z);
+    this.updateFish(sim);
+    if (s.depth > 3 && Math.abs(s.speed) > 0.5 && Math.random() < 0.8) {
+      const back = new THREE.Vector3(-Math.cos(s.heading) * 18, -s.depth, Math.sin(s.heading) * 18).add(new THREE.Vector3(s.x, 0, s.z));
+      this.bubbles.push(back);
+    }
     // entities
     const alive = new Set();
     for (const e of sim.entities) {

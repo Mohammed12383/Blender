@@ -17,6 +17,13 @@ export const TEST_DEPTH = 180;   // beyond this the hull starts to fail
 export const PERISCOPE_DEPTH = 14;
 
 const rand = (a, b) => a + Math.random() * (b - a);
+
+// Sea floor depth (m) at a world position: rolling plains, ridges and the odd trench.
+export function seabed(x, z) {
+  const n = Math.sin(x * 0.0021) * Math.cos(z * 0.0017) * 45 + Math.sin((x + z) * 0.0063) * 14 + Math.cos(x * 0.011 - z * 0.007) * 6;
+  const ridge = Math.max(0, Math.sin(x * 0.0011 + z * 0.0009) - 0.75) * 260;
+  return 215 + n - ridge;
+}
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
@@ -281,6 +288,13 @@ export class Sim {
     s.pitch += ((-s.vy * 0.06 + s.planes * 0.05 * Math.min(1, Math.abs(s.speed) / 4)) - s.pitch) * Math.min(1, dt * 1.5);
     if (s.periscopeUp && s.depth > PERISCOPE_DEPTH + 2) { s.periscopeUp = false; this.message('Periscope lowered: too deep.', 'warn'); this.events.push({ type: 'periscope', up: false }); }
 
+    // the sea floor
+    const floor = seabed(s.x, s.z) - 4;
+    if (s.depth > floor) {
+      s.depth = floor; if (s.vy > 0) { if (s.vy > 1.2) this.damage(Math.round(s.vy * 6), 'Ran aground on the sea floor', 0.5); s.vy = -0.2; }
+      if (Math.abs(s.speed) > 2 && Math.random() < dt * 0.5) this.damage(3, 'Scraping along the bottom', Math.random());
+    }
+    s.belowKeel = Math.max(0, floor - s.depth);
     // crush depth
     if (s.depth > TEST_DEPTH) {
       this._creak = (this._creak || 0) - dt;

@@ -86,6 +86,8 @@ def _preview_rig():
 def preview(root, filepath, samples=24, size=(640, 640), view=(-0.75, -1.0, 0.6), floor=True):
     """Render one library prop alone in a neutral studio."""
     rig = _preview_rig()
+    for o in [rig["cam"], rig["floor"]] + [l for l, _ in rig["lights"]]:
+        o.hide_render = False
     keep = set(core.hierarchy(root)) | {rig["cam"], rig["floor"]} | {l for l, _ in rig["lights"]}
     hidden = []
     for o in bpy.context.scene.objects:

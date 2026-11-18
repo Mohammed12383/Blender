@@ -629,7 +629,7 @@ function updateHud() {
   const leaks = sim.leaks.filter((l) => !l.fixed);
   $('status').innerHTML = [
     `${room >= 0 ? ROOMS[room].label : 'BULKHEAD'}`,
-    `DEPTH ${s.depth.toFixed(0)} m ${s.depth > TEST_DEPTH ? '<span style="color:#ff6b5b">CRUSH!</span>' : ''}`,
+    `DEPTH ${s.depth.toFixed(0)} m ${s.depth > TEST_DEPTH ? '<span style="color:#ff6b5b">CRUSH!</span>' : ''} · <span style="color:${(s.belowKeel ?? 99) < 15 ? '#ff6b5b' : 'inherit'}">${(s.belowKeel ?? 0).toFixed(0)} m under keel</span>`,
     `${TELEGRAPH_NAMES[s.telegraph]} · ${s.speed.toFixed(1)} m/s`,
     `HEADING ${sim.deg(s.heading)}° · RUDDER ${s.rudder > 0.05 ? 'PORT' : s.rudder < -0.05 ? 'STBD' : 'MID'}`,
     `BALLAST ${s.valve.toUpperCase()} ${(s.ballast * 100).toFixed(0)}% · PERISCOPE ${s.periscopeUp ? 'UP' : 'DOWN'}`,
