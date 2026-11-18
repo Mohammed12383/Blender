@@ -36,6 +36,8 @@ export class Sim {
     this.water = ROOMS.map(() => 0);   // flood level per room (m)
     this.doors = [true, true, true];   // watertight doors between rooms (open = water and crew can pass)
     this.leaks = [];           // {id, room, x, y, side, severity, fixed}
+    this.fires = [];           // {id, room, x, side, intensity, out}
+    this.power = true;
     this.contacts = new Map(); // id -> {bearing, range, known, lastSeen}
     this.entities = [];        // ships, subs, creatures
     this.torpedoes = [];       // {id, owner, x, z, depth, heading, speed, life, target, homing}
@@ -195,6 +197,8 @@ export class Sim {
     const leaks = amount >= 20 ? 3 : amount >= 8 ? 2 : 1;
     for (let i = 0; i < leaks; i++) this.addLeak(Math.random() < 0.7 ? room : Math.floor(Math.random() * 4), amount / 20);
     this.events.push({ type: 'hit', amount, source });
+    if (amount >= 12 && Math.random() < 0.35) this.addFire(room);
+    if (amount >= 18 && this.power && Math.random() < 0.45) { this.power = false; this.events.push({ type: 'power', on: false }); this.message('POWER FAILURE! Reset the breakers at the electrical cabinet (control room).', 'danger'); }
     this.message(`HIT! ${source}. Hull ${Math.round(s.hull)}%`, 'danger');
     if (s.hull <= 0) this.lose('The hull gave way.');
   }
@@ -205,6 +209,21 @@ export class Sim {
     this.leaks.push(l);
     this.events.push({ type: 'leak', leak: l });
   }
+  addFire(room) {
+    const r = ROOMS[room];
+    const f = { id: this.nextId++, room, x: rand(r.x0 + 0.8, r.x1 - 0.8), side: Math.random() < 0.5 ? -1 : 1, intensity: 0.3, out: false };
+    this.fires.push(f);
+    this.events.push({ type: 'fire', fire: f });
+    this.message(`FIRE in the ${r.label}! Grab an extinguisher!`, 'danger');
+  }
+  extinguish(id, dt) {
+    const f = this.fires.find((q) => q.id === id && !q.out);
+    if (!f) return;
+    f.intensity -= dt * 0.45;
+    if (f.intensity <= 0) { f.out = true; this.events.push({ type: 'fireOut', fire: f }); this.message(`Fire out in the ${ROOMS[f.room].label}.`); }
+  }
+  resetPower() { if (!this.power) { this.power = true; this.events.push({ type: 'power', on: true }); this.message('Breakers reset - power restored.'); } }
+
   lose(reason) {
     const s = this.sub;
     if (s.lost) return;
@@ -227,6 +246,16 @@ export class Sim {
       s.battery = Math.max(0, s.battery - dt * (0.02 + Math.abs(s.speed) * Math.abs(s.speed) * 0.004));
       s.oxygen = Math.max(0, s.oxygen - dt * 0.12);
     }
+    // fires burn oxygen, scorch the hull and spread
+    for (const f of this.fires) {
+      if (f.out) continue;
+      f.intensity = Math.min(1.2, f.intensity + dt * 0.025);
+      s.oxygen = Math.max(0, s.oxygen - dt * 0.25 * f.intensity);
+      s.hull = Math.max(0, s.hull - dt * 0.05 * f.intensity);
+      if (f.intensity > 0.9 && Math.random() < dt * 0.02 && this.fires.filter((q) => !q.out).length < 6) this.addFire(Math.random() < 0.7 ? f.room : Math.max(0, Math.min(3, f.room + (Math.random() < 0.5 ? -1 : 1))));
+    }
+    if (s.hull <= 0) this.lose('Fire gutted the boat.');
+    if (!this.power && s.telegraph > 1) { s.telegraph = 1; }
     if (s.battery <= 0 && !surfaced && s.telegraph > 1) { s.telegraph = 1; this.message('Battery flat! Only SLOW AHEAD until we surface to recharge.', 'warn'); }
     if (s.oxygen < 15 && !this._o2warn) { this._o2warn = true; this.message('Oxygen is running low - surface soon!', 'danger'); }
     if (s.oxygen > 30) this._o2warn = false;

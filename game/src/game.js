@@ -6,6 +6,8 @@ import { Exterior } from './exterior.js';
 import { Interior } from './interior.js';
 import { Sound } from './sound.js';
 import { Net } from './net.js';
+import { DROP } from './exterior.js';
+const DROP_TEX = () => DROP;
 
 const $ = (id) => document.getElementById(id);
 const ROLE_FILE = { navigator: 'Navigator', weapons_officer: 'Gunner', torpedo_loader: 'Loader', cook: 'Cook' };
@@ -197,6 +199,7 @@ function updateHands(dt) {
   if (player.carry === 'torpedo') { targets.L ||= camLocal(-0.22, -0.42 + bob, -0.55); targets.R ||= camLocal(0.22, -0.42 + bob, -0.55); poses.L = poses.R = 'carry'; }
   if (player.carry === 'wrench') { targets.R ||= camLocal(0.24, -0.3 + bob, -0.42); poses.R = 'grip'; }
   if (player.carry && player.carry.startsWith('food')) { targets.L ||= camLocal(-0.2, -0.3 + bob, -0.4); poses.L = 'palm'; }
+  if (player.carry === 'extinguisher') { targets.L ||= camLocal(-0.12, -0.36 + bob, -0.5); targets.R ||= camLocal(0.14, -0.3 + bob, -0.48); poses.L = poses.R = 'grip'; }
   if (player.repairing) targets.R = inn.interactables.find((i) => i.kind === 'leak' && i.data === player.repairing)?.pos.clone() || targets.R;
   targets.L ||= camLocal(-0.32, -0.75, -0.25);
   targets.R ||= camLocal(0.32, -0.75, -0.25);
@@ -211,6 +214,19 @@ function updateHands(dt) {
     const turn = player.repairing ? Math.sin(performance.now() / 90) * 0.6 : 0;
     fp.wrench.position.set(0.2, -0.24 + bob, -0.5); fp.wrench.rotation.set(0.2, -1.2 + turn, 0.3);
   } else if (fp.wrench) { camera.remove(fp.wrench); fp.wrench = null; }
+  if (player.carry === 'extinguisher') {
+    if (!fp.ext) {
+      const src = inn.root.children.find((o) => /^FireExtinguisher/.test(o.name));
+      fp.ext = src ? src.clone() : new THREE.Group(); camera.add(fp.ext);
+      fp.spray = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(300), 3)),
+        new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, map: DROP_TEX(), transparent: true, opacity: 0.8, depthWrite: false }));
+      fp.spray.frustumCulled = false; camera.add(fp.spray);
+    }
+    fp.ext.position.set(0.02, -0.75 + bob, -0.62); fp.ext.rotation.set(0.25, Math.PI, 0);
+    const a = fp.spray.geometry.attributes.position;
+    for (let i = 0; i < 100; i++) { const t = Math.random(); a.array.set([0.05 + (Math.random() - 0.5) * t * 0.5, -0.22 + (Math.random() - 0.5) * t * 0.4, -0.6 - t * 2.2], i * 3); }
+    a.needsUpdate = true; fp.spray.visible = !!player.spraying;
+  } else if (fp.ext) { camera.remove(fp.ext); camera.remove(fp.spray); fp.ext = null; }
   if (player.carry && player.carry.startsWith('food')) {
     if (!fp.food) { fp.food = food[player.carry === 'food_raw' ? 'SteakRaw' : 'SteakCooked'].clone(); camera.add(fp.food); }
     fp.food.position.set(-0.2, -0.27 + bob, -0.42);
@@ -372,7 +388,12 @@ function interact(it) {
     case 'coffee': player.stamina = Math.min(100, player.stamina + 40); sim.message('Hot coffee. Stamina up!'); break;
     case 'rest': player.stamina = 100; sim.message('A quick nap. Fully rested.'); break;
     case 'eat': eat(); break;
-    case 'shock': sim.hullShock(); break;
+    case 'shock': if (!sim.power) sim.resetPower(); else sim.hullShock(); break;
+    case 'extinguisher':
+      if (player.carry) return sim.message('Your hands are full (Q to drop).', 'warn');
+      player.carry = 'extinguisher'; sim.message('Fire extinguisher ready: hold E at a fire.');
+      break;
+    case 'fire': if (player.carry !== 'extinguisher') sim.message('Get a FIRE EXTINGUISHER (red, on the bulkheads).', 'warn'); break;
     case 'ladder':
       if (s.depth > 1.5) sim.message('The hatch is underwater - surface first (BLOW at the ballast panel).', 'warn');
       else { player.mode = 'bridge'; ext.look.yaw = 0; ext.look.pitch = 0; sim.message('On the bridge. Mouse to look, right-click to use binoculars, Esc to go below.'); }
@@ -398,12 +419,17 @@ addEventListener('keydown', (e) => {
   if (k === 'escape') { leaveStation(); return; }
   if (player.mode === 'station' || player.mode === 'scope') { stationKey(k, true); return; }
   if (player.mode === 'walk') {
-    if (k === 'e') { const it = nearest(); if (it && it.kind === 'leak' && player.carry === 'wrench') { player.repairing = it.data; player.hold = 0; } else interact(it); }
+    if (k === 'e') {
+      const it = nearest();
+      if (it && it.kind === 'leak' && player.carry === 'wrench') { player.repairing = it.data; player.hold = 0; }
+      else if (it && it.kind === 'fire' && player.carry === 'extinguisher') player.spraying = it.data;
+      else interact(it);
+    }
     if (k === 'q') drop();
     if (k === 'f') eat();
   }
 });
-addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); keys.delete(k); if (k === 'e') { player.repairing = null; player.hold = 0; } });
+addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); keys.delete(k); if (k === 'e') { player.repairing = null; player.hold = 0; player.spraying = null; } });
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement === canvas || player.mode === 'scope' || player.mode === 'bridge' || player.mode === 'chase') { mouseDX += e.movementX; mouseDY += e.movementY; }
 });
@@ -532,6 +558,12 @@ function updatePlayer(dt) {
     const bob = moving ? Math.sin(performance.now() / (sprint ? 90 : 140)) * 0.03 : 0;
     camera.position.set(player.pos.x, EYE + bob, player.pos.z);
     camera.rotation.set(player.pitch, player.yaw, 0);
+    // fighting a fire
+    if (player.spraying) {
+      sim.extinguish(player.spraying, dt);
+      if (net && !net.isHost) net.send({ t: 'act', ev: { type: 'extinguish', id: player.spraying, dt } });
+      if (!sim.fires.some((f) => f.id === player.spraying && !f.out)) player.spraying = null;
+    }
     // repairing a leak
     if (player.repairing) {
       const it = inn.interactables.find((i) => i.kind === 'leak' && i.data === player.repairing);
@@ -560,6 +592,9 @@ function handleEvents() {
     if (ev.type === 'message') pushMessage(ev.text, ev.level);
     if (ev.type === 'leak') { inn.spawnLeak(ev.leak); }
     if (ev.type === 'leakFixed') inn.fixLeakView(ev.leak);
+    if (ev.type === 'fire') inn.spawnFire(ev.fire);
+    if (ev.type === 'fireOut') inn.removeFire(ev.fire);
+    if (ev.type === 'power') { sound.clunk(); if (!ev.on) flash('#000000'); }
     if (ev.type === 'hit') { player.shake = Math.min(2, 0.6 + ev.amount / 15); flash(); sound.boom(1); inn.flicker = 1.2; }
     if (ev.type === 'explosion') {
       ext.explosion(ev.x, -ev.depth, ev.z, ev.surface, ev.surface ? 1.2 : 0.8);
@@ -573,7 +608,7 @@ function handleEvents() {
     if (ev.type === 'shock') { flash('#7fd9ff'); sound.zap(); }
     if (ev.type === 'grab') { player.shake = 1.5; sound.boom(0.6); }
     if (ev.type === 'lost') { setTimeout(() => { $('lost').classList.remove('hidden'); $('lostreason').textContent = `${ev.reason} Ships sunk: ${sim.score.sunk}.`; document.exitPointerLock?.(); }, 3500); }
-    if (net) net.event(ev);
+    if (net && !ev.remote) net.event(ev);
   }
 }
 
@@ -641,6 +676,9 @@ const m3d = () => player.mode === 'chase' || player.mode === 'bridge';
 
 function objective() {
   const s = sim.sub;
+  const fires = sim.fires.filter((f) => !f.out);
+  if (fires.length) return `▸ FIRE in the ${ROOMS[fires[0].room].label}: grab an extinguisher`;
+  if (!sim.power) return '▸ Power out: reset the breakers (electrical cabinet, control room)';
   const open = sim.leaks.filter((l) => !l.fixed);
   if (open.length) return `▸ Fix ${open.length} leak${open.length > 1 ? 's' : ''} with a wrench (${ROOMS[open[0].room].label})`;
   if (sim.entities.some((e) => e.alive && e.attached)) return '▸ Squid on the hull! HULL SHOCK in the control room';

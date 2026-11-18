@@ -27,7 +27,7 @@ export class Net {
   event(ev) {
     // guests forward actions that change the shared world to the host
     if (this.isHost) return;
-    if (['launch', 'leakFixed', 'door', 'ping', 'shock', 'noisemaker'].includes(ev.type)) this.send({ t: 'act', ev: { ...ev, leak: ev.leak ? { id: ev.leak.id } : undefined } });
+    if (['launch', 'leakFixed', 'door', 'ping', 'shock', 'noisemaker', 'power'].includes(ev.type)) this.send({ t: 'act', ev: { ...ev, leak: ev.leak ? { id: ev.leak.id } : undefined, fire: undefined } });
   }
   async avatar(peer) {
     if (this.avatars[peer.id]) return this.avatars[peer.id];
@@ -56,6 +56,9 @@ export class Net {
       sim.contacts = new Map(m.contacts);
       for (const l of m.leaks) if (!sim.leaks.some((q) => q.id === l.id)) { sim.leaks.push(l); sim.events.push({ type: 'leak', leak: l }); }
       for (const l of sim.leaks) { const r = m.leaks.find((q) => q.id === l.id); if (r && r.fixed && !l.fixed) { l.fixed = true; sim.events.push({ type: 'leakFixed', leak: l }); } }
+      for (const f of m.fires || []) if (!sim.fires.some((q) => q.id === f.id)) { sim.fires.push(f); if (!f.out) sim.events.push({ type: 'fire', fire: f }); }
+      for (const f of sim.fires) { const r = (m.fires || []).find((q) => q.id === f.id); if (r) { if (r.out && !f.out) sim.events.push({ type: 'fireOut', fire: f }); Object.assign(f, r); } }
+      if (m.power !== sim.power) { sim.power = m.power; sim.events.push({ type: 'power', on: m.power, remote: true }); }
       for (const ev of m.events || []) if (ev.type !== 'leak' && ev.type !== 'leakFixed') sim.events.push(ev);
     }
     if (m.t === 'ctl' && this.isHost) {
@@ -70,6 +73,8 @@ export class Net {
       if (ev.type === 'shock') sim.hullShock();
       if (ev.type === 'noisemaker') sim.countermeasure();
       if (ev.type === 'launch') sim.fire();
+      if (ev.type === 'power' && ev.on) sim.resetPower();
+      if (ev.type === 'extinguish') sim.extinguish(ev.id, ev.dt);
     }
   }
   update(dt, player) {
@@ -82,7 +87,7 @@ export class Net {
       const strip = (e) => { const { view, ...rest } = e; return rest; };
       this.send({ t: 'state', sub: sim.sub, entities: sim.entities, torpedoes: sim.torpedoes, charges: sim.charges.map(strip), tubes: sim.tubes,
         water: sim.water, doors: sim.doors, score: sim.score, torpedoStock: sim.torpedoStock, weapons: sim.weapons,
-        contacts: [...sim.contacts], leaks: sim.leaks, events: this.outEvents || [] });
+        contacts: [...sim.contacts], leaks: sim.leaks, fires: sim.fires, power: sim.power, events: this.outEvents || [] });
       this.outEvents = [];
     }
     for (const p of this.peers.values()) {

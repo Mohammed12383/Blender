@@ -128,7 +128,8 @@ export class Interior {
       }
     };
     add(/^Ladder/, 'Climb to the BRIDGE (when surfaced)', 'ladder', 1.4);
-    add(/^ElectricalCabinet/, 'HULL SHOCK (repel creatures)', 'shock', 1.2, 1.0);
+    add(/^ElectricalCabinet/, 'BREAKERS: reset power / HULL SHOCK', 'shock', 1.2, 1.0);
+    add(/^FireExtinguisher/, 'Take FIRE EXTINGUISHER', 'extinguisher', 0.6, 0.8);
     add(/^Fridge|^WireShelf/, 'Take RAW FOOD', 'food', 1.1, 1.0);
     add(/^CoffeeStation/, 'Drink COFFEE (stamina)', 'coffee', 1.0, 1.0);
     add(/^WallMonitor/, 'EXTERNAL CAMERA view', 'chase', 1.8, 1.0);
@@ -319,6 +320,27 @@ export class Interior {
     this.interactables.push({ pos: g.position.clone(), radius: 1.1, label: 'FIX LEAK (hold E with a wrench)', kind: 'leak', data: l.id });
   }
 
+  spawnFire(f) {
+    const n = 220, geo = new THREE.BufferGeometry(), pos = new Float32Array(n * 3), age = new Float32Array(n).map(() => Math.random());
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const col = new Float32Array(n * 3); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.28, map: DROP, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    pts.frustumCulled = false;
+    const light = new THREE.PointLight(0xff7a20, 0, 7, 1.5);
+    const base = new THREE.Vector3(f.x, 0.3, -f.side * 1.85);
+    light.position.copy(base).setY(1.0);
+    this.scene.add(pts); this.scene.add(light);
+    (this.fireViews ||= new Map()).set(f.id, { pts, light, age, base, fire: f });
+    this.interactables.push({ pos: base.clone().setY(0.8), radius: 1.6, label: 'PUT OUT FIRE (hold E with an extinguisher)', kind: 'fire', data: f.id });
+  }
+
+  removeFire(f) {
+    const v = this.fireViews?.get(f.id); if (!v) return;
+    this.scene.remove(v.pts); this.scene.remove(v.light);
+    this.fireViews.delete(f.id);
+    this.interactables = this.interactables.filter((i) => !(i.kind === 'fire' && i.data === f.id));
+  }
+
   fixLeakView(l) {
     const v = this.leakViews.get(l.id); if (!v) return;
     this.scene.remove(v.spray); v.g.clear();
@@ -346,6 +368,19 @@ export class Interior {
       }
       p.needsUpdate = true;
     }
+    // fires: rising flames with flickering light
+    for (const v of (this.fireViews || new Map()).values()) {
+      const p = v.pts.geometry.attributes.position, c = v.pts.geometry.attributes.color, k = Math.max(0.1, v.fire.intensity);
+      for (let i = 0; i < v.age.length; i++) {
+        v.age[i] += dt * (0.9 + Math.random() * 0.6);
+        if (v.age[i] > 1) { v.age[i] = 0; p.array.set([v.base.x + (Math.random() - 0.5) * 0.9 * k, v.base.y, v.base.z + (Math.random() - 0.5) * 0.5], i * 3); }
+        p.array[i * 3 + 1] += dt * (1.4 + k);
+        const a = v.age[i];
+        c.array.set([1, 0.75 - a * 0.6, 0.25 - a * 0.25].map((q) => Math.max(0, q) * (1 - a) * k), i * 3);
+      }
+      p.needsUpdate = true; c.needsUpdate = true;
+      v.light.intensity = (6 + Math.random() * 6) * k;
+    }
     // flood water
     sim.water.forEach((w, i) => {
       const m = this.waterMeshes[i];
@@ -369,10 +404,10 @@ export class Interior {
     this.rackTorpedoes.forEach((t, i) => { t.visible = i < sim.torpedoStock; });
     // alarm when damaged / under attack
     const danger = sim.leaks.some((l) => !l.fixed) || sim.sub.hull < 40 || sim.torpedoes.some((t) => t.owner !== 'player') || sim.sub.lost;
-    this.alarm.intensity = danger ? (Math.sin(this.time * 6) > 0 ? 40 : 4) : 0;
+    this.alarm.intensity = danger || !sim.power || sim.fires.some((f) => !f.out) ? (Math.sin(this.time * 6) > 0 ? 40 : 4) : 0;
     // lights stutter after a hit, and dim as the hull weakens
     this.flicker = Math.max(0, (this.flicker || 0) - dt);
-    const dim = 0.55 + 0.45 * sim.sub.hull / 100;
+    const dim = (0.55 + 0.45 * sim.sub.hull / 100) * (sim.power ? 1 : 0.04);
     for (const l of this.lights) l.intensity = l.userData.base * dim * (this.flicker > 0 && Math.random() < 0.5 ? Math.random() * 0.3 : 1);
   }
 

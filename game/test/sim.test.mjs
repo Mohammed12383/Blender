@@ -99,4 +99,24 @@ test('a long patrol runs without errors', () => {
   for (let i = 0; i < 6000; i++) { sim.update(0.05); if (i % 400 === 0) sim.setRudder(Math.sin(i) * 0.8); if (sim.sub.depth > 80) sim.setValve('hold'); }
   assert.ok(sim.time > 299);
 });
+test('fires grow, burn oxygen and can be put out', () => {
+  const sim = new Sim();
+  sim.entities.forEach((e) => { e.alive = false; }); sim.spawnWave = () => {};
+  sim.sub.depth = 30; sim.sub.ballast = 0.5;
+  sim.addFire(1);
+  const o2 = sim.sub.oxygen;
+  step(sim, 10);
+  assert.ok(sim.sub.oxygen < o2 - 0.5);
+  const f = sim.fires[0];
+  for (let i = 0; i < 100 && !f.out; i++) sim.extinguish(f.id, 0.05);
+  assert.ok(f.out);
+});
+
+test('power failure limits speed until the breakers are reset', () => {
+  const sim = new Sim();
+  sim.power = false; sim.setTelegraph(4); step(sim, 1);
+  assert.equal(sim.sub.telegraph, 1);
+  sim.resetPower(); sim.setTelegraph(4); step(sim, 1);
+  assert.equal(sim.sub.telegraph, 4);
+});
 console.log(`${pass} tests passed`);

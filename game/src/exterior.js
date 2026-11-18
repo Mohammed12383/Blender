@@ -97,6 +97,13 @@ export class Exterior {
     v.userData.bones = [];
     v.traverse((o) => { if (o.isBone) v.userData.bones.push(o); });
     v.userData.rest = v.userData.bones.map((b) => b.quaternion.clone());
+    if (e.kind === 'frigate' || e.kind === 'freighter') {   // navigation lights (visible at night)
+      const L = e.kind === 'frigate' ? 38 : 46;
+      for (const [x, y, z, c] of [[L * 0.62, 7.5, -2.4, 0xff2a1a], [L * 0.62, 7.5, 2.4, 0x2aff5a], [L * 0.58, 15.5, 0, 0xffffff], [1, 5, 0, 0xffffff]]) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: DROP, color: c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+        sp.position.set(x, y, z); sp.scale.setScalar(2.2); sp.userData.navLight = true; sp.visible = this.night || (this.elevation ?? 24) < 8; v.add(sp);
+      }
+    }
     if (e.kind === 'frigate') {
       v.userData.radar = v.getObjectByName('EnemyFrigate_Radar');
       v.userData.turret = v.getObjectByName('EnemyFrigate_Turret');
@@ -154,6 +161,7 @@ export class Exterior {
   // --------------------------------------------------------------- update
   sync(sim, dt) {
     this.time += dt;
+    if (this._wave !== sim.score.wave) { this._wave = sim.score.wave; this.setTimeOfDay([24, 5, -6, 11][(sim.score.wave - 1) % 4], [200, 250, 200, 110][(sim.score.wave - 1) % 4]); }
     const s = sim.sub;
     // our sub
     this.player.position.set(s.x, -s.depth, s.z);
@@ -239,6 +247,32 @@ export class Exterior {
     });
   }
 
+  // ---------------------------------------------------------- time of day
+  setTimeOfDay(elevation, azimuth = 200) {
+    this.elevation = elevation;
+    const night = elevation < 0;
+    this.sun.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - Math.max(elevation, -2)), THREE.MathUtils.degToRad(azimuth));
+    const u = this.sky.material.uniforms;
+    u.sunPosition.value.copy(this.sun);
+    u.rayleigh.value = night ? 0.4 : elevation < 8 ? 2.6 : 1.6;
+    u.turbidity.value = elevation < 8 ? 9 : 6;
+    this.sunLight.position.copy(this.sun).multiplyScalar(100);
+    if (night) { this.sunLight.position.set(-40, 60, -30); }
+    this.sunLight.color.set(night ? 0x8fa8ff : elevation < 8 ? 0xffb070 : 0xfff1dc);
+    this.dayLight = night ? 0.35 : elevation < 8 ? 1.8 : 2.6;
+    this.hemi.intensity = night ? 0.18 : elevation < 8 ? 0.6 : 0.9;
+    this.water.material.uniforms.sunDirection.value.copy(this.sun);
+    this.water.material.uniforms.sunColor.value.set(night ? 0x334466 : elevation < 8 ? 0xffa060 : 0xfff4e0);
+    this.fogColor = night ? 0x0a1220 : elevation < 8 ? 0xd9a07a : 0xb8d3e0;
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const envScene = new THREE.Scene();
+    envScene.add(this.sky.clone());
+    if (night) envScene.background = new THREE.Color(0x05080f);
+    this.scene.environment = pmrem.fromScene(envScene).texture;
+    for (const v of this.views.values()) v.traverse((o) => { if (o.userData.navLight) o.visible = night || elevation < 8; });
+    this.night = night;
+  }
+
   // -------------------------------------------------------------- cameras
   setUnderwater(depth) {
     const s = this.scene;
@@ -253,12 +287,12 @@ export class Exterior {
       s.background = col;
       this.sky.visible = false;
       this.snow.position.copy(this.camera.position);
-      this.sunLight.intensity = 1.6 * (1 - d * 0.9);
+      this.sunLight.intensity = (this.dayLight ?? 2.6) * 0.6 * (1 - d * 0.9);
     } else {
-      s.fog = new THREE.FogExp2(0xb8d3e0, 0.00045);
+      s.fog = new THREE.FogExp2(this.fogColor ?? 0xb8d3e0, this.night ? 0.0012 : 0.00045);
       s.background = null;
       this.sky.visible = true;
-      this.sunLight.intensity = 2.6;
+      this.sunLight.intensity = this.dayLight ?? 2.6;
     }
     this.water.position.x = this.camera.position.x;
     this.water.position.z = this.camera.position.z;
