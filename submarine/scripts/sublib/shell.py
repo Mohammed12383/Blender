@@ -165,8 +165,28 @@ def _cable_tray(p, x0, x1, parent, y=0.75):
         p.tube(pts, r, m, segs=8, parent=parent, name="cable")
 
 
+def _duct(p, x0, x1, parent, y=-1.25):
+    """Rectangular ventilation duct under the ceiling with flanges, hangers and outlet grilles."""
+    w, h = 0.34, 0.2
+    z = CEIL - 0.03 - h / 2
+    p.box((x1 - x0, w, h), ((x0 + x1) / 2, y, z), "PaintGray", bevel=0.01, parent=parent, name="duct")
+    x = x0 + 0.6
+    while x < x1 - 0.2:
+        p.box((0.04, w + 0.03, h + 0.03), (x, y, z), "PaintGray", bevel=0.006, parent=parent, name="flange")
+        p.box((0.03, 0.03, 0.04), (x, y - w / 2 + 0.02, CEIL - 0.015), "DarkSteel", bevel=0, parent=parent)
+        p.box((0.03, 0.03, 0.04), (x, y + w / 2 - 0.02, CEIL - 0.015), "DarkSteel", bevel=0, parent=parent)
+        x += 1.2
+    x = x0 + 1.2
+    while x < x1 - 0.6:
+        p.box((0.3, w - 0.06, 0.012), (x, y, z - h / 2 - 0.006), "PaintGraphite", bevel=0.003, parent=parent, name="grille")
+        for k in range(6):
+            p.box((0.27, 0.012, 0.01), (x, y - (w - 0.1) / 2 + k * (w - 0.1) / 5, z - h / 2 - 0.014), "DarkSteel",
+                  bevel=0, rot=(30, 0, 0), parent=parent, name="vane")
+        x += 2.4
+
+
 def compartment(col, name, x0, x1, floor="FloorPlate", rib_step=1.6, rib_skip=(), lamp_xs=None, lib=None,
-                tray=True):
+                tray=True, duct=True, duct_x1=None):
     """Build a room shell between x0 and x1. Returns the shell root."""
     p = Prop(name, col=col, category="room_shell")
     walls = p.body
@@ -178,6 +198,8 @@ def compartment(col, name, x0, x1, floor="FloorPlate", rib_step=1.6, rib_skip=()
     _pipes(p, x0, x1, rib_xs, detail)
     if tray:
         _cable_tray(p, x0, x1, detail)
+    if duct:
+        _duct(p, x0, duct_x1 or x1, detail)
     return p.finish()
 
 

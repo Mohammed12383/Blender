@@ -21,6 +21,8 @@ from mathutils import Vector
 from . import core, shell
 from .core import Prop, R, bm_torus, bm_cyl, instance
 from . import props_common as pc, props_control as pcx, props_torpedo as pt, props_galley as pg
+from . import props_machinery as pm
+from .core import bm_sweep, circle, sag_path
 
 ROOMS = {
     "TorpedoRoom": (0.0, 7.0),
@@ -130,6 +132,14 @@ def build_library():
     add(pg.wall_monitor, "WallMonitorAft", "screen_cam_aft")
     add(pg.notice_board)
     add(pg.checkers_board)
+    # wall machinery variants (set dressing)
+    for w in RACK_WIDTHS:
+        for seed in range(7):
+            add(pm.equipment_rack, w, seed, f"Rack_{int(w * 100)}_{seed}")
+    for w in (0.5, 0.75, 0.9):
+        for seed in range(4):
+            add(pm.wall_box, w, seed, f"WallBox_{int(w * 100)}_{seed}")
+    add(pm.valve_manifold)
     return lib
 
 
@@ -141,9 +151,13 @@ class Room:
         self.col = core.collection("Room_" + name)
         self.lib = lib
         self.x0, self.x1 = ROOMS[name]
+        self.roots = []
+        self.keep_clear = {"port": [], "stbd": [], "fwd": [], "aft": []}
 
     def put(self, prop, loc, rot_z=0.0, rot=None):
-        return instance(self.lib[prop], self.col, loc, rot or (0, 0, rot_z))
+        root = instance(self.lib[prop], self.col, loc, rot or (0, 0, rot_z))
+        self.roots.append(root)
+        return root
 
     # wall helpers: port wall faces -Y (rot 0), starboard wall faces +Y (rot 180)
     def port(self, prop, x, z=0.0, inset=WALL):
@@ -206,13 +220,13 @@ def torpedo_room(lib):
     r.aft_face("RoomSign_Control_Room", 0, 2.2)
     r.port("PipeRiser", 0.25, 0, shell.HALF_W - 0.01)
     r.put("FloorHatch", (5.3, 0.55, 0), 0)
-    r.lamps([(2.2, -1.15), (4.6, 0.0), (6.2, 0.0)])
+    r.lamps([(2.2, 1.15), (4.6, 0.0), (6.2, 0.0)])
     return r
 
 
 def control_room(lib):
     r = Room("ControlRoom", lib)
-    shell.compartment(r.col, "ControlRoom_Shell", r.x0, r.x1)
+    shell.compartment(r.col, "ControlRoom_Shell", r.x0, r.x1, duct_x1=r.x1 - 1.0)
     shell.bulkhead(r.col, "Bulkhead_1", 7.0)
     r.put("WatertightDoor", (7.15, 0, 0), -90)
     # port side: weapons, sonar, ballast
@@ -335,6 +349,150 @@ def galley(lib):
     return r
 
 
+# --------------------------------------------------------- wall machinery
+
+RACK_WIDTHS = (0.9, 0.75, 0.6, 0.5)
+
+
+def _rack(lib, w, seed):
+    return f"Rack_{int(w * 100)}_{seed}"
+
+
+def _bbox(root):
+    from .render import bbox
+    return bbox(core.hierarchy(root))
+
+
+def _free(span, taken, margin=0.05):
+    lo, hi = span
+    out = []
+    for a, b in sorted(taken):
+        a, b = a - margin, b + margin
+        if a > lo:
+            out.append((lo, min(a, hi)))
+        lo = max(lo, b)
+    if lo < hi:
+        out.append((lo, hi))
+    return [(a, b) for a, b in out if b - a >= 0.5]
+
+
+def _pack(a, b):
+    """Rack widths that fill [a, b], centred."""
+    L, ws = b - a, []
+    while True:
+        for w in RACK_WIDTHS:
+            if sum(ws) + w + 0.01 * len(ws) <= L:
+                ws.append(w)
+                break
+        else:
+            break
+    start = a + (L - sum(ws) - 0.01 * (len(ws) - 1)) / 2
+    xs = []
+    for w in ws:
+        xs.append((start + w / 2, w))
+        start += w + 0.01
+    return xs
+
+
+def fill_walls(room, seed=0):
+    """Fill every free stretch of wall/bulkhead (below 2 m) with equipment racks + cable looms."""
+    lib, x0, x1 = room.lib, room.x0, room.x1
+    taken = {"port": list(room.keep_clear["port"]), "stbd": list(room.keep_clear["stbd"]),
+             "fwd": list(room.keep_clear["fwd"]), "aft": list(room.keep_clear["aft"])}
+    for root in list(room.roots):
+        lo, hi = _bbox(root)
+        if lo.z > 1.95 or hi.z < 0.2:
+            continue
+        if hi.y > shell.HALF_W - 0.75:
+            taken["port"].append((lo.x, hi.x))
+        if lo.y < -shell.HALF_W + 0.75:
+            taken["stbd"].append((lo.x, hi.x))
+        if lo.x < x0 + 0.75:
+            taken["fwd"].append((lo.y, hi.y))
+        if hi.x > x1 - 0.75:
+            taken["aft"].append((lo.y, hi.y))
+    placed = []
+    k = seed
+    for side in ("port", "stbd"):
+        for a, b in _free((x0 + 0.08, x1 - 0.08), taken[side]):
+            for x, w in _pack(a, b):
+                k += 1
+                key = _rack(lib, w, k % 7)
+                if side == "port":
+                    placed.append((room.put(key, (x, WALL, 0), 0), side))
+                else:
+                    placed.append((room.put(key, (x, -WALL, 0), 180), side))
+    for side, xf, rz in (("fwd", x0 + 0.005, 90), ("aft", x1 - 0.005, -90)):
+        for span in ((-2.3, -0.72), (0.72, 2.3)):
+            for a, b in _free(span, taken[side]):
+                for y, w in _pack(a, b):
+                    k += 1
+                    key = _rack(lib, w, k % 7)
+                    placed.append((room.put(key, (xf, y, 0), rz), side))
+    # upper band (z 1.86..2.1) above consoles and other low furniture
+    band = {"port": [], "stbd": []}
+    for root in list(room.roots):
+        lo, hi = _bbox(root)
+        if hi.z < 1.84 or lo.z > 2.3:
+            continue
+        if hi.y > shell.HALF_W - 0.75:
+            band["port"].append((lo.x, hi.x))
+        if lo.y < -shell.HALF_W + 0.75:
+            band["stbd"].append((lo.x, hi.x))
+    for side in ("port", "stbd"):
+        for a, b in _free((x0 + 0.08, x1 - 0.08), band[side], margin=0.03):
+            L = b - a
+            ws = []
+            while True:
+                for w in (0.9, 0.75, 0.5):
+                    if sum(ws) + w + 0.02 * len(ws) <= L:
+                        ws.append(w)
+                        break
+                else:
+                    break
+            x = a + (L - sum(ws) - 0.02 * (len(ws) - 1)) / 2
+            for w in ws:
+                k += 1
+                key = f"WallBox_{int(w * 100)}_{k % 4}"
+                if side == "port":
+                    placed.append((room.put(key, (x + w / 2, shell.HALF_W - 0.005, 1.87), 0), side))
+                else:
+                    placed.append((room.put(key, (x + w / 2, -shell.HALF_W + 0.005, 1.87), 180), side))
+                x += w + 0.02
+    # cable looms from each rack up into the overhead
+    p = Prop(room.name + "_CableLooms", col=room.col, category="decor")
+    rnd = __import__("random").Random(seed + 5)
+    for root, side in placed:
+        lo, hi = _bbox(root)
+        n = rnd.randint(2, 5)
+        for c in range(n):
+            t = (c + 1) / (n + 1)
+            if side in ("port", "stbd"):
+                sgn = 1 if side == "port" else -1
+                x = lo.x + (hi.x - lo.x) * t
+                a = Vector((x, sgn * (WALL - 0.13 - 0.03 * c), hi.z + 0.01))
+                b = Vector((x + rnd.uniform(-0.15, 0.15), sgn * (shell.HALF_W - 0.12), 2.45 + rnd.uniform(0, 0.15)))
+            else:
+                y = lo.y + (hi.y - lo.y) * t
+                sx = 1 if side == "fwd" else -1
+                xf = room.x0 if side == "fwd" else room.x1
+                a = Vector((xf + sx * (0.13 + 0.03 * c), y, pm.RACK_H + 0.03))
+                b = Vector((xf + sx * 0.05, y + rnd.uniform(-0.15, 0.15), 2.6))
+            mid = (a + b) / 2 + Vector((0, 0, 0.12))
+            pts = [a, a + Vector((0, 0, 0.08)), mid, b]
+            p.tube(core.rounded_path(pts, 0.08, 4), rnd.uniform(0.006, 0.012),
+                   rnd.choice(["BlackPlastic", "BlackPlastic", "PaintRed", "PaintNavy", "Rubber", "PaintMustard"]), segs=6)
+    p.finish()
+    return placed
+
+
 def build_level(lib):
     rooms = [torpedo_room(lib), control_room(lib), crew_mess(lib), galley(lib)]
+    # keep the swing area of each door leaf clear (leaves open into the forward room, hinge on +Y)
+    rooms[0].keep_clear["aft"].append((0.55, 1.8))
+    rooms[1].keep_clear["aft"].append((0.55, 1.8))
+    rooms[2].keep_clear["aft"].append((0.55, 1.8))
+    rooms[3].keep_clear["aft"].append((-0.7, 0.7))
+    for i, r in enumerate(rooms):
+        fill_walls(r, seed=i * 10)
     return rooms
