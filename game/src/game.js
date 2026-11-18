@@ -515,7 +515,8 @@ function updatePlayer(dt) {
   player.hunger = Math.max(0, player.hunger - dt * 100 / 480);
   const moving = player.mode === 'walk' && ['w', 'a', 's', 'd'].some((k) => keys.has(k));
   const sprint = moving && keys.has('shift') && player.stamina > 5 && player.carry !== 'torpedo';
-  player.stamina = Math.max(0, Math.min(100, player.stamina + (sprint ? -14 : player.hunger > 0 ? 7 : 1) * dt));
+  const regen = player.hunger > 0 && sim.sub.oxygen > 15 ? 7 : 1;
+  player.stamina = Math.max(0, Math.min(100, player.stamina + (sprint ? -14 : regen) * dt));
   if (player.mode === 'walk') {
     player.yaw -= mouseDX * 0.0022; player.pitch = Math.max(-1.4, Math.min(1.4, player.pitch - mouseDY * 0.0022));
     let speed = sprint ? 4.6 : 2.6;
@@ -566,6 +567,7 @@ function handleEvents() {
       else sound.boom(0.5);
     }
     if (ev.type === 'ping') sound.ping();
+    if (ev.type === 'chargeDropped') sound.noise(0.4, 500, 0.25, 'bandpass');
     if (ev.type === 'launch') sound.launch();
     if (ev.type === 'enemyLaunch') sound.alarm();
     if (ev.type === 'shock') { flash('#7fd9ff'); sound.zap(); }
@@ -596,6 +598,7 @@ function updateHud() {
     `${TELEGRAPH_NAMES[s.telegraph]} · ${s.speed.toFixed(1)} m/s`,
     `HEADING ${sim.deg(s.heading)}° · RUDDER ${s.rudder > 0.05 ? 'PORT' : s.rudder < -0.05 ? 'STBD' : 'MID'}`,
     `BALLAST ${s.valve.toUpperCase()} ${(s.ballast * 100).toFixed(0)}% · PERISCOPE ${s.periscopeUp ? 'UP' : 'DOWN'}`,
+    `BATTERY ${s.battery.toFixed(0)}% · O₂ <span style="color:${s.oxygen < 20 ? '#ff6b5b' : 'inherit'}">${s.oxygen.toFixed(0)}%</span>`,
     leaks.length ? `<span style="color:#ff6b5b">LEAKS: ${leaks.map((l) => ROOMS[l.room].label).join(', ')}</span>` : 'NO LEAKS',
     sim.water.some((w) => w > 0.05) ? `<span style="color:#64b5f6">FLOODING ${sim.water.map((w) => w.toFixed(1)).join(' / ')} m</span>` : '',
   ].filter(Boolean).join('<br>');

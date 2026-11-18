@@ -27,7 +27,7 @@ export class Sim {
     this.sub = {
       x: 0, z: 0, heading: 0, speed: 0, vy: 0, depth: 0, pitch: 0, roll: 0,
       telegraph: 0, rudder: 0, planes: 0, ballast: 0.35, valve: 'hold', air: 100,
-      hull: 100, battery: 100, periscopeUp: false, periscopeBearing: 0, periscopePitch: 0, periscopeZoom: 1,
+      hull: 100, battery: 100, oxygen: 100, periscopeUp: false, periscopeBearing: 0, periscopePitch: 0, periscopeZoom: 1,
       noise: 0, lost: false, lostReason: '', countermeasures: 4, shockCooldown: 0, sonarPingCooldown: 0,
     };
     this.tubes = [1, 2, 3, 4].map((n) => ({ n, loaded: n <= 2, flooded: false, outerOpen: false, breechOpen: false }));
@@ -138,7 +138,7 @@ export class Sim {
     if (!t.loaded) return this.message(`Tube ${t.n} is empty - the loader must reload it.`, 'warn');
     if (!t.flooded || !t.outerOpen) return this.message(`Tube ${t.n}: flood it and open the outer door.`, 'warn');
     t.loaded = false;
-    let heading = s.heading;
+    let heading = s.periscopeUp ? s.heading + s.periscopeBearing : s.heading;   // manual aim: along the periscope
     const target = this.entities.find((e) => e.id === w.lock && e.alive);
     if (target) heading = Math.atan2(-(target.z - s.z), target.x - s.x);
     const bowX = s.x + Math.cos(s.heading) * 17, bowZ = s.z - Math.sin(s.heading) * 17;
@@ -220,6 +220,16 @@ export class Sim {
     const s = this.sub;
     if (s.lost) { s.depth += dt * 6; s.pitch = Math.min(0.5, s.pitch + dt * 0.05); return; }
 
+    // power: electric motors drain the battery submerged; the diesels recharge it on the surface
+    const surfaced = s.depth < 2;
+    if (surfaced) { s.battery = Math.min(100, s.battery + dt * 1.5); s.oxygen = Math.min(100, s.oxygen + dt * 6); }
+    else {
+      s.battery = Math.max(0, s.battery - dt * (0.02 + Math.abs(s.speed) * Math.abs(s.speed) * 0.004));
+      s.oxygen = Math.max(0, s.oxygen - dt * 0.12);
+    }
+    if (s.battery <= 0 && !surfaced && s.telegraph > 1) { s.telegraph = 1; this.message('Battery flat! Only SLOW AHEAD until we surface to recharge.', 'warn'); }
+    if (s.oxygen < 15 && !this._o2warn) { this._o2warn = true; this.message('Oxygen is running low - surface soon!', 'danger'); }
+    if (s.oxygen > 30) this._o2warn = false;
     // propulsion and steering
     const target = TELEGRAPH[s.telegraph];
     s.speed += Math.sign(target - s.speed) * Math.min(Math.abs(target - s.speed), dt * 0.6);
@@ -253,7 +263,6 @@ export class Sim {
     const noise = Math.abs(s.speed) * 0.6 + s.noise + (s.periscopeUp ? 2 : 0) + (s.valve === 'blow' ? 2 : 0) + (s.depth < 3 ? 4 : 0);
     s.sonarPingCooldown = Math.max(0, s.sonarPingCooldown - dt);
     s.shockCooldown = Math.max(0, s.shockCooldown - dt);
-    s.battery = Math.min(100, s.battery + dt * 0.3);
 
     // flooding and pumps
     for (let r = 0; r < 4; r++) {
@@ -310,6 +319,7 @@ export class Sim {
             e.chargeTimer = 3.5;
             this.charges.push({ x: e.x + rand(-15, 15), z: e.z + rand(-15, 15), depth: 0, target: s.depth + rand(-14, 14), fuse: 0 });
             this.events.push({ type: 'chargeDropped' });
+            if (!this._dcMsg || this.time - this._dcMsg > 15) { this._dcMsg = this.time; this.message('Splashes overhead - DEPTH CHARGES! Change depth and course!', 'danger'); }
           }
           e.gunTimer -= dt;
           if (s.depth < 3 && d < 900 && e.gunTimer <= 0) {

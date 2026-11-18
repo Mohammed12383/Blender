@@ -5,7 +5,8 @@
   "description": "4-player co-op submarine combat game prototype (three.js) using the generated submarine models",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node test/sim.test.mjs"
   },
   "dependencies": {
     "three": "0.170.0",

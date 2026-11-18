@@ -82,4 +82,4 @@ Sink a whole convoy and the next, bigger wave arrives.
 | `src/sound.js` | Synthesised audio. No sound files needed. |
 | `src/net.js`, `server.js` | Co-op: a static file server plus a WebSocket relay. The first player hosts the simulation. |
 
-For testing, URL parameters skip the menu: `?role=navigator`, `&station=helm`, and `&test=leaks|squid|convoy|surface|deep`.
+Run `npm test` for the headless simulation checks (diving, firing, reloading, leaks, flooding, doors, squid, crush depth, battery). For testing, URL parameters skip the menu: `?role=navigator`, `&station=helm`, and `&test=leaks|squid|convoy|surface|deep`.
