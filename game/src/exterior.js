@@ -39,7 +39,7 @@ export class Exterior {
     this.sky.scale.setScalar(10000);
     s.add(this.sky);
     const u = this.sky.material.uniforms;
-    u.turbidity.value = 6; u.rayleigh.value = 1.6; u.mieCoefficient.value = 0.005; u.mieDirectionalG.value = 0.8;
+    u.turbidity.value = 3.2; u.rayleigh.value = 2.3; u.mieCoefficient.value = 0.0035; u.mieDirectionalG.value = 0.82;   // clear, deep-blue sky
     this.sun = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - 24), THREE.MathUtils.degToRad(200));
     u.sunPosition.value.copy(this.sun);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
@@ -403,6 +403,32 @@ export class Exterior {
     this.water.position.z = this.camera.position.z;
     this.underside.position.x = this.camera.position.x;
     this.underside.position.z = this.camera.position.z;
+  }
+
+  // numbered tag markers floating over tagged ships (only drawn in the periscope view)
+  updateTags(sim, show) {
+    this.tagSprites ||= new Map();
+    const want = new Map(Object.entries(sim.tags || {}).map(([n, id]) => [id, n]));
+    for (const [id, sp] of this.tagSprites) if (!want.has(id) || want.get(id) !== sp.userData.n) { this.scene.remove(sp); this.tagSprites.delete(id); }
+    for (const [id, n] of want) {
+      const ent = sim.entities.find((q) => q.id === id && q.alive);
+      let sp = this.tagSprites.get(id);
+      if (!ent) { if (sp) { this.scene.remove(sp); this.tagSprites.delete(id); } continue; }
+      if (!sp) {
+        const c = document.createElement('canvas'); c.width = c.height = 128;
+        const g = c.getContext('2d');
+        g.fillStyle = 'rgba(10,20,24,0.75)'; g.strokeStyle = sim.weapons.lock === id ? '#ff5a3c' : '#ffd34d'; g.lineWidth = 8;
+        g.beginPath(); g.moveTo(64, 120); g.lineTo(18, 40); g.lineTo(110, 40); g.closePath(); g.fill(); g.stroke();
+        g.fillStyle = '#fff'; g.font = 'bold 54px sans-serif'; g.textAlign = 'center'; g.fillText(n, 64, 92);
+        sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+        sp.userData.n = n; sp.renderOrder = 10;
+        this.scene.add(sp); this.tagSprites.set(id, sp);
+      }
+      const d = Math.hypot(ent.x - sim.sub.x, ent.z - sim.sub.z);
+      sp.position.set(ent.x, -(ent.depth || 0) + (ent.length || 20) * 0.35 + 6, ent.z);
+      sp.scale.setScalar(Math.max(6, d * 0.035));
+    }
+    for (const sp of this.tagSprites.values()) sp.visible = show;
   }
 
   periscopeCamera(sim, aspect) {

@@ -156,9 +156,37 @@ def fire_control(name="FireControl"):
     return p.finish()
 
 
+def _binocular(r, a, n=40):
+    """Outline (CCW, XY) of two overlapping circles of radius r centred at x = +-a."""
+    h = math.sqrt(max(r * r - a * a, 1e-6))
+    t0, t1 = math.atan2(h, -a), math.atan2(h, a)
+    pts = [(a + r * math.cos(-t0 + 2 * t0 * k / n), r * math.sin(-t0 + 2 * t0 * k / n)) for k in range(n + 1)]
+    pts += [(-a + r * math.cos(t1 + (2 * math.pi - 2 * t1) * k / n), r * math.sin(t1 + (2 * math.pi - 2 * t1) * k / n)) for k in range(1, n)]
+    return pts
+
+
+_TO_FRONT = Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))     # plate XY -> XZ, plate depth (+Z) -> -Y (towards the viewer)
+
+
+def _front(bm):
+    for v in bm.verts:
+        v.co = _TO_FRONT @ v.co
+    return bm
+
+
+def _slot_screw(p, loc, r=0.011, parent=None, rot=0):
+    p.cyl(r, 0.008, loc, "DarkSteel", axis="Y", segs=14, bevel=0.002, parent=parent, name="screw")
+    p.box((r * 1.6, 0.003, r * 0.28), (loc[0], loc[1] - 0.004, loc[2]), "BlackPlastic", rot=(0, rot, 0), bevel=0, parent=parent, name="slot")
+
+
 def periscope(name="Periscope", ceiling=2.9):
-    """Periscope column; the Head pivot (eyepiece, handles) trains 360° about Z."""
+    """Periscope column with a detailed eyepiece station on the Head pivot, which trains 360 deg about Z.
+
+    The eyepiece box carries: twin-ocular eyepiece in a rubber hood (the lens shows `screen_periscope`, the game
+    renders the live view into it), bearing compass card, target-identification screen with MARK / CLEAR
+    buttons, a numbered contact-tag slider, ZOOM and TILT knobs, and two training handles with knurled grips."""
     p = Prop(name, category="station", station="periscope")
+    # ---- fixed column
     p.cyl(0.32, 0.04, (0, 0, 0.02), "PaintGraphite", segs=40, bevel=0.01)
     p.add(bm_torus(0.26, 0.02, 40, 8), "Hazard", (0, 0, 0.045), smooth=180)
     p.cyl(0.14, ceiling + 0.4, (0, 0, (ceiling + 0.4) / 2), "Steel", segs=32)
@@ -166,38 +194,124 @@ def periscope(name="Periscope", ceiling=2.9):
         p.cyl(0.15, 0.03, (0, 0, z), "DarkSteel", segs=32, bevel=0.005)
     p.cyl(0.3, 0.08, (0, 0, ceiling - 0.04), "PaintGraphite", segs=40, bevel=0.01)
     p.bolts([(math.cos(a) * 0.25, math.sin(a) * 0.25, ceiling - 0.085) for a in [k * math.pi / 4 for k in range(8)]], axis="Z", r=0.012)
-    # bearing ring (fixed)
-    p.add(bm_torus(0.2, 0.025, 48, 8), "Brass", (0, 0, 1.18), smooth=180)
+    p.add(bm_torus(0.2, 0.025, 48, 8), "Brass", (0, 0, 0.98), smooth=180)
     for k in range(36):
         a = k * math.pi / 18
-        p.box((0.012, 0.03, 0.025 if k % 3 else 0.04), (math.cos(a) * 0.235, math.sin(a) * 0.235, 1.18), "PaintGraphite",
+        p.box((0.012, 0.03, 0.025 if k % 3 else 0.04), (math.cos(a) * 0.235, math.sin(a) * 0.235, 0.98), "PaintGraphite",
               rot=(0, 0, math.degrees(a) + 90), bevel=0)
-    # rotating head
+    # ---- rotating head
     head = p.pivot("Head", (0, 0, 0), interact="periscope_train", rotate_axis="Z")
-    p.cyl(0.19, 0.1, (0, 0, 1.25), "PaintGraphite", segs=40, bevel=0.01, parent=head)
-    housing = bm_extrude(rrect(0.42, 0.42, 0.1, 6), 0.34)  # XY footprint, Z height
-    p.add(housing, "PaintTeal", (0, -0.06, 1.5), parent=head, bevel=0.02, segs=3, name="housing")
-    p.box((0.3, 0.1, 0.16), (0, -0.3, 1.58), "PaintTeal", parent=head, bevel=0.02)
-    for sx in (-0.055, 0.055):
-        p.cyl(0.035, 0.08, (sx, -0.38, 1.6), "DarkSteel", axis="Y", segs=20, parent=head)
-        p.add(bm_lathe([(0.03, 0.0), (0.042, -0.01), (0.048, -0.05), (0.044, -0.065), (0.03, -0.06), (0.028, -0.01)], 20, "Y", closed=True),
-              "Rubber", (sx, -0.42, 1.6), parent=head, smooth=60)
-    p.decal(0.2, 0.1, (0, -0.351, 1.44), "screen_target_id", parent=head)
-    p.box((0.24, 0.02, 0.13), (0, -0.338, 1.44), "BlackPlastic", parent=head, bevel=0.006)
-    p.plate(0.3, 0.06, (0, -0.31, 1.73), "label_periscope", parent=head, frame="PaintGraphite")
+    p.cyl(0.19, 0.12, (0, 0, 1.06), "PaintGraphite", segs=40, bevel=0.012, parent=head)
+    p.cyl(0.19, 0.08, (0, 0, 2.02), "PaintGraphite", segs=40, bevel=0.012, parent=head)
+    W, D, z0, z1 = 0.66, 0.3, 0.98, 1.96
+    yf = -0.05 - D                                      # front face of the box
+    p.box((W, D, z1 - z0), (0, -0.05 - D / 2, (z0 + z1) / 2), "PaintTeal", bevel=0.035, segs=1, parent=head, name="housing")
+    p.box((W - 0.12, 0.05, 0.12), (0, -0.04, 1.06), "PaintTeal", bevel=0.015, parent=head)       # straps to the collars
+    p.box((W - 0.12, 0.05, 0.1), (0, -0.04, 1.97), "PaintTeal", bevel=0.015, parent=head)
+    for sx in (-1, 1):
+        for sz in (z0 + 0.05, z1 - 0.05):
+            _slot_screw(p, (sx * (W / 2 - 0.05), yf - 0.004, sz), parent=head, rot=35 * sx)
+    # lower control panel (dark inset with screws)
+    p.box((W - 0.07, 0.012, 0.36), (0, yf - 0.004, 1.19), "PaintGraphite", bevel=0.01, parent=head, name="panel")
+    for sx in (-1, 1):
+        for sz in (1.03, 1.35):
+            _slot_screw(p, (sx * (W / 2 - 0.07), yf - 0.012, sz), r=0.008, parent=head, rot=-20)
+    # ---- eyepiece: metal frame, rubber hood, lens
+    ez = 1.69
+    frame = _front(bm_plate_with_holes(_binocular(0.15, 0.125), [list(reversed(_binocular(0.112, 0.112)))], 0.025))
+    p.add(frame, "DarkSteel", (0, yf, ez), parent=head, smooth=40, name="eyeframe")
+    hood = _front(bm_plate_with_holes(_binocular(0.138, 0.118), [list(reversed(_binocular(0.108, 0.11)))], 0.075))
+    p.add(hood, "Rubber", (0, yf - 0.02, ez), parent=head, smooth=40, name="eyehood")
+    lip = _front(bm_plate_with_holes(_binocular(0.146, 0.118), [list(reversed(_binocular(0.13, 0.118)))], 0.012))
+    p.add(lip, "Rubber", (0, yf - 0.085, ez), parent=head, smooth=40, name="eyelip")
+    outline = _binocular(0.108, 0.11, 48)
+    bm = bmesh.new()
+    uvl = bm.loops.layers.uv.new("UVMap")
+    xs, ys = [q[0] for q in outline], [q[1] for q in outline]
+    face = bm.faces.new([bm.verts.new((x, y, 0)) for x, y in outline])
+    for loop in face.loops:
+        loop[uvl].uv = ((loop.vert.co.x - min(xs)) / (max(xs) - min(xs)), (loop.vert.co.y - min(ys)) / (max(ys) - min(ys)))
+    bmesh.ops.triangulate(bm, faces=list(bm.faces))
+    p.add(_front(bm), "screen_periscope", (0, yf - 0.012, ez), parent=head, uv="keep", smooth=False, name="Lens")
+    # ---- bearing compass
+    cz = 1.475
+    p.add(bm_torus(0.072, 0.012, 40, 8, "Y"), "DarkSteel", (0, yf - 0.012, cz), parent=head, smooth=180, name="compassbezel")
+    p.cyl(0.075, 0.02, (0, yf + 0.0, cz), "BlackPlastic", axis="Y", segs=40, parent=head)
+    card = p.pivot("CompassCard", (0, yf - 0.012, cz), parent=head, interact="compass", rotate_axis="Y", note="turns with the bearing")
+    p.add(bm_disc(0.064, 48), "compass_card", (0, 0, 0), (0, 0, 0), card, uv="keep", smooth=False, name="card")
+    p.extrude([(-0.012, 0.0), (0.012, 0.0), (0.0, 0.026)], 0.004, (0, yf - 0.02, cz + 0.042), "LampBlue", rot=(90, 0, 180),
+              parent=head, name="lubber")
+    p.cyl(0.01, 0.008, (0, yf - 0.02, cz), "Chrome", axis="Y", segs=12, parent=head)
+    # ---- target identification screen with MARK / CLEAR
+    sz = 1.255
+    p.plate(0.3, 0.032, (0, yf - 0.012, sz + 0.095), "label_target_id", parent=head, depth=0.006)
+    p.screen(0.28, 0.13, (0, yf - 0.012, sz), "screen_target_id", parent=head, bezel=0.022, depth=0.03, frame="BlackPlastic")
+    for side, nm, lab in ((-1, "MarkButton", "label_mark"), (1, "ClearButton", "label_clear")):
+        bx = side * 0.235
+        p.box((0.1, 0.02, 0.12), (bx, yf - 0.014, sz), "PaintGraphite", bevel=0.008, parent=head)
+        for dz in (-0.048, 0.048):
+            _slot_screw(p, (bx - 0.038, yf - 0.025, sz + dz), r=0.006, parent=head)
+            _slot_screw(p, (bx + 0.038, yf - 0.025, sz + dz), r=0.006, parent=head)
+        btn = p.pivot(nm, (bx, yf - 0.026, sz), parent=head, interact="mark_target" if side < 0 else "clear_target", translate_axis="Y",
+                      min=0, max=0.008)
+        p.box((0.07, 0.016, 0.07), (0, -0.006, 0), "PaintMustard" if side < 0 else "PaintCream", bevel=0.008, parent=btn)
+        p.decal(0.056, 0.018, (0, -0.0145, 0), lab, parent=btn)
+    # ---- contact tag selector (numbered strip + slider)
+    tz = 1.085
+    p.box((0.36, 0.012, 0.11), (0, yf - 0.012, tz - 0.01), "DarkSteel", bevel=0.006, parent=head)
+    p.decal(0.34, 0.043, (0, yf - 0.0185, tz + 0.02), "tag_strip", parent=head)
+    p.box((0.32, 0.006, 0.012), (0, yf - 0.019, tz - 0.035), "BlackPlastic", bevel=0, parent=head, name="slot")
+    sl = p.pivot("TagSlider", (-0.1488, yf - 0.02, tz - 0.035), parent=head, interact="tag_select", translate_axis="X", min=0, max=0.2975,
+                 note="8 stops, 0.0425 m apart; stop 1 at the left")
+    p.box((0.03, 0.03, 0.04), (0, -0.012, 0.0), "PaintRed", bevel=0.006, parent=sl, name="slidercap")
+    for k in range(4):
+        p.box((0.032, 0.004, 0.003), (0, -0.028, -0.013 + k * 0.009), "DarkSteel", bevel=0, parent=sl)
+    # ---- ZOOM and TILT knobs
+    for side, nm, cap, lab in ((-1, "ZoomKnob", "PaintRed", "label_zoom"), (1, "TiltKnob", "PaintNavy", "label_tilt")):
+        kx = side * 0.255
+        p.cyl(0.062, 0.012, (kx, yf - 0.012, tz), "Brass", axis="Y", segs=40, bevel=0.003, parent=head)
+        p.decal(0.07, 0.018, (kx, yf - 0.012, tz + 0.085), lab, parent=head)
+        kn = p.pivot(nm, (kx, yf - 0.018, tz), parent=head, interact="knob", rotate_axis="Y")
+        p.cyl(0.05, 0.04, (0, -0.02, 0), "PaintSeafoam", axis="Y", segs=40, bevel=0.004, parent=kn, name="knurl")
+        for k in range(28):
+            a = k * 2 * math.pi / 28
+            p.box((0.006, 0.036, 0.008), (math.cos(a) * 0.05, -0.02, math.sin(a) * 0.05), "PaintSeafoam",
+                  rot=(0, -math.degrees(a), 0), bevel=0, parent=kn)
+        p.add(bm_lathe([(0.0, 0.0), (0.03, 0.0), (0.032, 0.006), (0.026, 0.016), (0.0, 0.02)], 32, "Y"), cap,
+              (0, -0.04, 0), (0, 0, 180), kn, smooth=50, name="cap")
+        p.box((0.004, 0.004, 0.024), (0, -0.0605, 0.012), "PaintWhite", bevel=0, parent=kn, name="index")
+    # ---- training handles: an angled bracket brings each knurled grip forward to where your hands are
+    hz = 1.42                                            # chest height: where your hands naturally rest
+    gy = -0.59                                           # brackets swing the grips out towards you (within arm's reach)
     for side in (-1, 1):
-        h = p.pivot("HandleL" if side < 0 else "HandleR", (side * 0.22, -0.15, 1.52), parent=head,
+        root = (side * (W / 2 + 0.025), gy)
+        h = p.pivot("HandleL" if side < 0 else "HandleR", (root[0], root[1], hz), parent=head,
                     interact="periscope_handle", rotate_axis="X", min_deg=-90, max_deg=0, note="fold down to stow")
-        p.box((0.05, 0.08, 0.08), (side * 0.025, 0, 0), "DarkSteel", parent=h, bevel=0.01)
-        p.cyl(0.018, 0.2, (side * 0.13, 0, 0), "Chrome", axis="X", segs=12, parent=h)
-        p.add(bm_lathe([(0.0, 0.0), (0.03, 0.0), (0.034, 0.03), (0.034, 0.15), (0.03, 0.18), (0.0, 0.18)], 16, "X"),
-              "Rubber", (side * 0.18 if side > 0 else -0.36, 0, 0), parent=h)
-        push_button(p, (side * 0.13 - 0.0 + side * 0.24, 0, 0), rot=(0, 0, side * 90), m="PaintRed", r=0.014, parent=h,
-                    name="Mark" if side > 0 else "Zoom", interact="mark_target" if side > 0 else "zoom")
-    p.use_camera((0, -0.5, 1.6), (0, 0.5, 1.6), lens=35, parent=head)
-    p.hand("L", (-0.36, -0.15, 1.52), "grip", parent=head, control="HandleL")
-    p.hand("R", (0.36, -0.15, 1.52), "grip", parent=head, control="HandleR")
-    p.anchor("operate", (0, -0.85, 0), note="anchor rotates with Head in game")
+        ax, ay = side * (W / 2 - 0.03), -0.17            # where the bracket leaves the box side
+        dx, dy = root[0] - ax, root[1] - ay
+        ln, ang = math.hypot(dx, dy), math.degrees(math.atan2(dy, dx))
+        p.box((ln + 0.06, 0.05, 0.13), ((ax + root[0]) / 2, (ay + root[1]) / 2, hz), "PaintTeal", rot=(0, 0, ang), bevel=0.02,
+              parent=head, name="bracket")
+        p.cyl(0.066, 0.05, (root[0] - side * 0.01, root[1], hz), "PaintTeal", axis="Y", segs=32, bevel=0.012, parent=head)
+        p.cyl(0.032, 0.012, (root[0] - side * 0.01, root[1] - 0.031, hz), "Steel", axis="Y", segs=24, bevel=0.003, parent=head, name="bigscrew")
+        p.box((0.045, 0.004, 0.009), (root[0] - side * 0.01, root[1] - 0.038, hz), "BlackPlastic", rot=(0, 90, 0), bevel=0, parent=head)
+        p.cyl(0.022, 0.05, (side * 0.06, 0, 0), "Chrome", axis="X", segs=16, parent=h, name="shaft")
+        p.cyl(0.05, 0.025, (side * 0.09, 0, 0), "DarkSteel", axis="X", segs=32, bevel=0.006, parent=h, name="collar")
+        prof = [(0.0, 0.0), (0.05, 0.0)]
+        for k in range(16):
+            prof += [(0.053, 0.006 + k * 0.016), (0.048, 0.014 + k * 0.016)]
+        prof += [(0.053, 0.262), (0.045, 0.275), (0.0, 0.275)]
+        p.add(bm_lathe(prof, 28, "X"), "Rubber", (side * 0.103 if side > 0 else -0.103 - 0.275, 0, 0), parent=h, smooth=40, name="grip")
+    # ---- top: label and cables into the column
+    p.plate(0.36, 0.06, (0, yf - 0.004, 1.9), "label_periscope", parent=head, depth=0.008)
+    for k, (x, m) in enumerate([(-0.2, "BlackPlastic"), (0.16, "PaintRed"), (0.22, "BlackPlastic")]):
+        p.tube([(x, -0.12, z1), (x, -0.12, z1 + 0.1), (x * 0.4, -0.02, z1 + 0.22), (x * 0.3, 0.0, z1 + 0.4)], 0.012, m, segs=8,
+               round_r=0.06, parent=head)
+    # ---- camera, hands, anchor
+    p.use_camera((0, -0.93, 1.63), (0, -0.2, 1.44), lens=22, parent=head)
+    p.hand("L", (-0.45, gy, hz), "grip", parent=head, control="HandleL")
+    p.hand("R", (0.45, gy, hz), "grip", parent=head, control="HandleR")
+    p.anchor("operate", (0, -0.95, 0), note="anchor rotates with Head in game")
     return p.finish()
 
 

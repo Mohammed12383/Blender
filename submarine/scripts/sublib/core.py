@@ -121,7 +121,7 @@ MATLIB = {
     "GrillGlow": dict(color="#ff6a1a", emission=("#ff5a10", 2.5), roughness=0.6),
 }
 SCREENS = ["screen_chart", "screen_nav_scope", "screen_sonar", "screen_fire_control", "screen_ballast",
-           "screen_cam_fwd", "screen_cam_aft", "screen_target_id"]
+           "screen_cam_fwd", "screen_cam_aft", "screen_target_id", "screen_periscope"]
 DECALS = ["gauge_pressure", "gauge_depth", "gauge_air", "gauge_clock", "poster_dive", "poster_quiet",
           "poster_galley", "poster_crew", "sign_hot", "sign_voltage", "sign_explosive", "sign_pressure"]
 MATS = {}

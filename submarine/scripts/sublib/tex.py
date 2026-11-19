@@ -845,6 +845,67 @@ def mimic_diagram(name="mimic_bus", w=1024, h=512):
 
 # ------------------------------------------------------------- generate
 
+def compass_card(name="compass_card", size=512):
+    """Bearing card for the periscope compass: ticks every 5°, numbers every 30°, N/E/S/W."""
+    if not needed(name):
+        return
+    img = Image.new("RGB", (size, size), (14, 20, 24))
+    d = ImageDraw.Draw(img)
+    c, R = size / 2, size * 0.48
+    d.ellipse([c - R, c - R, c + R, c + R], fill=(20, 28, 33), outline=(150, 170, 175), width=4)
+    for k in range(72):
+        a = math.radians(k * 5)
+        r0 = R * (0.80 if k % 6 == 0 else 0.87 if k % 2 == 0 else 0.91)
+        d.line([(c + math.sin(a) * r0, c - math.cos(a) * r0), (c + math.sin(a) * R * 0.97, c - math.cos(a) * R * 0.97)],
+               fill=(225, 232, 228), width=4 if k % 6 == 0 else 2)
+    for k, lab in enumerate(["N", "3", "6", "E", "12", "15", "S", "21", "24", "W", "30", "33"]):
+        a = math.radians(k * 30)
+        big = lab in "NESW"
+        f = BLACK(int(size * (0.12 if big else 0.06)))
+        tw = d.textlength(lab, font=f)
+        bb = d.textbbox((0, 0), lab, font=f)
+        x, y = c + math.sin(a) * R * 0.62, c - math.cos(a) * R * 0.62
+        d.text((x - tw / 2, y - (bb[3] + bb[1]) / 2), lab, fill=(255, 90, 60) if lab == "N" else (230, 236, 232), font=f)
+    d.ellipse([c - 12, c - 12, c + 12, c + 12], fill=(150, 160, 160))
+    img.save(path(name))
+
+
+def tag_strip(name="tag_strip", n=8, w=1024, h=128):
+    """Numbered tiles above the periscope's contact-tag slider."""
+    if not needed(name):
+        return
+    img = Image.new("RGB", (w, h), (34, 38, 42))
+    d = ImageDraw.Draw(img)
+    tw = w / n
+    f = BLACK(int(h * 0.6))
+    for k in range(n):
+        x0 = k * tw + 8
+        d.rounded_rectangle([x0, 10, x0 + tw - 16, h - 10], radius=10, fill=(18, 22, 26), outline=(90, 100, 105), width=3)
+        s_ = str(k + 1)
+        bb = d.textbbox((0, 0), s_, font=f)
+        d.text((x0 + (tw - 16 - (bb[2] - bb[0])) / 2 - bb[0], (h - (bb[3] - bb[1])) / 2 - bb[1]), s_, fill=(240, 236, 222), font=f)
+    img.save(path(name))
+
+
+def periscope_view(name="screen_periscope", w=1024, h=540, seed=7):
+    """Placeholder sea view in the eyepiece (the game renders the live view over it)."""
+    if not needed(name):
+        return
+    rng = np.random.default_rng(seed)
+    y = np.linspace(0, 1, h)[:, None]
+    sky = np.clip(np.stack([0.55 + 0.3 * y, 0.72 + 0.2 * y, 0.88 + 0.08 * y], -1), 0, 1)
+    sea = np.stack([0.05 + 0.12 * (1 - y), 0.25 + 0.2 * (1 - y), 0.38 + 0.2 * (1 - y)], -1)
+    img = np.where((y < 0.52)[..., None], sky, sea) * np.ones((1, w, 1))
+    img[int(h * 0.52):] *= (0.85 + 0.15 * rng.random((h - int(h * 0.52), w, 1)))
+    im = Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8))
+    d = ImageDraw.Draw(im)
+    hy = int(h * 0.52)
+    d.polygon([(600, hy), (840, hy), (860, hy - 18), (800, hy - 18), (790, hy - 52), (740, hy - 52), (735, hy - 24), (610, hy - 20)],
+              fill=(52, 58, 66))
+    d.line([(765, hy - 52), (765, hy - 90)], fill=(52, 58, 66), width=4)
+    im.save(path(name))
+
+
 def generate_all():
     os.makedirs(TEX_DIR, exist_ok=True)
     orange_peel_normal()
@@ -884,6 +945,9 @@ def generate_all():
     camera_feed("screen_cam_fwd", "CAM 1  FWD", seed=1)
     camera_feed("screen_cam_aft", "CAM 2  AFT", seed=4, tint="#c8e0d8")
     periscope_display()
+    periscope_view()
+    compass_card()
+    tag_strip()
     gauge_face("gauge_pressure", "PRESSURE", 10, 1, red_from=8, unit="BAR")
     gauge_face("gauge_depth", "DEPTH", 300, 50, red_from=250, unit="METRES")
     gauge_face("gauge_air", "AIR", 200, 25, red_from=None, unit="PSI x10")
@@ -895,7 +959,8 @@ def generate_all():
                     ("passage", "ENGINE ROOM PASSAGE"), ("diesel1", "DIESEL 1"), ("diesel2", "DIESEL 2"),
                     ("bilge", "BILGE PUMP"), ("fuel_transfer", "FUEL TRANSFER PUMP"), ("smoke", "SMOKE EXTRACT"),
                     ("main_breaker", "MAIN BREAKER"), ("engine_control", "ENGINE CONTROL"), ("switchboard", "MAIN SWITCHBOARD"),
-                    ("medical", "MEDICAL"), ("stores", "STORES"), ("down", "TORPEDO ROOM ▼")]:
+                    ("medical", "MEDICAL"), ("stores", "STORES"), ("down", "TORPEDO ROOM ▼"),
+                    ("target_id", "TARGET IDENTIFICATION")]:
         label_plate("label_" + nm, txt)
     label_plate("label_engine_maker", "DEEPWATER MOTOR WORKS · 8 CYL", fg="#1d1d1f", bg="#c9a24a", w=1024, h=160, font_fn=BOLD)
     for nm, txt in [("start", "START"), ("stop", "STOP"), ("oil", "OIL"), ("coolant", "COOLANT"), ("fuel", "FUEL")]:
@@ -905,7 +970,7 @@ def generate_all():
     for k in range(1, 5):
         label_plate(f"label_tube{k}", str(k), fg="#1d1d1f", bg="#efb81d", w=256, h=256, font_fn=BLACK)
     for nm, txt in [("view", "VIEW"), ("zoom", "ZOOM"), ("fire", "FIRE"), ("arm", "ARM"), ("flood", "FLOOD"),
-                    ("vent", "VENT"), ("blow", "BLOW")]:
+                    ("vent", "VENT"), ("blow", "BLOW"), ("mark", "MARK"), ("clear", "CLEAR"), ("tilt", "TILT")]:
         label_plate("label_" + nm, txt, fg="#f3ead2", bg="#222426", w=512, h=160, border=False, font_fn=BOLD)
     label_plate("hull_number", "27", fg="#f3ead2", bg="#244f55", w=512, h=384, border=False, font_fn=BLACK)
     label_plate("frigate_number", "F 41", fg="#f4f4f0", bg="#7d858c", w=768, h=256, border=False, font_fn=BLACK)

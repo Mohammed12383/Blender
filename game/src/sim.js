@@ -68,6 +68,7 @@ export class Sim {
     };
     this.tubes = [1, 2, 3, 4].map((n) => ({ n, loaded: n <= 2, flooded: false, outerOpen: false, breechOpen: false }));
     this.weapons = { selected: 1, armed: false, guardOpen: false, lock: null, gyro: 0 };
+    this.tags = {};            // periscope contact tags: number (1..8) -> entity id
     this.torpedoStock = 6;     // spares in the racks
     this.water = ROOMS.map(() => 0);   // flood depth per room above its lowest point (m)
     this.smoke = ROOMS.map(() => 0);   // smoke density per room 0..1
@@ -157,6 +158,32 @@ export class Sim {
     if (best) { this.reveal(best, true); this.message(`Target locked: ${best.kind.toUpperCase()} bearing ${this.deg(Math.atan2(-(best.z - this.sub.z), best.x - this.sub.x))}°.`); }
     else this.message('No target on that bearing.', 'warn');
     return best;
+  }
+  // the contact nearest a bearing (within `width` radians), or null
+  contactAt(bearing, width = 0.12) {
+    let best = null, bd = width;
+    for (const e of this.entities) {
+      if (!e.alive || e.sinking) continue;
+      const d = Math.abs(wrap(Math.atan2(-(e.z - this.sub.z), e.x - this.sub.x) - bearing));
+      if (d < bd && Math.hypot(e.x - this.sub.x, e.z - this.sub.z) < 2500) { bd = d; best = e; }
+    }
+    return best;
+  }
+  tagTarget(n, bearing) {
+    const e = this.contactAt(bearing);
+    if (!e) { this.message('Nothing under the crosshair to tag.', 'warn'); return null; }
+    for (const k of Object.keys(this.tags)) if (this.tags[k] === e.id) delete this.tags[k];
+    this.tags[n] = e.id;
+    this.weapons.lock = e.id;
+    this.reveal(e, true);
+    this.message(`Tagged ${e.kind.toUpperCase()} as contact ${n} - fire control locked on.`);
+    return e;
+  }
+  clearTag(n) {
+    if (!this.tags[n]) { this.message(`No contact ${n} to clear.`, 'warn'); return; }
+    if (this.weapons.lock === this.tags[n]) this.weapons.lock = null;
+    delete this.tags[n];
+    this.message(`Contact ${n} cleared.`);
   }
   deg(a) { return Math.round(((90 - a * 180 / Math.PI) % 360 + 360) % 360); }   // compass bearing
   floodTube(n) { const t = this.tubes[n - 1]; if (t.breechOpen) { this.message('Close the breech door first!', 'warn'); return; } t.flooded = !t.flooded; if (!t.flooded) t.outerOpen = false; }

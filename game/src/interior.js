@@ -36,6 +36,53 @@ function cloudTexture() {
   return t;
 }
 
+// Long thin streaks: the alpha map that makes the jet and the wall run-off look like flowing water
+function streakTexture() {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgb(70,70,70)'; g.fillRect(0, 0, 64, 256);
+  for (let i = 0; i < 90; i++) {
+    const x = Math.random() * 64, y = Math.random() * 256, len = 20 + Math.random() * 120, w = 1 + Math.random() * 3;
+    const b = 120 + Math.random() * 135;
+    const gr = g.createLinearGradient(0, y, 0, y + len);
+    gr.addColorStop(0, `rgba(${b},${b},${b},0)`); gr.addColorStop(0.5, `rgba(${b},${b},${b},1)`); gr.addColorStop(1, `rgba(${b},${b},${b},0)`);
+    g.fillStyle = gr;
+    for (const oy of [0, -256, 256]) g.fillRect(x, y + oy, w, len);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
+// Tapered tube along a list of points (the glassy core of a water jet). v runs along the jet for the flow texture.
+function jetGeometry(pts, r0, r1, radial = 8) {
+  const n = pts.length, pos = [], uv = [], idx = [];
+  const up = new THREE.Vector3(0, 1, 0), t = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3();
+  let len = 0;
+  for (let i = 0; i < n; i++) {
+    if (i) len += pts[i].distanceTo(pts[i - 1]);
+    t.subVectors(pts[Math.min(n - 1, i + 1)], pts[Math.max(0, i - 1)]).normalize();
+    a.crossVectors(t, up); if (a.lengthSq() < 1e-6) a.set(1, 0, 0); a.normalize();
+    b.crossVectors(t, a).normalize();
+    const r = r0 + (r1 - r0) * (i / (n - 1)) + Math.sin(i * 1.7) * r0 * 0.12;
+    for (let k = 0; k <= radial; k++) {
+      const ang = (k / radial) * Math.PI * 2;
+      pos.push(pts[i].x + (a.x * Math.cos(ang) + b.x * Math.sin(ang)) * r, pts[i].y + (a.y * Math.cos(ang) + b.y * Math.sin(ang)) * r,
+        pts[i].z + (a.z * Math.cos(ang) + b.z * Math.sin(ang)) * r);
+      uv.push(k / radial, len * 1.5);
+    }
+  }
+  for (let i = 0; i < n - 1; i++) for (let k = 0; k < radial; k++) {
+    const p0 = i * (radial + 1) + k, p1 = p0 + radial + 1;
+    idx.push(p0, p1, p0 + 1, p1, p1 + 1, p0 + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+
 export class Interior {
   constructor(renderer, loader) {
     this.renderer = renderer;
@@ -330,9 +377,38 @@ export class Interior {
     for (const n of ['screen_chart', 'screen_nav_scope', 'screen_sonar', 'screen_fire_control', 'screen_ballast', 'screen_target_id', 'screen_engine']) {
       this.screens[n] = make(n, n === 'screen_chart' ? 768 : 512, n === 'screen_chart' ? 512 : n === 'screen_target_id' ? 256 : 512);
     }
+    // the periscope eyepiece: the live view is rendered into lensRT; the shader adds the reticle, ranging scales and vignette
+    this.lensRT = new THREE.WebGLRenderTarget(768, 380, { type: THREE.HalfFloatType, generateMipmaps: true,   // HDR sky; mipmaps stop shimmer
+      minFilter: THREE.LinearMipmapLinearFilter });
+    this.lensOn = { value: 0 };
+    const lens = new THREE.MeshBasicMaterial({ map: this.lensRT.texture });
+    lens.onBeforeCompile = (sh) => {
+      sh.uniforms.uOn = this.lensOn;
+      sh.fragmentShader = 'uniform float uOn;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
+        vec2 q = vMapUv;
+        diffuseColor *= texture2D(map, q);
+        vec2 p = vec2((q.x - 0.5) * 0.436, (q.y - 0.5) * 0.216);
+        float d = min(length(p - vec2(-0.11, 0.0)), length(p - vec2(0.11, 0.0))) / 0.108;
+        float lw = 0.0011;
+        float ink = (1.0 - smoothstep(0.0, lw, abs(p.x))) + (1.0 - smoothstep(0.0, lw, abs(p.y)));
+        for (int k = -1; k <= 1; k += 2) {
+          float x = float(k) * 0.168;
+          float inBand = step(abs(p.y), 0.085);
+          ink += (1.0 - smoothstep(0.0, lw, abs(p.x - x))) * inBand;
+          float tickLen = mod(floor(p.y / 0.0085 + 0.5), 5.0) < 0.5 ? 0.012 : 0.006;
+          ink += (1.0 - smoothstep(0.0, lw * 0.8, abs(fract(p.y / 0.0085 + 0.5) - 0.5) * 0.0085)) * step(abs(p.x - x), tickLen) * inBand;
+        }
+        ink += (1.0 - smoothstep(0.0, lw, abs(p.y + 0.004))) * step(abs(p.x), 0.012) * 0.0;
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.02, 0.03, 0.03), clamp(ink, 0.0, 1.0) * 0.8);
+        diffuseColor.rgb *= smoothstep(1.02, 0.6, d) * (0.92 + 0.08 * smoothstep(0.0, 0.004, abs(p.x)));
+        if (uOn < 0.5) diffuseColor.rgb = vec3(0.01, 0.014, 0.018) + vec3(0.03, 0.04, 0.045) * smoothstep(1.0, 0.2, d);
+      `);
+    };
+    this.root.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m && m.name === 'screen_periscope')) o.material = lens; });
+    this.periTag = 1;
     this.camTargets = {};
     for (const n of ['screen_cam_fwd', 'screen_cam_aft']) {
-      const rt = new THREE.WebGLRenderTarget(384, 288);
+      const rt = new THREE.WebGLRenderTarget(384, 288, { type: THREE.HalfFloatType });
       for (const m of mats.get(n) || []) { m.emissiveMap = rt.texture; m.map = rt.texture; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = 1.2; m.needsUpdate = true; }
       this.camTargets[n] = { rt, cam: new THREE.PerspectiveCamera(60, 4 / 3, 0.5, 3000) };
     }
@@ -422,6 +498,8 @@ export class Interior {
         `HULL   ${s.hull.toFixed(0)} %`, `FLOOD  ${(sim.floodFraction() * 100).toFixed(0)} %`].forEach((l, i) => ctx.fillText(l, 20, 96 + i * 44));
       bl.tex.needsUpdate = true;
     }
+    const id = this.screens.screen_target_id;
+    if (id) this.drawTargetId(sim, id);
     const en = this.screens.screen_engine;
     if (en) {
       const { ctx } = en;
@@ -443,6 +521,80 @@ export class Interior {
       ctx.fillStyle = s.depth > 12 ? '#ff5d5d' : '#7dff7d';
       ctx.fillText(s.depth > 12 ? `SNORKEL UNDER (${s.depth.toFixed(0)} m)` : 'SNORKEL CLEAR - AIR OK', 20, 482);
       en.tex.needsUpdate = true;
+    }
+  }
+
+  // TARGET IDENTIFICATION screen on the periscope: silhouette, class, range and bearing of what is in the crosshair
+  drawTargetId(sim, sc) {
+    const { ctx, canvas } = sc, W = canvas.width, H = canvas.height, s = sim.sub;
+    ctx.fillStyle = '#05170f'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#1d4a34'; ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 32) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    const brg = s.heading + s.periscopeBearing;
+    const e = s.periscopeUp ? sim.contactAt(brg, 0.45 / s.periscopeZoom) : null;
+    ctx.font = 'bold 26px monospace'; ctx.fillStyle = '#9dffc4';
+    if (!s.periscopeUp) { ctx.fillText('PERISCOPE DOWN', 120, 120); ctx.font = '20px monospace'; ctx.fillText('press R to raise', 160, 160); }
+    else if (!e) {
+      ctx.fillText('NO CONTACT', 160, 110);
+      ctx.font = '20px monospace'; ctx.fillText(`BRG ${String(sim.deg(brg)).padStart(3, '0')}°  ZOOM ${s.periscopeZoom.toFixed(1)}x`, 120, 160);
+    } else {
+      const hostile = e.kind !== 'freighter';
+      const name = { frigate: 'Enemy Frigate', freighter: 'Cargo Freighter', enemySub: 'Enemy Submarine', shark: 'Shark', squid: 'Giant Squid' }[e.kind] || e.kind;
+      ctx.fillStyle = hostile ? '#ff4d3a' : '#5fd47a';
+      this.silhouette(ctx, e.kind, 18, 14, 64, 34, true);
+      ctx.fillStyle = '#eafff2'; ctx.font = 'bold 28px sans-serif'; ctx.fillText(name, 100, 42);
+      ctx.strokeStyle = '#eafff2'; ctx.lineWidth = 2.5;
+      this.silhouette(ctx, e.kind, 150, 70, 300, 92, false);
+      this.silhouette(ctx, e.kind + '_front', 50, 74, 76, 88, false);
+      const rng = Math.hypot(e.x - s.x, e.z - s.z);
+      const tag = Object.entries(sim.tags || {}).find(([, v]) => v === e.id)?.[0];
+      ctx.fillStyle = '#9dffc4'; ctx.font = 'bold 20px monospace';
+      ctx.fillText(`RNG ${rng.toFixed(0)} m   BRG ${String(sim.deg(Math.atan2(-(e.z - s.z), e.x - s.x))).padStart(3, '0')}°`, 18, 200);
+      ctx.fillStyle = tag ? '#ffd34d' : '#6fae8a';
+      ctx.fillText(tag ? `TAG ${tag}${sim.weapons.lock === e.id ? '  LOCKED' : ''}` : `SELECT ${this.periTag} + MARK`, 18, 232);
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 2);
+    sc.tex.needsUpdate = true;
+  }
+
+  // simple line-art (or filled icon) silhouettes of everything at sea
+  silhouette(ctx, kind, x, y, w, h, fill) {
+    const P = (pts) => { ctx.beginPath(); pts.forEach(([u, v], i) => (i ? ctx.lineTo(x + u * w, y + v * h) : ctx.moveTo(x + u * w, y + v * h))); ctx.closePath(); fill ? ctx.fill() : ctx.stroke(); };
+    const L = (a, b, c, d) => { ctx.beginPath(); ctx.moveTo(x + a * w, y + b * h); ctx.lineTo(x + c * w, y + d * h); ctx.stroke(); };
+    switch (kind) {
+      case 'frigate':
+        P([[0, 0.72], [0.9, 0.72], [1, 0.55], [0.02, 0.6]]);
+        P([[0.3, 0.6], [0.3, 0.42], [0.42, 0.42], [0.42, 0.3], [0.55, 0.3], [0.55, 0.42], [0.66, 0.42], [0.66, 0.6]]);
+        P([[0.46, 0.3], [0.48, 0.05], [0.5, 0.3]]); if (!fill) { L(0.42, 0.14, 0.56, 0.14); L(0.75, 0.55, 0.88, 0.5); }
+        P([[0.72, 0.6], [0.72, 0.52], [0.8, 0.52], [0.8, 0.6]]); P([[0.14, 0.6], [0.14, 0.5], [0.24, 0.5], [0.24, 0.6]]);
+        break;
+      case 'frigate_front':
+        P([[0.3, 0.95], [0.7, 0.95], [0.8, 0.6], [0.2, 0.6]]); P([[0.32, 0.6], [0.32, 0.35], [0.68, 0.35], [0.68, 0.6]]);
+        P([[0.46, 0.35], [0.5, 0.0], [0.54, 0.35]]); if (!fill) L(0.3, 0.12, 0.7, 0.12);
+        break;
+      case 'freighter':
+        P([[0, 0.75], [0.95, 0.75], [1, 0.5], [0.0, 0.55]]);
+        for (let k = 0; k < 6; k++) P([[0.22 + k * 0.11, 0.55], [0.22 + k * 0.11, 0.32 - (k % 2) * 0.1], [0.31 + k * 0.11, 0.32 - (k % 2) * 0.1], [0.31 + k * 0.11, 0.55]]);
+        P([[0.04, 0.55], [0.04, 0.2], [0.17, 0.2], [0.17, 0.55]]); P([[0.08, 0.2], [0.08, 0.05], [0.13, 0.05], [0.13, 0.2]]);
+        break;
+      case 'freighter_front':
+        P([[0.2, 0.95], [0.8, 0.95], [0.85, 0.55], [0.15, 0.55]]); P([[0.22, 0.55], [0.22, 0.25], [0.78, 0.25], [0.78, 0.55]]);
+        break;
+      case 'enemySub':
+        P([[0, 0.62], [0.08, 0.5], [0.9, 0.48], [1, 0.58], [0.9, 0.7], [0.08, 0.7]]); P([[0.42, 0.48], [0.45, 0.22], [0.58, 0.22], [0.6, 0.48]]);
+        if (!fill) { L(0.5, 0.22, 0.5, 0.06); L(0.0, 0.62, -0.03, 0.45); }
+        break;
+      case 'enemySub_front':
+        ctx.beginPath(); ctx.ellipse(x + 0.5 * w, y + 0.62 * h, 0.3 * w, 0.3 * h, 0, 0, 7); fill ? ctx.fill() : ctx.stroke();
+        P([[0.44, 0.33], [0.45, 0.1], [0.55, 0.1], [0.56, 0.33]]);
+        break;
+      case 'shark': case 'shark_front':
+        P([[0, 0.55], [0.3, 0.4], [0.45, 0.1], [0.55, 0.4], [0.85, 0.48], [1, 0.3], [0.95, 0.55], [1, 0.8], [0.85, 0.62], [0.3, 0.7]]);
+        break;
+      default:   // squid
+        ctx.beginPath(); ctx.ellipse(x + 0.3 * w, y + 0.45 * h, 0.28 * w, 0.18 * h, 0, 0, 7); fill ? ctx.fill() : ctx.stroke();
+        for (let k = 0; k < 6; k++) L(0.55, 0.4 + k * 0.03, 1, 0.2 + k * 0.12);
     }
   }
 
@@ -486,8 +638,19 @@ export class Interior {
       return g;
     });
     // splashes where leak jets hit the water / floor
-    this.splash = new Particles(500, { kind: 'drop', additive: false });
+    this.splash = new Particles(700, { kind: 'drop', additive: false });
     this.scene.add(this.splash.points);
+    // leak jets: droplets thrown by the jet, and mist where the plate is torn
+    this.drops = new Particles(2400, { kind: 'drop', additive: false });
+    this.mist = new Particles(500, { kind: 'smoke', additive: false });
+    this.scene.add(this.drops.points); this.scene.add(this.mist.points);
+    this.streakTex = streakTexture();
+    this.streamMat = new THREE.MeshStandardMaterial({ color: 0xd9f2fa, transparent: true, opacity: 0.85, roughness: 0.04, metalness: 0.1,
+      alphaMap: this.streakTex, emissive: 0x16323a, depthWrite: false, side: THREE.DoubleSide });
+    this.sheetMat = new THREE.MeshStandardMaterial({ color: 0xbfe2ee, transparent: true, opacity: 0.55, roughness: 0.05, metalness: 0.1,
+      alphaMap: this.streakTex.clone(), depthWrite: false, side: THREE.DoubleSide });
+    this.sheetMat.alphaMap.needsUpdate = true;
+    this.sheetMat.alphaMap.wrapS = this.sheetMat.alphaMap.wrapT = THREE.RepeatWrapping;
     // expanding ripple rings on the water surface (wading, swimming, leak jets)
     const ringGeo = new THREE.RingGeometry(0.42, 0.5, 40);
     ringGeo.rotateX(-Math.PI / 2);
@@ -537,15 +700,23 @@ export class Interior {
     g.add(crack);
     const r = ROOMS[l.room];
     g.position.set(l.x, l.y, l.z ?? -l.side * (r.halfW - 0.47));
-    const n = 260, geo = new THREE.BufferGeometry(), pos = new Float32Array(n * 3), vel = [];
-    for (let i = 0; i < n; i++) vel.push(new THREE.Vector3());
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const spray = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xd8f3fb, size: 0.07, map: DROP, transparent: true, opacity: 0.8, depthWrite: false }));
-    spray.frustumCulled = false;
-    this.scene.add(g); this.scene.add(spray);
-    const age = new Float32Array(n).map(() => Math.random());
-    this.leakViews.set(l.id, { g, spray, vel, age, leak: l });
+    this.scene.add(g);
+    const inward = -Math.sign(g.position.z) || 1;
+    // the glassy core of the jet, and a sheet of water running down the plating under the crack
+    const stream = new THREE.Mesh(new THREE.BufferGeometry(), this.streamMat);
+    stream.frustumCulled = false; stream.renderOrder = 3;
+    const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 1), this.sheetMat);
+    sheet.rotation.y = inward > 0 ? 0 : Math.PI; sheet.renderOrder = 3;
+    this.scene.add(stream); this.scene.add(sheet);
+    // the crack is ragged: each leak squirts in its own slightly random direction
+    const aim = new THREE.Vector3((Math.random() - 0.5) * 0.35, -0.05 - Math.random() * 0.25, inward).normalize();
+    this.leakViews.set(l.id, { g, leak: l, inward, aim, stream, sheet, speed: -1, acc: 0, mistAcc: 0 });
     this.interactables.push({ pos: g.position.clone(), radius: 1.1, label: 'FIX LEAK (hold E with a wrench)', kind: 'leak', data: l.id });
+  }
+
+  // Jet speed from the sea pressure at our depth (v = sqrt(2 g h), scaled down so it stays playable), and hole size
+  jetSpeed(depth, severity) {
+    return Math.min(11, 2.4 + Math.sqrt(2 * 9.81 * Math.max(0, depth)) * 0.3) * (0.75 + 0.25 * severity);
   }
 
   spawnFire(f) {
@@ -561,7 +732,7 @@ export class Interior {
 
   fixLeakView(l) {
     const v = this.leakViews.get(l.id); if (!v) return;
-    this.scene.remove(v.spray); v.g.clear();
+    this.scene.remove(v.stream); this.scene.remove(v.sheet); v.stream.geometry.dispose(); v.g.clear();
     const patch = this.tpl.patch.clone(); patch.rotation.y = l.side > 0 ? 0 : Math.PI;
     v.g.add(patch);
     this.leakViews.delete(l.id);
@@ -573,29 +744,85 @@ export class Interior {
     const camPos = camera.getWorldPosition(new THREE.Vector3());
     const H = this.renderer.domElement.height;
     for (const p of [this.flames, this.embers, this.smokeFx, this.splash, this.fanFx, this.steamFx, this.bubbles]) p.setScale(H);
-    // leaks: high pressure spray, stronger with depth; splashes where it lands
+    // leaks: a pressurised jet. Core stream -> breaks up into droplets (gravity + air drag) -> splashes; mist at the hole;
+    // water sheeting down the plating; once the hole is under water, a turbulent bubbling plume instead.
+    const G = -9.81;
+    this.streakTex.offset.y -= dt * 4.5;
+    this.sheetMat.alphaMap.offset.y += dt * 1.6;
     for (const v of this.leakViews.values()) {
-      const p = v.spray.geometry.attributes.position, o = v.g.position, inward = -Math.sign(o.z);
-      const speed = 3 + sim.sub.depth / 25;
-      const floor = Math.max(sim.surface(v.leak.room), ROOMS[v.leak.room].floor);
-      for (let i = 0; i < v.age.length; i++) {
-        v.age[i] += dt * (1.2 + Math.random());
-        if (v.age[i] > 1) {
-          v.age[i] = 0;
-          p.array.set([o.x, o.y, o.z], i * 3);
-          v.vel[i].set((Math.random() - 0.5) * 1.2, (Math.random() - 0.3) * 1.5, inward * speed * (0.7 + Math.random() * 0.6));
-        }
-        v.vel[i].y -= 9.8 * dt;
-        p.array[i * 3] += v.vel[i].x * dt; p.array[i * 3 + 1] += v.vel[i].y * dt; p.array[i * 3 + 2] += v.vel[i].z * dt;
-        if (p.array[i * 3 + 1] < floor) {
-          if (sim.water[v.leak.room] > 0.05 && Math.random() < 0.012) this.ripple(p.array[i * 3], floor, p.array[i * 3 + 2], 0.6);
-          if (Math.random() < 0.25) this.splash.emit([p.array[i * 3], floor + 0.01, p.array[i * 3 + 2]], [(Math.random() - 0.5) * 1.4, 1 + Math.random() * 1.5, (Math.random() - 0.5) * 1.4], 0.45, 0.05, 0.02);
-          v.age[i] = 2;
-          p.array[i * 3 + 1] = -100;
-        }
+      const l = v.leak, o = v.g.position, room = ROOMS[l.room];
+      const surface = sim.surface(l.room), floor = Math.max(surface, room.floor);
+      const under = surface > o.y + 0.03;
+      const speed = this.jetSpeed(sim.sub.depth, l.severity);
+      const v0 = v.aim.clone().multiplyScalar(speed);
+      // rebuild the core stream when the pressure changes noticeably
+      if (!under && Math.abs(speed - v.speed) > 0.15) {
+        v.speed = speed;
+        const breakT = Math.min(0.16, (0.55 + l.severity * 0.35) / speed), pts = [];
+        for (let k = 0; k <= 14; k++) { const t = breakT * k / 14; pts.push(new THREE.Vector3(o.x + v0.x * t, o.y + v0.y * t + 0.5 * G * t * t, o.z + v0.z * t)); }
+        v.stream.geometry.dispose();
+        v.stream.geometry = jetGeometry(pts, 0.018 + l.severity * 0.012, 0.032 + l.severity * 0.016);
+        v.breakT = breakT;
       }
-      p.needsUpdate = true;
+      v.stream.visible = !under;
+      // run-off sheet from the crack down to the floor or the water line
+      const sh = Math.max(0.05, o.y - floor - 0.02);
+      v.sheet.visible = sh > 0.08 && !under;
+      v.sheet.scale.set(0.7 + l.severity * 0.4, sh, 1);
+      v.sheet.position.set(o.x, floor + 0.01 + sh / 2, o.z + v.inward * 0.035);
+      if (under) {
+        // flooding in under the water line: a churning plume of bubbles pushing into the room
+        if (Math.random() < dt * 45 * l.severity) {
+          this.bubbles.emit([o.x + (Math.random() - 0.5) * 0.12, o.y + (Math.random() - 0.5) * 0.1, o.z + v.inward * 0.05],
+            [(Math.random() - 0.5) * 0.6, 0.4 + Math.random() * 0.6, v.inward * speed * (0.25 + Math.random() * 0.25)],
+            Math.max(0.4, (surface - o.y) / 0.8), 0.04 + Math.random() * 0.05, 0.09);
+        }
+        if (Math.random() < dt * 4 * l.severity) this.ripple(o.x + (Math.random() - 0.5) * 0.4, surface, o.z + v.inward * (0.3 + Math.random() * 0.5), 0.8);
+        continue;
+      }
+      // droplets: from the hole (a cone) and from where the stream breaks apart (wider spray)
+      v.acc += dt * (260 + 220 * l.severity) * Math.min(1.6, speed / 6);
+      const bt = v.breakT || 0.1;
+      while (v.acc >= 1) {
+        v.acc -= 1;
+        const fromBreak = Math.random() < 0.65, spread = fromBreak ? 0.16 : 0.06, t = fromBreak ? bt : Math.random() * 0.02;
+        const sp = 0.85 + Math.random() * 0.3;
+        const vel = [v0.x * sp + (Math.random() - 0.5) * speed * spread, v0.y * sp + G * t + (Math.random() - 0.5) * speed * spread,
+          v0.z * sp + (Math.random() - 0.5) * speed * spread];
+        const p = [o.x + v0.x * t, o.y + v0.y * t + 0.5 * G * t * t, o.z + v0.z * t];
+        const i = this.drops.emit(p, vel, 2.5, 0.03 + Math.random() * 0.045, 0.04);
+        this.drops.kind[i] = l.room;
+      }
+      v.mistAcc += dt * 40 * l.severity;
+      while (v.mistAcc >= 1) {
+        v.mistAcc -= 1;
+        this.mist.emit([o.x + (Math.random() - 0.5) * 0.1, o.y + (Math.random() - 0.5) * 0.1, o.z + v.inward * 0.06],
+          [(Math.random() - 0.5) * 0.5, (Math.random() - 0.4) * 0.4, v.inward * (0.4 + Math.random() * 0.8)], 1.0 + Math.random() * 0.6, 0.08, 0.55);
+      }
     }
+    // droplet physics: gravity and air drag; they splash on the floor / water or against the far wall
+    const dr = this.drops;
+    dr.update(dt, (i, t) => [0.86, 0.95, 1.0, 0.85], (i, h) => {
+      dr.vel[i * 3 + 1] += G * h;
+      const drag = Math.max(0, 1 - 0.35 * h);
+      dr.vel[i * 3] *= drag; dr.vel[i * 3 + 1] *= drag; dr.vel[i * 3 + 2] *= drag;
+      const r = ROOMS[dr.kind[i]], y = dr.pos[i * 3 + 1], z = dr.pos[i * 3 + 2];
+      if (!r) return;
+      const fl = Math.max(sim.surface(dr.kind[i]), r.floor);
+      const wallHit = Math.abs(z) > r.halfW - 0.32 && Math.sign(dr.vel[i * 3 + 2]) === Math.sign(z);
+      if (y < fl || wallHit) {
+        const px = dr.pos[i * 3];
+        if (Math.random() < 0.2) this.mist.emit([px, Math.max(y, fl) + 0.03, z], [(Math.random() - 0.5) * 0.4, 0.25, (Math.random() - 0.5) * 0.4], 0.45, 0.12, 0.3);
+        if (Math.random() < 0.6) {
+          const k = Math.min(1.5, Math.hypot(dr.vel[i * 3], dr.vel[i * 3 + 1], dr.vel[i * 3 + 2]) * 0.18);
+          this.splash.emit([px, Math.max(y, fl) + 0.01, z], [(Math.random() - 0.5) * 1.6 * k, (0.6 + Math.random() * 1.4) * k, (Math.random() - 0.5) * 1.6 * k - (wallHit ? Math.sign(z) * 0.8 : 0)],
+            0.35 + Math.random() * 0.2, 0.05, 0.02);
+        }
+        if (!wallHit && sim.water[dr.kind[i]] > 0.04 && Math.random() < 0.015) this.ripple(px, fl, z, 0.5);
+        dr.age[i] = 1;
+      }
+    });
+    this.mist.update(dt, (i, t) => [0.92, 0.96, 0.98, Math.sin(t * Math.PI) * 0.22]);
     this.splash.update(dt, (i, t) => [0.85, 0.95, 1.0, 0.7 * (1 - t)], (i) => { this.splash.vel[i * 3 + 1] -= 9.8 * dt; });
     for (const m of this.ripples) {
       if (!m.visible) continue;
@@ -605,7 +832,13 @@ export class Interior {
       m.material.opacity = (1 - u.t) * 0.5;
     }
     const bb = this.bubbles;
-    bb.update(dt, (i, t) => [0.8, 0.95, 1.0, 0.75 * (1 - t * t)], (i, dt2) => { bb.vel[i * 3] += Math.sin(this.time * 11 + i) * dt2 * 0.8; });
+    bb.update(dt, (i, t) => [0.8, 0.95, 1.0, 0.75 * (1 - t * t)], (i, h) => {
+      // water drag slows them, buoyancy lifts them, and they wobble on the way up
+      const d = Math.max(0, 1 - 2.2 * h);
+      bb.vel[i * 3] = bb.vel[i * 3] * d + Math.sin(this.time * 11 + i) * h * 0.8;
+      bb.vel[i * 3 + 2] *= d;
+      bb.vel[i * 3 + 1] = bb.vel[i * 3 + 1] * d + 2.4 * h;
+    });
     // fires: flames, embers and smoke plumes
     const fires = [...this.fireViews.values()];
     fires.sort((a, b) => a.base.distanceTo(camPos) - b.base.distanceTo(camPos));
@@ -792,6 +1025,26 @@ export class Interior {
       if (!p) return;
       ff.vel[i * 3] = (p.x - ff.pos[i * 3]) * 1.6; ff.vel[i * 3 + 1] = (p.y - ff.pos[i * 3 + 1]) * 1.6; ff.vel[i * 3 + 2] = (p.z - ff.pos[i * 3 + 2]) * 1.6;
     });
+    // periscope: the head trains with the bearing (and you with it), compass card, knobs, tag slider, buttons
+    const ps = this.stations.periscope;
+    if (ps) {
+      const P = ps.parts, s = sim.sub;
+      set(P.Head, Y_AXIS, Math.PI / 2 + s.periscopeBearing);
+      set(P.CompassCard, NZ_AXIS, -sim.deg(s.heading + s.periscopeBearing) * Math.PI / 180);
+      set(P.ZoomKnob, NZ_AXIS, (s.periscopeZoom - 1) * 1.2);
+      set(P.TiltKnob, NZ_AXIS, s.periscopePitch * 3.5);
+      if (P.TagSlider) {
+        P.TagSlider.userData.restPos ||= P.TagSlider.position.clone();
+        const want = P.TagSlider.userData.restPos.x + (this.periTag - 1) * 0.0425;
+        P.TagSlider.position.x += (want - P.TagSlider.position.x) * Math.min(1, dt * 14);
+      }
+      for (const [nm, key] of [['MarkButton', 'mark'], ['ClearButton', 'clear']]) {
+        const b = P[nm]; if (!b) continue;
+        b.userData.restPos ||= b.position.clone();
+        b.position.copy(b.userData.restPos);
+        if ((this.pressed?.[key] || 0) > this.time) b.position.z -= 0.007;
+      }
+    }
     // switchboard: breakers up = closed, down = tripped; the main breaker follows the power
     const sb = this.stations.switchboard;
     if (sb) {

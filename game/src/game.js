@@ -12,6 +12,10 @@ const DROP_TEX = () => DROP;
 const $ = (id) => document.getElementById(id);
 const ROLE_FILE = { navigator: 'Navigator', weapons_officer: 'Gunner', torpedo_loader: 'Loader', cook: 'Cook' };
 const PARAMS = new URLSearchParams(location.search);
+// ?capture=1: the page does not run its own loop; a recorder calls __game.tick(dt) once per video frame
+const CAPTURE = PARAMS.has('capture');
+let clockMs = 0;
+const nowMs = () => (CAPTURE ? clockMs : performance.now());
 const EYE = 1.65;
 
 const canvas = $('view');
@@ -87,7 +91,7 @@ async function start(role) {
   if (PARAMS.get('station')) enterStation(PARAMS.get('station'));
   if (PARAMS.get('mode')) player.mode = PARAMS.get('mode');
   if (PARAMS.get('test')) applyTest(PARAMS.get('test'));
-  requestAnimationFrame(loop);
+  if (!CAPTURE) requestAnimationFrame(loop);
 }
 
 let fp = null;
@@ -101,7 +105,7 @@ async function loadHands(role) {
   camera.add(holder);
   rig.traverse((o) => { if (o.isMesh) { o.frustumCulled = false; o.renderOrder = 2; } });
   const bone = (n) => rig.getObjectByName(n);
-  fp = { rig, holder, sides: {} };
+  fp = { rig, holder, sides: {} }; window.__fp = fp;
   for (const [s, sd] of [[1, 'L'], [-1, 'R']]) {
     const up = bone(`UpperArm${sd}`), lo = bone(`LowerArm${sd}`), hand = bone(`Hand${sd}`);
     if (!up) continue;
@@ -204,8 +208,12 @@ function updateHands(dt) {
       poses[side] = h.userData.hand_pose;
       if (stationInput.press && side === 'R') targets[side].add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.03));
     }
+    if (player.station === 'periscope' && periHand.part && nowMs() < periHand.until) {
+      targets.R = periHand.part.getWorldPosition(new THREE.Vector3()).add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(-0.06));
+      poses.R = periHand.pose;
+    }
   }
-  const bob = Math.sin(performance.now() / 160) * (keys.size ? 0.01 : 0.003);
+  const bob = Math.sin(nowMs() / 160) * (keys.size ? 0.01 : 0.003);
   if (player.swim && player.mode === 'walk') {
     // breaststroke: reach forward together, sweep out and back, tuck in, glide
     const moving = ['w', 'a', 's', 'd', ' ', 'c'].some((k) => keys.has(k));
@@ -239,7 +247,7 @@ function updateHands(dt) {
   } else if (fp.torpedo) { camera.remove(fp.torpedo); fp.torpedo = null; }
   if (player.carry === 'wrench') {
     if (!fp.wrench) { fp.wrench = inn.tpl.wrench.clone(); camera.add(fp.wrench); }
-    const turn = player.repairing ? Math.sin(performance.now() / 90) * 0.6 : 0;
+    const turn = player.repairing ? Math.sin(nowMs() / 90) * 0.6 : 0;
     fp.wrench.position.set(0.2, -0.24 + bob, -0.5); fp.wrench.rotation.set(0.2, -1.2 + turn, 0.3);
   } else if (fp.wrench) { camera.remove(fp.wrench); fp.wrench = null; }
   if (player.carry === 'extinguisher') {
@@ -278,7 +286,7 @@ const HELP = {
   helm: ['HELM', 'W / S   engine telegraph (ahead / astern)\nA / D   rudder (hold)    X centre rudder\nC       captain\'s external 3D view\nEsc     leave'],
   chart: ['CHART TABLE', 'The chart shows every contact found by\nperiscope or sonar. Red = warships, green = merchants,\npurple = creatures.\nC external view    Esc leave'],
   ballast: ['BALLAST & DIVE PLANES', 'F  FLOOD tanks (dive)     B  BLOW tanks (surface)\nH  HOLD (close valves)\nW / S  planes rise / dive (hold)    X level planes\nPeriscope depth is ' + PERISCOPE_DEPTH + ' m. Hull limit ' + TEST_DEPTH + ' m.\nEsc leave'],
-  periscope: ['PERISCOPE', 'Mouse / A D  train left & right    W S  tilt\nWheel / Z  zoom      Click / Space  MARK target\nR  raise / lower      Esc  leave'],
+  periscope: ['PERISCOPE', 'A / D or mouse  train left & right (you turn with it)\nW / S  tilt (TILT knob)    Wheel / Z X  zoom (ZOOM knob)\n1-8 or Q / E  move the tag slider\nSpace / Click  MARK the contact in the crosshair\nC  CLEAR that tag    V or right-click  eye to the eyepiece\nR  raise / lower      Esc  leave'],
   sonar: ['SONAR', 'P  active PING (reveals everything, but they hear you)\nN  lock next contact for fire control\nEsc leave'],
   weapons: ['FIRE CONTROL', '1-4  select tube     F  flood / drain tube\nO    open / close outer door\nK    ARM key          G  lift guard\nSPACE  FIRE           N  launch noisemaker (decoy)\nEsc leave'],
   griddle: ['GRIDDLE', 'P  power on / off\nE  put raw food on / take cooked food off\nCook ~8 s. Leave it too long and it burns!\nEsc leave'],
@@ -300,10 +308,7 @@ function enterStation(key) {
   $('stationhelp').textContent = HELP[key][1];
   $('crosshair').classList.add('hidden');
   if (document.pointerLockElement) document.exitPointerLock();
-  if (key === 'periscope') {
-    if (!sim.sub.periscopeUp) sim.togglePeriscope();
-    if (sim.sub.periscopeUp) setTimeout(() => { if (player.station === 'periscope') player.mode = 'scope'; }, 450);
-  }
+  if (key === 'periscope' && !sim.sub.periscopeUp) sim.togglePeriscope();
   if (net) net.claim(key);
   player.swim = false;
 }
@@ -334,8 +339,13 @@ function stationKey(k, down) {
     if (k === 'x') sim.setPlanes(0);
     sound.click();
   } else if (key === 'periscope') {
-    if (k === 'r') { sim.togglePeriscope(); player.mode = sim.sub.periscopeUp ? 'scope' : 'station'; }
-    if (k === ' ') sim.markTarget(s.heading + s.periscopeBearing);
+    if (k === 'r') { sim.togglePeriscope(); if (!sim.sub.periscopeUp) player.mode = 'station'; }
+    if (k === ' ') periscopeMark();
+    if (k === 'c' || k === 'backspace') periscopeClear();
+    if (k.length === 1 && '12345678'.includes(k)) periscopeTag(+k);
+    if (k === 'q') periscopeTag(inn.periTag - 1);
+    if (k === 'e') periscopeTag(inn.periTag + 1);
+    if (k === 'v' && sim.sub.periscopeUp) player.mode = player.mode === 'scope' ? 'station' : 'scope';
   } else if (key === 'sonar') {
     if (k === 'p') sim.sonarPing();
     if (k === 'n') {
@@ -372,13 +382,30 @@ function stationKey(k, down) {
   if (net) net.sendControls();
 }
 
+// periscope controls: tag slider, MARK and CLEAR buttons (the right hand reaches for them)
+const periHand = { part: null, until: 0 };
+function periscopeReach(name, pose = 'press') { periHand.part = inn.stations.periscope?.parts?.[name] || null; periHand.pose = pose; periHand.until = nowMs() + 450; }
+function periscopeTag(n) {
+  inn.periTag = Math.max(1, Math.min(8, n)); periscopeReach('TagSlider', 'pinch'); sound.click();
+}
+function periscopeMark() {
+  const s = sim.sub;
+  if (!s.periscopeUp) return sim.message('Raise the periscope first (R).', 'warn');
+  inn.pressed = { ...inn.pressed, mark: inn.time + 0.2 }; periscopeReach('MarkButton'); sound.clunk();
+  sim.act('tagTarget', inn.periTag, s.heading + s.periscopeBearing);
+}
+function periscopeClear() {
+  inn.pressed = { ...inn.pressed, clear: inn.time + 0.2 }; periscopeReach('ClearButton'); sound.click();
+  sim.act('clearTag', inn.periTag);
+}
+
 // pump levers: each click throws the handle to the other end; a completed throw is one stroke
 function pumpStroke(dir) {
   const key = player.station;
   const L = (inn.levers[key] ||= { target: -0.42, angle: -0.42 });
   const want = dir ? (dir > 0 ? -0.42 : 0.42) : (L.target < 0 ? 0.42 : -0.42);
   if (want === L.target) return;
-  const now = performance.now();
+  const now = nowMs();
   if (now - (L.last || 0) < 170) return;          // the handle has to travel: no machine-gun clicking
   L.last = now;
   L.target = want;
@@ -542,14 +569,16 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); keys.delete(k); if (k === 'e') { player.repairing = null; player.hold = 0; player.spraying = null; player.task = null; } });
 addEventListener('mousemove', (e) => {
-  if (document.pointerLockElement === canvas || player.mode === 'scope' || player.mode === 'bridge' || player.mode === 'chase') { mouseDX += e.movementX; mouseDY += e.movementY; }
+  if (document.pointerLockElement === canvas || player.mode === 'scope' || player.mode === 'bridge' || player.mode === 'chase'
+    || (player.mode === 'station' && player.station === 'periscope' && e.buttons & 1)) { mouseDX += e.movementX; mouseDY += e.movementY; }
 });
 addEventListener('wheel', (e) => { wheel += Math.sign(e.deltaY); });
 canvas.addEventListener('mousedown', (e) => {
   if (player.mode === 'walk' && document.pointerLockElement !== canvas) lockPointer();
   if (player.mode === 'station' && e.button === 0 && (player.station === 'fuel' || player.station?.startsWith('bilge'))) pumpStroke(0);
   if (player.mode === 'station' && e.button === 0 && player.station === 'switchboard') { sim.act('mainBreaker'); sound.clunk(); }
-  if (player.mode === 'scope' && e.button === 0) sim.markTarget(sim.sub.heading + sim.sub.periscopeBearing);
+  if ((player.mode === 'scope' || (player.mode === 'station' && player.station === 'periscope')) && e.button === 0) periscopeMark();
+  if (player.station === 'periscope' && e.button === 2 && sim.sub.periscopeUp) player.mode = player.mode === 'scope' ? 'station' : 'scope';
   if (player.mode === 'bridge' && e.button === 2) ext.look.zoom = true;
 });
 canvas.addEventListener('mouseup', () => { ext.look.zoom = false; });
@@ -572,10 +601,17 @@ function drop() {
 }
 
 // -------------------------------------------------------------------- loop
-let last = performance.now(), monitorTimer = 0, screenTimer = 0;
+let last = nowMs(), monitorTimer = 0, screenTimer = 0;
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  tick(dt);
+  requestAnimationFrame(loop);
+}
+
+// one frame of the game (the recorder calls this directly with a fixed dt)
+function tick(dt) {
+  clockMs += dt * 1000;
   const w = innerWidth, h = innerHeight;
   if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) renderer.setSize(w, h, false);
   camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -596,15 +632,19 @@ function loop(now) {
   if (screenTimer <= 0) { screenTimer = 0.1; inn.drawScreens(sim); }
   monitorTimer -= dt;
   const m = player.mode;
-  if (m === 'scope') { ext.periscopeCamera(sim, w / h); ext.render(); }
+  if (window.__noRender) { updateHud(); return; }      // recorder dry runs: simulate only
+  inn.lensOn.value = sim.sub.periscopeUp ? 1 : 0;
+  if (m === 'station' && player.station === 'periscope' && sim.sub.periscopeUp) {
+    ext.updateTags(sim, true); ext.periscopeCamera(sim, 2.02); ext.render(inn.lensRT); ext.updateTags(sim, false);
+  }
+  if (m === 'scope') { ext.updateTags(sim, true); ext.periscopeCamera(sim, w / h); ext.render(); ext.updateTags(sim, false); }
   else if (m === 'bridge') { ext.bridgeCamera(sim, w / h); ext.render(); }
   else if (m === 'chase') { ext.chaseCamera(sim, w / h); ext.render(); }
   else {
-    if (monitorTimer <= 0) { monitorTimer = 0.3; inn.renderMonitors(ext, sim); }
+    if (monitorTimer <= 0) { monitorTimer = CAPTURE ? 1.5 : 0.3; inn.renderMonitors(ext, sim); }
     renderer.render(inn.scene, camera);
   }
   updateHud();
-  requestAnimationFrame(loop);
 }
 
 // gauges, wheels and other instruments follow the simulation
@@ -635,16 +675,15 @@ function continuousInput(dt) {
     if (keys.has('w')) sim.setPlanes(s.planes + dt * 1.0);
     if (keys.has('s')) sim.setPlanes(s.planes - dt * 1.0);
   }
-  if (player.mode === 'scope') {
+  if (player.mode === 'scope' || (player.mode === 'station' && player.station === 'periscope' && player.transition >= 1)) {
     s.periscopeBearing -= mouseDX * 0.0025 / s.periscopeZoom;
     if (keys.has('a')) s.periscopeBearing += dt * 0.8 / s.periscopeZoom;
     if (keys.has('d')) s.periscopeBearing -= dt * 0.8 / s.periscopeZoom;
     s.periscopePitch = Math.max(-0.35, Math.min(0.5, s.periscopePitch - mouseDY * 0.002 + (keys.has('w') ? dt * 0.4 : 0) - (keys.has('s') ? dt * 0.4 : 0)));
     if (wheel) s.periscopeZoom = Math.max(1, Math.min(6, s.periscopeZoom * (wheel < 0 ? 1.25 : 0.8)));
     if (keys.has('z')) s.periscopeZoom = Math.min(6, s.periscopeZoom + dt * 3);
-    if (!s.periscopeUp) player.mode = 'station';
-    const head = inn.stations.periscope?.parts?.Head;
-    if (head) { head.userData.rest ||= head.quaternion.clone(); head.quaternion.copy(head.userData.rest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), s.periscopeBearing)); }
+    if (keys.has('x')) s.periscopeZoom = Math.max(1, s.periscopeZoom - dt * 3);
+    if (!s.periscopeUp && player.mode === 'scope') player.mode = 'station';
   }
   if (player.mode === 'bridge') {
     ext.look.yaw -= mouseDX * 0.0025; ext.look.pitch = Math.max(-0.6, Math.min(0.6, ext.look.pitch - mouseDY * 0.0025));
@@ -657,7 +696,9 @@ function continuousInput(dt) {
   mouseDX = mouseDY = 0; wheel = 0;
 }
 
+const STATION_FOV = {};
 function updatePlayer(dt) {
+  if (player.mode !== 'station' && camera.fov !== 72) { camera.fov = 72; camera.updateProjectionMatrix(); }
   // hunger / stamina / health
   player.hunger = Math.max(0, player.hunger - dt * 100 / 480);
   const moving = player.mode === 'walk' && ['w', 'a', 's', 'd'].some((k) => keys.has(k));
@@ -700,9 +741,9 @@ function updatePlayer(dt) {
       player.pos.y += (floor - player.pos.y) * Math.min(1, dt * 18);
       if (Math.abs(floor - player.pos.y) < 0.01) player.pos.y = floor;
     }
-    const bob = moving ? Math.sin(performance.now() / (sprint ? 90 : 140)) * (player.swim ? 0.05 : 0.03) : player.swim ? Math.sin(performance.now() / 600) * 0.04 : 0;
+    const bob = moving ? Math.sin(nowMs() / (sprint ? 90 : 140)) * (player.swim ? 0.05 : 0.03) : player.swim ? Math.sin(nowMs() / 600) * 0.04 : 0;
     camera.position.set(player.pos.x, player.pos.y + EYE + bob, player.pos.z);
-    camera.rotation.set(player.pitch, player.yaw, player.swim ? Math.sin(performance.now() / 700) * 0.03 : 0);
+    camera.rotation.set(player.pitch, player.yaw, player.swim ? Math.sin(nowMs() / 700) * 0.03 : 0);
     // fighting a fire
     if (player.spraying) {
       sim.extinguish(player.spraying, dt);
@@ -738,6 +779,8 @@ function updatePlayer(dt) {
     if (st.cam) { st.cam.getWorldPosition(p); st.cam.getWorldQuaternion(q); }
     camera.position.lerpVectors(player.camFrom, p, k);
     camera.quaternion.slerpQuaternions(player.quatFrom, q, k);
+    const fov = STATION_FOV[player.station] || 72;
+    if (Math.abs(camera.fov - (72 + (fov - 72) * k)) > 0.01) { camera.fov = 72 + (fov - 72) * k; camera.updateProjectionMatrix(); }
   } else if (player.mode === 'lie') {
     // on the med bed: look up at the deckhead and heal
     player.transition = Math.min(1, player.transition + dt * 1.5);
@@ -858,13 +901,22 @@ function handleEvents() {
 function flash(color = '#ffffff') { const f = $('flash'); f.style.background = color; f.style.transition = 'none'; f.style.opacity = 0.6; requestAnimationFrame(() => { f.style.transition = 'opacity .6s'; f.style.opacity = 0; }); }
 function pushMessage(text, level = 'info') {
   const d = document.createElement('div'); d.className = level; d.textContent = text;
+  d.dataset.born = nowMs();
+  if (CAPTURE) d.style.animation = 'none';           // the recorder fades them on game time instead
   $('messages').prepend(d);
   while ($('messages').children.length > 5) $('messages').lastChild.remove();
-  setTimeout(() => d.remove(), 7000);
+  if (!CAPTURE) setTimeout(() => d.remove(), 7000);
+}
+function ageMessages() {
+  for (const d of [...$('messages').children]) {
+    const age = nowMs() - +d.dataset.born;
+    if (age > 7000) d.remove(); else if (age > 5600) d.style.opacity = String(1 - (age - 5600) / 1400);
+  }
 }
 
 function updateHud() {
   const s = sim.sub;
+  if (CAPTURE) ageMessages();
   $('stamina').style.width = `${player.stamina}%`;
   $('hunger').style.width = `${player.hunger}%`;
   $('hullbar').style.width = `${s.hull}%`;
@@ -957,6 +1009,13 @@ function applyTest(name) {
   // deterministic scenarios for automated screenshots
   const s = sim.sub;
   if (name === 'leaks') { sim.damage(18, 'Test depth charge', 0.25); player.pos.set(10.5, 0, 0.4); player.yaw = 0; }
+  if (name === 'jet') {   // one leak at depth, seen from across the control room
+    s.depth = 60; s.ballast = 0.5;
+    sim.entities.forEach((e) => { if (e.kind === 'shark') e.alive = false; });
+    const l = { id: sim.nextId++, room: RI.ControlRoom, x: 11.4, y: 1.35, side: 1, z: -2.03, severity: 1.3, fixed: false };
+    sim.leaks.push(l); sim.events.push({ type: 'leak', leak: l });
+    player.pos.set(12.3, 0, 0.9); player.yaw = 0.35; player.pitch = -0.1;
+  }
   if (name === 'flood') {   // the torpedo room deep in water
     sim.doors[5] = false; sim.water[RI.TorpedoRoom] = 2.45; sim.addLeak(RI.TorpedoRoom, 1.0);
     player.pos.set(4.6, -2.9, 0.2); player.yaw = Math.PI / 2;
@@ -980,4 +1039,5 @@ function applyTest(name) {
 
 document.querySelectorAll('#roles button').forEach((b) => b.addEventListener('click', () => start(b.dataset.role)));
 if (PARAMS.get('role')) start(PARAMS.get('role'));
-window.__game = { sim, player, inn, ext, camera, enterStation, leaveStation, interact, keys, pumpStroke, loader, poseAvatar, get net() { return net; } };
+window.__game = { sim, player, inn, ext, camera, enterStation, leaveStation, interact, keys, pumpStroke, loader, poseAvatar, tick, drop, eat,
+  periscopeMark, periscopeClear, periscopeTag, nearest, griddle, get net() { return net; } };
