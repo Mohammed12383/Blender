@@ -10,30 +10,61 @@ the whole set can be rebuilt, restyled or extended from code.
 
 | | |
 |---|---|
-| ![Torpedo room](renders/torpedo_room.png) | ![Crew mess](renders/crew_mess.png) |
-| ![Galley](renders/galley.png) | ![Control room, forward](renders/control_room_fwd.png) |
-| ![Cutaway of the whole boat](renders/cutaway.png) | ![Exterior](renders/exterior.png) |
+| ![Engine room](renders/engine_room.png) | ![Engine room from the aft platform](renders/engine_aft.png) |
+| ![Torpedo room (lower deck)](renders/torpedo_room.png) | ![Stairwell down to the torpedo room](renders/stairwell.png) |
+| ![Engine passage](renders/passageway.png) | ![Battery room and main switchboard](renders/battery_room.png) |
+| ![Forward quarters and sick bay](renders/fwd_quarters.png) | ![Engine control platform](renders/engine_platform.png) |
+| ![Crew mess](renders/crew_mess.png) | ![Galley](renders/galley.png) |
+| ![Control room, forward](renders/control_room_fwd.png) | ![Exterior](renders/exterior.png) |
+| ![Cutaway, upper deck](renders/cutaway.png) | ![Cutaway, lower deck](renders/cutaway_lower.png) |
 
 ![Crew](renders/crew_lineup.png)
 
 ## The boat
 
-Four compartments joined by watertight doors, bow at `x = 0`, stern towards `+X`
-(port = `+Y`, starboard = `-Y`). One unit = 1 metre.
+Eight compartments on two decks, joined by watertight doors and a stairwell. The bow is at `x = 0` and the stern
+towards `+X` (port = `+Y`, starboard = `-Y`). The upper deck floor is at `z = 0` and the lower deck floor at `z = -2.9`.
+One unit is 1 metre.
 
 ```
- bow                                                                                   stern
- ┌──────────────────┬───┬──────────────────────────┬───┬────────────────┬───┬────────────┬───┐
- │ TORPEDO ROOM     │ D │ CONTROL ROOM             │ D │ CREW MESS      │ D │ GALLEY     │ X │
- │ 4 tubes (2x2)    │ o │ periscope · chart table  │ o │ table, stools  │ o │ griddle    │ e │
- │ loading cradle   │ o │ nav console · fire ctrl  │ o │ bunks, lockers │ o │ hood, sink │ n │
- │ racks, hoist     │ r │ sonar · ballast panel    │ r │ coffee, TVs    │ r │ fridge     │ g │
- │                  │   │ ladder + escape hatch    │   │                │   │ shelves    │ . │
- └──────────────────┴───┴──────────────────────────┴───┴────────────────┴───┴────────────┴───┘
- x: 0              7.0 7.3                       16.3 16.6           22.6 22.9        27.4 27.7
+ UPPER DECK (floor z = 0, deckhead 2.9)
+ bow                                                                                                        stern
+ ┌────────────────┬─┬──────────────────────┬─┬──────────────┬─┬───────────┬─┬───────────┬─┬───────────────────────┐
+ │ FWD QUARTERS   │D│ CONTROL ROOM         │D│ CREW MESS    │D│ GALLEY    │D│ PASSAGE   │D│ ENGINE ROOM           │
+ │ bunks          │o│ periscope · chart    │o│ table, bunks │o│ griddle   │o│ grated    │o│ 2 diesels in a pit,   │
+ │ sick bay       │o│ nav console · fire   │o│ coffee, TVs  │o│ fridge    │o│ walkway   │o│ catwalk, motors,      │
+ │ STAIRWELL ▼    │r│ sonar · ballast      │r│              │r│ shelves   │r│ over pipes│r│ aft control platform  │
+ └────────────────┴─┴──────────────────────┴─┴──────────────┴─┴───────────┴─┴───────────┴─┴───────────────────────┘
+ x: 0           7.0 7.3                 16.3 16.6         22.6 22.9     27.4 27.7     31.7 32.0                 44.0
+
+ LOWER DECK (floor z = -2.9, deckhead -0.12)
+ ┌────────────────┬─┬──────────────────────┐
+ │ TORPEDO ROOM   │D│ BATTERY ROOM         │
+ │ 4 tubes, racks │o│ MAIN SWITCHBOARD     │
+ │ stairs ▲       │o│ battery banks, stores│
+ │ bilge pump     │r│ bilge pump           │
+ └────────────────┴─┴──────────────────────┘
+ x: 0           7.0 7.3                 16.3
 ```
 
-Interior cross-section: 5 m wide, 2.9 m to the ceiling. Doorways are 0.9 × 1.8 m with a 12 cm sill.
+Upper cross-section: 5 m wide, 2.9 m to the deckhead. Lower deck: 4.8 m wide, 2.78 m high. Doorways are
+0.9 × 1.8 m with a 12 cm sill. The engine pit is 1.2 m deep (x 32.6–44.0) and the passage pit 0.6 m.
+
+### Ship's systems on the models
+
+| System | Models | Moving parts / interaction points |
+|---|---|---|
+| **Diesels** | `DieselEngineP/S`: 8 cylinders, red rocker covers, copper injector lines, lagged exhaust manifold, turbocharger, bellows uptake, flywheel guard, local gauge panel. `MotorP/S`: motor-generators. `ShaftLine` | `Flywheel` (spins), `CoolantValve`, `OilFiller`, `StartButton`, `StopButton`, `FaultLamp`, gauge needles, `INTERACT_fault_point` (injectors), `CAM_panel` |
+| **Engine controls** | `EngineConsole` with live `screen_engine` | `Start1/2`, `Stop1/2`, `Throttle1/2`, `Fault1/2` lamps, RPM / temp / oil needles, `ChargeAmmeter` |
+| **Fuel** | `FuelStation` (day tank with sight glass, filler, hand transfer pump), `Jerrycan`, `OilCan`, `StoresShelf` | `PumpLever` (rocks ±28°), `FuelLevel` (scale Z = fuel fraction), `FillerCap` |
+| **Bilge** | `BilgePump` ×3 (torpedo room, battery room, engine room) | `Lever` (rocks ±25°), hand targets on the handle |
+| **Smoke extract** | `VentPanel` ×8 (one per room), `DuctFan` ×8 | `FanSwitch`, `Fan` (spins) |
+| **Electrics** | `MainSwitchboard` (mimic bus, meters, 8 knife breakers, MAIN BREAKER), `BatteryBank` ×4 | `BreakerL1–4`, `BreakerR1–4`, `MainBreaker` |
+| **Medical** | `MedicalCabinet`, `MedBed` (rails, IV stand), `FirstAidKit` | cabinet `DoorL/R`, `INTERACT_lie`, `SPAWN_Medical` |
+| **Walkways** | `Stairs` (grated treads, handrails), `PassageCatwalk`, `EngineCatwalk`, `AftPlatform`, railings, `PipeBankA/B` | `INTERACT_bottom` / `INTERACT_top` on the stairs |
+
+`models/nav.json` describes the walkable areas (decks, door openings, the stairs, catwalks, the
+platform, the stairwell opening and the pits) so a game can build its navigation without collision meshes.
 
 ### The four roles
 
@@ -57,10 +88,11 @@ submarine/
     Submarine_Interior.glb   the whole interior in one file
     Submarine_Interior.blend the Blender scene (open in Blender 4.2+ / 5.x)
     rooms/              one GLB per compartment (they snap together; shared world coordinates)
-    props/              every prop on its own, origin at its base (73 props)
+    props/              every prop on its own, origin at its base (about 100 props)
     characters/         4 rigged crew members (Crew_*.glb, T-pose) + first-person arms (FPArms_*.glb)
     exterior/           our sub, enemy sub, frigate, freighter, giant squid and shark (creatures are rigged)
     manifest.json       machine-readable list of props, moving parts and interaction points
+    nav.json            walkable areas of both decks for game navigation
   renders/              the images above, plus renders/props/ (one preview per prop)
   ASSETS.md             human-readable asset list (generated)
 ```
@@ -88,7 +120,7 @@ Conventions the game code can rely on:
 - **Interaction points** are empty nodes named `*_INTERACT_<what>` (for example `NavConsole_INTERACT_operate`,
   `TorpedoTubes_INTERACT_tube3`, `Griddle_INTERACT_cook_slot2`). They mark where a player
   stands, or where an item snaps into place.
-- **Player spawn points**: `SPAWN_Player1` … `SPAWN_Player4` in the control room.
+- **Player spawn points**: `SPAWN_Player1` … `SPAWN_Player4` in the control room, and `SPAWN_Medical` in the sick bay.
 - **Lights** are included as point or spot lights (glTF punctual lights). The red `AlarmBeacon`
   has a `Reflector` node you can spin when the boat goes to battle stations.
 - **Screens** use emissive materials named `screen_*` (`screen_chart`, `screen_sonar`,
@@ -138,7 +170,8 @@ python3.13 -m venv .venv
 
 `build.py` options: `--quick` (fast low-quality renders), `--no-render` (models only),
 `--sheet` (per-prop preview images), `--retex` (regenerate all textures), `--shot=<name>`
-(render one shot only: `control_room`, `torpedo_room`, `crew_mess`, `galley`, `cutaway`, `exterior`).
+(render one shot only: `control_room`, `control_room_fwd`, `torpedo_room`, `stairwell`, `fwd_quarters`, `battery_room`,
+`passageway`, `engine_room`, `engine_aft`, `engine_platform`, `crew_mess`, `galley`, `cutaway`, `cutaway_lower`, `exterior`).
 A full build takes roughly 20–25 minutes on a 4-core CPU, almost all of it rendering. The models alone take about a minute.
 
 Where to change things:
@@ -148,7 +181,10 @@ Where to change things:
 | Colours, wear, posters, screen images, signs | `sublib/tex.py` (then build with `--retex`) |
 | Material colour, roughness and so on | `MATLIB` in `sublib/core.py` |
 | A prop's shape | `sublib/props_*.py` (one function per prop) |
-| Where things go in the rooms, room sizes | `sublib/level.py`, `sublib/shell.py` |
+| Where things go in the rooms, room sizes, decks | `sublib/level.py`, `sublib/shell.py` |
+| Diesels, motors, fuel station, engine console | `sublib/props_engine.py` |
+| Bilge pump, vents, batteries, switchboard, medical | `sublib/props_systems.py` |
+| Stairs, catwalks, gratings, railings, pipe banks | `sublib/props_walkway.py` |
 | The crew (faces, outfits, builds) | `CREW` in `sublib/humans.py` |
 | Wall machinery modules | `sublib/props_machinery.py` |
 | Ships and the outside of the sub | `sublib/exterior.py` |
@@ -156,7 +192,7 @@ Where to change things:
 
 ## Known gaps and next steps
 
-- Collision meshes and LODs aren't included yet.
+- Collision meshes and LODs aren't included yet (`nav.json` covers walking).
 - The escape-trunk hatch in the control-room ceiling is decorative. The ceiling has no hole.
 - Characters have a full skeleton but no baked animations. The game poses arms and fingers procedurally.
 - Exterior: the ocean and sky in `exterior.png` are render-only. The game engine provides its own water.

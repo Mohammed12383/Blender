@@ -11,6 +11,8 @@ const MODELS = '../submarine/models/';
 const LIGHT_POOL = 8;          // real point lights, moved to the lamps nearest the camera
 const FIRE_LIGHTS = 3;
 const Y_AXIS = new THREE.Vector3(0, 1, 0), X_AXIS = new THREE.Vector3(1, 0, 0), NZ_AXIS = new THREE.Vector3(0, 0, -1);
+// GLTFLoader drops the '.' from Blender's duplicate suffixes ("Lever.001" -> "Lever001"): compare base names
+export const baseName = (n) => n.replace(/\d{3}$/, '');
 
 function cloudTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 256;
@@ -68,7 +70,7 @@ export class Interior {
     this.pool = [];
     for (let i = 0; i < LIGHT_POOL; i++) { const l = new THREE.PointLight(0xffffff, 0, 9, 2); this.scene.add(l); this.pool.push(l); }
     this.fireLights = [];
-    for (let i = 0; i < FIRE_LIGHTS; i++) { const l = new THREE.PointLight(0xff7a20, 0, 7, 1.5); this.scene.add(l); this.fireLights.push(l); }
+    for (let i = 0; i < FIRE_LIGHTS; i++) { const l = new THREE.PointLight(0xff6418, 0, 6, 1.8); this.scene.add(l); this.fireLights.push(l); }
     this.indexScene();
     this.setupScreens();
     this.mergeStatic();
@@ -116,7 +118,7 @@ export class Interior {
       const cam = find(root, (o) => o.isCamera && !/back/.test(o.name));
       const hands = all(root, (o) => o.userData && o.userData.interaction === 'hand_target');
       const parts = {};
-      root.traverse((o) => { if (o.userData && (o.userData.interact || o.userData.interaction)) parts[o.name.replace(root.name.split('.')[0] + '_', '')] = o; });
+      root.traverse((o) => { if (o.userData && (o.userData.interact || o.userData.interaction)) parts[baseName(o.name).replace(baseName(root.name) + '_', '')] = o; });
       // hands that work a moving control ride along with it
       for (const h of hands) {
         const ctl = h.userData.control && parts[h.userData.control];
@@ -153,17 +155,17 @@ export class Interior {
     this.vents = [];
     for (const root of byStation.vent || []) {
       const room = this.roomAt(root.position.x, root.position.y);
-      const sw = root.getObjectByName(root.name.split('.')[0] + '_FanSwitch') || find(root, (o) => /FanSwitch/.test(o.name));
+      const sw = find(root, (o) => o.userData && o.userData.interact === 'vent_switch');
       const p = new THREE.Vector3(); (sw || root).getWorldPosition(p);
       this.vents.push({ room, root, sw, rest: sw ? sw.quaternion.clone() : null, k: 0 });
       this.interactables.push({ pos: p, radius: 0.8, label: 'SMOKE EXTRACT fans on / off', kind: 'vent', data: room });
     }
-    this.fans = tops.filter((r) => /^DuctFan/.test(r.name)).map((r) => ({ room: this.roomAt(r.position.x, r.position.y - 2.4), fan: find(r, (o) => /_Fan$/.test(o.name)) }));
+    this.fans = tops.filter((r) => /^DuctFan/.test(r.name)).map((r) => ({ room: this.roomAt(r.position.x, r.position.y - 2.4), fan: find(r, (o) => baseName(o.name).endsWith('_Fan')) }));
     // engines
     this.engines = [];
     for (const [i, re] of [[0, /^DieselEngineP/], [1, /^DieselEngineS/]]) {
       const root = tops.find((r) => re.test(r.name)); if (!root) continue;
-      const part = (n) => find(root, (o) => o.name.endsWith(`_${n}`));
+      const part = (n) => find(root, (o) => baseName(o.name).endsWith(`_${n}`) && !/_HAND_/.test(o.name));
       const v = { root, rest: root.position.clone(), fly: part('Flywheel'), lamp: part('FaultLamp'), valve: part('CoolantValve'),
         gauges: { oil: part('OilGauge'), temp: part('TempGauge'), rpm: part('RpmGauge') }, start: part('StartButton') };
       for (const g of Object.values(v.gauges)) if (g) g.userData.rest = g.quaternion.clone();
@@ -178,21 +180,21 @@ export class Interior {
       if (fault) this.interactables.push({ pos: at(fault), radius: 0.8, label: `Diesel ${i + 1}: INJECTORS (hold E with a wrench)`, kind: 'engine_fault', data: i });
       this.engines.push(v);
     }
-    this.spinners = tops.filter((r) => /^Motor[PS]|^ShaftLine/.test(r.name)).map((r) => ({ root: r, engine: /S(\.|$)/.test(r.name.split('_')[0]) || r.position.z > 0 ? 1 : 0,
-      part: find(r, (o) => /_Shaft$/.test(o.name)) }));
+    this.spinners = tops.filter((r) => /^Motor[PS]|^ShaftLine/.test(r.name)).map((r) => ({ root: r, engine: r.position.z > 0 ? 1 : 0,
+      part: find(r, (o) => baseName(o.name).endsWith('_Shaft')) }));
     // fuel station filler and level glass
     const fuel = this.stations.fuel;
     if (fuel) {
-      const cap = find(fuel.root, (o) => /FillerCap$/.test(o.name));
+      const cap = find(fuel.root, (o) => o.userData && o.userData.interact === 'fuel_filler');
       if (cap) this.interactables.push({ pos: cap.getWorldPosition(new THREE.Vector3()), radius: 0.9, label: 'DAY TANK FILLER (hold E with a jerrycan)', kind: 'filler', data: null });
-      fuel.level = find(fuel.root, (o) => /FuelLevel$/.test(o.name));
+      fuel.level = find(fuel.root, (o) => o.userData && o.userData.interact === 'fuel_level');
     }
     // switchboard breakers
     const sb = this.stations.switchboard;
     if (sb) {
       sb.breakers = [];
-      for (const side of ['L', 'R']) for (let k = 1; k <= 4; k++) { const b = find(sb.root, (o) => o.name.endsWith(`_Breaker${side}${k}`)); sb.breakers.push(b); if (b) b.userData.rest = b.quaternion.clone(); }
-      sb.main = find(sb.root, (o) => /_MainBreaker$/.test(o.name)); if (sb.main) sb.main.userData.rest = sb.main.quaternion.clone();
+      for (const side of ['L', 'R']) for (let k = 1; k <= 4; k++) { const b = find(sb.root, (o) => o.userData?.interact === 'breaker' && baseName(o.name).endsWith(`_Breaker${side}${k}`)); sb.breakers.push(b); if (b) b.userData.rest = b.quaternion.clone(); }
+      sb.main = find(sb.root, (o) => o.userData && o.userData.interact === 'main_breaker'); if (sb.main) sb.main.userData.rest = sb.main.quaternion.clone();
     }
     // console parts
     const ec = this.stations.engines;
@@ -203,8 +205,8 @@ export class Interior {
     this.tubes = [];
     if (tubes) {
       for (let n = 1; n <= 4; n++) {
-        const door = tubes.getObjectByName(`TorpedoTubes_Door${n}`);
-        const wheel = tubes.getObjectByName(`TorpedoTubes_Door${n}Wheel`);
+        const door = find(tubes, (o) => baseName(o.name) === `TorpedoTubes_Door${n}`);
+        const wheel = find(tubes, (o) => baseName(o.name) === `TorpedoTubes_Door${n}Wheel`);
         const p = new THREE.Vector3(); (wheel || door).getWorldPosition(p);
         const hands = all(tubes, (o) => o.userData && o.userData.control === `Door${n}Wheel`);
         const cam = find(tubes, (o) => o.isCamera && o.name.includes(`tube${n}`));
@@ -217,13 +219,13 @@ export class Interior {
       const c = center(r);
       this.interactables.push({ pos: c.setY(floorOf(c) + 0.9), radius: 1.4, label: 'Take TORPEDO from rack', kind: 'rack', data: r });
     }
-    this.rackTorpedoes = tops.filter((o) => /^Torpedo(\.\d+)?$/.test(o.name) && Math.abs(o.position.z) > 1.2);
+    this.rackTorpedoes = tops.filter((o) => /^Torpedo\d*$/.test(o.name) && Math.abs(o.position.z) > 1.2);
     // watertight doors, matched to the simulation's door list by position
     this.doors = DOORS.map(() => null);
     for (const r of tops.filter((o) => /^WatertightDoor|^EngineRoomDoor/.test(o.name))) {
       const i = DOORS.findIndex((d) => Math.abs(r.position.x - (d.x + 0.15)) < 0.3 && Math.abs(r.position.y - d.sill) < 0.5);
       if (i < 0) continue;
-      const leaf = find(r, (o) => /_Leaf$/.test(o.name));
+      const leaf = find(r, (o) => baseName(o.name).endsWith('_Leaf'));
       this.interactables.push({ pos: r.position.clone().setY(DOORS[i].sill + 1.0), radius: 1.0, label: 'Open/close WATERTIGHT DOOR', kind: 'door', data: i });
       this.doors[i] = { root: r, leaf, rest: leaf ? leaf.quaternion.clone() : null, open: 1 };
     }
@@ -237,7 +239,7 @@ export class Interior {
     this.cabinet = tops.find((r) => /^MedicalCabinet/.test(r.name));
     if (this.cabinet) {
       this.cabinet.userData.kits = 3;
-      this.cabinet.userData.doors = all(this.cabinet, (o) => /_Door[LR]$/.test(o.name)).map((d) => ({ d, rest: d.quaternion.clone() }));
+      this.cabinet.userData.doors = all(this.cabinet, (o) => /_Door[LR]$/.test(baseName(o.name))).map((d) => ({ d, rest: d.quaternion.clone() }));
       this.interactables.push({ pos: center(this.cabinet), radius: 1.0, label: 'MEDICAL CABINET: take a first-aid kit', kind: 'medcab', data: this.cabinet });
     }
     const spawn = find(this.root, (o) => /SPAWN_Medical/.test(o.name));
@@ -274,7 +276,8 @@ export class Interior {
     const keep = (o) => {
       for (let p = o; p; p = p.parent) {
         const ud = p.userData || {};
-        if (ud.interact || ud.item || /^Torpedo(\.\d+)?$/.test(p.name) || /Leaf|Door\d|Head$|Joystick|Wheel|^DieselEngine|^Motor[PS]|^ShaftLine|^Jerrycan|^OilCan|^FirstAidKit/.test(p.name)) return true;
+        const n = baseName(p.name || '');
+        if (ud.interact || ud.item || /^Torpedo$/.test(n) || /Leaf|Door\d|Head$|Joystick|Wheel|^DieselEngine|^Motor[PS]|^ShaftLine|^Jerrycan|^OilCan|^FirstAidKit/.test(n)) return true;
       }
       return false;
     };
@@ -450,18 +453,24 @@ export class Interior {
       shader.uniforms.uTime = this.waterTime;
       shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace('#include <begin_vertex>',
         '#include <begin_vertex>\ntransformed.z += sin(position.x * 2.3 + uTime * 1.9) * 0.018 + cos(position.y * 3.1 + uTime * 1.4) * 0.014 + sin((position.x + position.y) * 5.0 + uTime * 3.0) * 0.006;');
+      // clear when you look straight down, mirror-like at a glancing angle (Fresnel), with moving caustic glints
+      shader.fragmentShader = 'uniform float uTime;\n' + shader.fragmentShader.replace('#include <opaque_fragment>',
+        `float fres = pow(1.0 - clamp(abs(dot(normalize(vViewPosition), normal)), 0.0, 1.0), 2.5);
+         diffuseColor.a = mix(0.42, 0.94, fres);
+         outgoingLight *= mix(0.75, 1.15, fres);
+         #include <opaque_fragment>`);
     };
     this.waterTime = { value: 0 };
     this.waterMeshes = ROOMS.map((r) => {
       const g = new THREE.Group();
       const surf = new THREE.Mesh(new THREE.PlaneGeometry(r.x1 - r.x0 + 0.02, r.halfW * 2 - 0.02, 48, 12),
-        new THREE.MeshStandardMaterial({ color: 0x2f8aa0, transparent: true, opacity: 0.72, roughness: 0.04, metalness: 0.2,
-          normalMap: this.normals, normalScale: new THREE.Vector2(0.35, 0.35), side: THREE.DoubleSide, depthWrite: false, envMapIntensity: 1 }));
+        new THREE.MeshStandardMaterial({ color: 0x1a6474, transparent: true, opacity: 0.6, roughness: 0.03, metalness: 0.05,
+          normalMap: this.normals, normalScale: new THREE.Vector2(0.5, 0.5), side: THREE.DoubleSide, depthWrite: false }));
       surf.material.onBeforeCompile = vert;
       surf.rotation.x = -Math.PI / 2;
       surf.renderOrder = 1;
-      const body = new THREE.Mesh(new THREE.BoxGeometry(r.x1 - r.x0, 1, r.halfW * 2 - 0.04),
-        new THREE.MeshBasicMaterial({ color: 0x0d3f4c, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.BackSide }));
+      const body = new THREE.Mesh(new THREE.BoxGeometry(r.x1 - r.x0 - 0.04, 1, r.halfW * 2 - 0.06),
+        new THREE.MeshBasicMaterial({ color: 0x06323d, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.BackSide }));
       body.position.y = -0.5;
       g.add(body); g.add(surf);
       g.position.set((r.x0 + r.x1) / 2, r.bottom, 0); g.visible = false;
@@ -493,8 +502,8 @@ export class Interior {
       return g;
     });
     // fire particle systems (shared, positioned per fire)
-    this.flames = new Particles(900, { kind: 'flame', additive: true });
-    this.embers = new Particles(300, { kind: 'ember', additive: true });
+    this.flames = new Particles(900, { kind: 'flame', premul: true, cover: 0.6 });
+    this.embers = new Particles(300, { kind: 'ember', premul: true, cover: 0.3 });
     this.smokeFx = new Particles(700, { kind: 'smoke', additive: false });
     for (const p of [this.flames, this.embers, this.smokeFx]) this.scene.add(p.points);
     this.fanFx = new Particles(240, { kind: 'smoke', additive: false });
@@ -574,21 +583,23 @@ export class Interior {
       const v = fires[i];
       if (!v) { l.intensity = 0; return; }
       l.position.copy(v.base).add(new THREE.Vector3(0, 0.8, 0));
-      l.intensity = (5 + Math.random() * 5) * Math.max(0.15, v.fire.intensity);
+      l.intensity = (2.2 + Math.random() * 2.2) * Math.max(0.15, v.fire.intensity);
     });
     for (const v of fires) {
       const k = Math.max(0.1, v.fire.intensity), b = v.base, room = ROOMS[v.fire.room];
       const ceil = room.deck === 'lower' ? -0.2 : 2.8;
-      for (let j = 0; j < Math.round(dt * 260 * k); j++) {
-        const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * 0.42 * (0.5 + k * 0.6);
-        this.flames.emit([b.x + Math.cos(a) * r, b.y + Math.random() * 0.1, b.z + Math.sin(a) * r * 0.8],
-          [(Math.random() - 0.5) * 0.3, 0.9 + Math.random() * 0.9 * k, (Math.random() - 0.5) * 0.3], 0.45 + Math.random() * 0.45, 0.5 + 0.5 * k, 0.08);
+      for (let j = 0; j < Math.round(dt * 420 * k + Math.random()); j++) {
+        const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * 0.45 * (0.5 + k * 0.6);
+        const centre = 1 - r / 0.6;                    // tongues in the middle burn taller
+        this.flames.emit([b.x + Math.cos(a) * r, b.y + Math.random() * 0.08, b.z + Math.sin(a) * r * 0.8],
+          [(Math.random() - 0.5) * 0.25, (1.2 + Math.random() * 1.4) * (0.6 + 0.6 * k) * (0.7 + centre * 0.6), (Math.random() - 0.5) * 0.25],
+          0.3 + Math.random() * 0.45, 0.32 + 0.3 * k, 0.04);
       }
       if (Math.random() < dt * 30 * k) this.embers.emit([b.x + (Math.random() - 0.5) * 0.6, b.y + 0.2, b.z + (Math.random() - 0.5) * 0.5],
         [(Math.random() - 0.5) * 0.8, 1.8 + Math.random() * 1.8, (Math.random() - 0.5) * 0.8], 1.2 + Math.random(), 0.07, 0.03);
       for (let j = 0; j < Math.round(dt * 40 * k + Math.random()); j++) {
-        this.smokeFx.emit([b.x + (Math.random() - 0.5) * 0.4, b.y + 0.7 + Math.random() * 0.4, b.z + (Math.random() - 0.5) * 0.4],
-          [(Math.random() - 0.5) * 0.3, 0.7 + Math.random() * 0.5, (Math.random() - 0.5) * 0.3], 4 + Math.random() * 3, 0.5, 2.4);
+        this.smokeFx.emit([b.x + (Math.random() - 0.5) * 0.5, b.y + 0.9 + Math.random() * 0.4, b.z + (Math.random() - 0.5) * 0.5],
+          [(Math.random() - 0.5) * 0.4, 0.6 + Math.random() * 0.5, (Math.random() - 0.5) * 0.4], 4 + Math.random() * 3, 0.45, 2.8);
         this.smokeFx.ceil = ceil;
       }
       v.ceil = ceil;
@@ -596,11 +607,12 @@ export class Interior {
     const t0 = this.time;
     this.flames.update(dt, (i, t) => {
       const w = 1 - t;
-      return [1, 0.82 - t * 0.6, 0.45 - t * 0.42, Math.min(1, t * 6) * w * w * 0.9];
+      const g = t < 0.25 ? 0.78 - t * 0.9 : Math.max(0.08, 0.56 - (t - 0.25) * 0.75);
+      return [1.0 - t * 0.25, g, Math.max(0.0, 0.32 - t * 0.6), Math.min(1, t * 7) * w * 0.95];
     }, (i, dt2) => { const v = this.flames.vel; v[i * 3] += Math.sin(t0 * 9 + i) * dt2 * 1.2; v[i * 3 + 2] += Math.cos(t0 * 7 + i * 1.7) * dt2 * 1.2; });
     this.embers.update(dt, (i, t) => [1, 0.55, 0.15, (1 - t) * (0.6 + Math.random() * 0.4)], (i, dt2) => { const v = this.embers.vel; v[i * 3] += (Math.random() - 0.5) * dt2 * 6; v[i * 3 + 2] += (Math.random() - 0.5) * dt2 * 6; });
     const smk = this.smokeFx;
-    smk.update(dt, (i, t) => [0.13, 0.12, 0.11, Math.min(1, t * 5) * (1 - t) * 0.55], (i, dt2) => {
+    smk.update(dt, (i, t) => [0.16 + t * 0.08, 0.15 + t * 0.08, 0.14 + t * 0.08, Math.min(1, t * 4) * (1 - t) * 0.42], (i, dt2) => {
       // rise, then mushroom out under the deckhead
       const y = smk.pos[i * 3 + 1], c = (y > 0.8 ? 2.8 : -0.2);
       if (y > c - 0.3) { smk.vel[i * 3 + 1] *= 0.8; smk.vel[i * 3] += (Math.random() - 0.5) * dt2 * 3; smk.vel[i * 3 + 2] += (Math.random() - 0.5) * dt2 * 3; }
@@ -613,8 +625,9 @@ export class Interior {
       g.visible = w > 0.015;
       if (!g.visible) return;
       g.position.y = r.bottom + w;
-      g.userData.body.scale.y = Math.max(0.01, w);
-      g.userData.body.position.y = -w / 2;
+      g.userData.body.scale.y = Math.max(0.01, w - 0.02);
+      g.userData.body.position.y = -w / 2 + 0.01;
+      g.userData.body.material.opacity = Math.min(0.66, 0.32 + w * 0.2);
       g.rotation.x = -sim.sub.roll * 0.5;
       g.rotation.z = Math.sin(this.time * 0.6 + i) * 0.004 + sim.sub.pitch * 0.4;
     });
@@ -740,7 +753,7 @@ export class Interior {
     const sb = this.stations.switchboard;
     if (sb) {
       sb.breakers.forEach((b, k) => set(b, X_AXIS, sim.breakers[k] ? 0 : 0.9));
-      set(sb.main, X_AXIS, sim.power ? -0.95 : 0.95);
+      set(sb.main, X_AXIS, sim.power ? 0 : 1.05);
     }
     // medical cabinet doors swing open while someone is close
     if (this.cabinet) {

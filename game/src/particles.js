@@ -38,17 +38,20 @@ void main() {
   #include <fog_vertex>
 }`;
 const FRAG = `
-uniform sampler2D map; varying float vAlpha; varying vec3 vTint;
+uniform sampler2D map; uniform float premul; uniform float cover; varying float vAlpha; varying vec3 vTint;
 #include <fog_pars_fragment>
 void main() {
   vec4 t = texture2D(map, gl_PointCoord);
-  gl_FragColor = vec4(vTint, 1.0) * vec4(1.0, 1.0, 1.0, t.a * vAlpha);
-  if (gl_FragColor.a < 0.003) discard;
+  float a = t.a * vAlpha;
+  if (a < 0.003) discard;
+  gl_FragColor = vec4(vTint, a);
   #include <fog_fragment>
+  // premultiplied: add the glow, and hide part of what is behind (keeps flames orange on bright walls)
+  if (premul > 0.5) gl_FragColor = vec4(gl_FragColor.rgb * a, a * cover);
 }`;
 
 export class Particles {
-  constructor(n, { kind = 'flame', additive = true, fog = true } = {}) {
+  constructor(n, { kind = 'flame', additive = true, fog = true, premul = false, cover = 0.55 } = {}) {
     this.n = n;
     this.pos = new Float32Array(n * 3); this.vel = new Float32Array(n * 3);
     this.age = new Float32Array(n).fill(1); this.life = new Float32Array(n).fill(1);
@@ -60,10 +63,16 @@ export class Particles {
     g.setAttribute('alpha', new THREE.BufferAttribute(this.alpha, 1));
     g.setAttribute('tint', new THREE.BufferAttribute(this.tint, 3));
     this.mat = new THREE.ShaderMaterial({
-      uniforms: { map: { value: tex(kind) }, scale: { value: 420 }, ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog) },
+      uniforms: { map: { value: tex(kind) }, scale: { value: 420 }, premul: { value: premul ? 1 : 0 }, cover: { value: cover },
+        ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog) },
       vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, fog,
-      blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+      blending: premul ? THREE.CustomBlending : additive ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
+    if (premul) {
+      this.mat.blendEquation = THREE.AddEquation;
+      this.mat.blendSrc = THREE.OneFactor; this.mat.blendDst = THREE.OneMinusSrcAlphaFactor;
+      this.mat.blendSrcAlpha = THREE.OneFactor; this.mat.blendDstAlpha = THREE.OneMinusSrcAlphaFactor;
+    }
     this.points = new THREE.Points(g, this.mat);
     this.points.frustumCulled = false;
     this.points.renderOrder = additive ? 4 : 3;

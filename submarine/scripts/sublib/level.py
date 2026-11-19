@@ -337,7 +337,7 @@ def torpedo_room(lib):
     r.put("SupplyCrate", (5.75, 1.9, 0), -2)
     r.stbd("Workbench", 6.15)
     r.put("Toolbox", (5.75, -(w - 0.3), 0.9), 172)
-    r.port("BilgePump", 0.72)
+    r.aft_face("BilgePump", -1.25, 0)
     r.stbd("VentPanel", 2.35, 1.35)
     r.stbd_decal("Sign_Explosive", 3.9, 1.95)
     r.stbd_decal("JunctionBox", 1.6, 2.1)
@@ -347,6 +347,8 @@ def torpedo_room(lib):
     r.aft_face("RoomSign_Battery_Room", 0, 2.25)
     r.fwd_face("RoomSign_Torpedo_Room", 0, 2.45, x=0.0)
     r.keep_clear["port"].append((STAIR_HOLE[0] - 0.4, STAIR_HOLE[1] + 0.4))
+    r.put("SupplyCrate", (0.75, 1.9, 0), 3)
+    r.put("SupplyCrate", (0.75, 1.9, 0.45), -4)
     r.lamps([(1.5, 0.0), (3.6, -0.55), (5.6, -0.6)])
     r.fan(3.2)
     return r

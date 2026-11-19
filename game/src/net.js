@@ -100,7 +100,13 @@ export class Net {
       this.outEvents = [];
     }
     for (const p of this.peers.values()) {
-      this.avatar(p).then((a) => { if (a && a !== 'loading') { a.position.set(p.x ?? 0, (p.y ?? 0) - (p.swim ? 1.1 : 0), p.z ?? 0); a.rotation.y = (p.yaw ?? 0) + Math.PI; } });
+      this.avatar(p).then((a) => {
+        if (!a || a === 'loading') return;
+        // swimmers lie flat in the water and bob; everyone else stands on their deck
+        const t = performance.now() / 1000;
+        a.position.set(p.x ?? 0, (p.y ?? 0) + (p.swim ? 1.15 + Math.sin(t * 2.4 + p.id) * 0.05 : 0), p.z ?? 0);
+        a.rotation.set(p.swim ? -1.25 : 0, (p.yaw ?? 0) + Math.PI, p.swim ? Math.sin(t * 2.4) * 0.12 : 0, 'YXZ');
+      });
     }
   }
 }

@@ -46,6 +46,8 @@ const player = {
 const CARRY_NAMES = { torpedo: 'TORPEDO', wrench: 'WRENCH', extinguisher: 'EXTINGUISHER', fuel_can: 'JERRYCAN', oil_can: 'OIL CAN', first_aid: 'FIRST-AID KIT',
   food_raw: 'RAW STEAK', food_cooked: 'COOKED STEAK', food_burnt: 'BURNT STEAK' };
 const keys = new Set();
+// pointer lock needs a user gesture; never let a refused request become an unhandled error
+const lockPointer = () => { try { const p = canvas.requestPointerLock?.(); if (p && p.catch) p.catch(() => {}); } catch { /* ignore */ } };
 let mouseDX = 0, mouseDY = 0, wheel = 0, clicked = false;
 const griddle = { power: false, slots: [null, null, null, null] };   // {state:'raw'|'cooked'|'burnt', t}
 
@@ -307,12 +309,12 @@ function enterStation(key) {
 }
 
 function leaveStation() {
-  if (player.mode === 'lie') { player.mode = 'walk'; $('crosshair').classList.remove('hidden'); canvas.requestPointerLock?.(); return; }
+  if (player.mode === 'lie') { player.mode = 'walk'; $('crosshair').classList.remove('hidden'); lockPointer(); return; }
   if (player.mode === 'bridge' || player.mode === 'chase') { player.mode = player.station ? 'station' : 'walk'; if (!player.station) $('crosshair').classList.remove('hidden'); return; }
   player.mode = 'walk'; player.station = null;
   $('station').classList.add('hidden'); $('scope').classList.add('hidden');
   $('crosshair').classList.remove('hidden');
-  canvas.requestPointerLock?.();
+  lockPointer();
   if (net) net.claim(null);
 }
 
@@ -376,6 +378,9 @@ function pumpStroke(dir) {
   const L = (inn.levers[key] ||= { target: -0.42, angle: -0.42 });
   const want = dir ? (dir > 0 ? -0.42 : 0.42) : (L.target < 0 ? 0.42 : -0.42);
   if (want === L.target) return;
+  const now = performance.now();
+  if (now - (L.last || 0) < 170) return;          // the handle has to travel: no machine-gun clicking
+  L.last = now;
   L.target = want;
   stationInput.press = true; setTimeout(() => { stationInput.press = false; }, 150);
   setTimeout(() => {
@@ -478,7 +483,8 @@ function interact(it) {
       if (player.carry) return sim.message('Your hands are full (Q to drop).', 'warn');
       if (it.data.userData.kits <= 0) return sim.message('The medical cabinet is empty.', 'warn');
       it.data.userData.kits -= 1;
-      player.carry = 'first_aid'; player.carriedObj = inn.root.children.find((o) => /^FirstAidKit/.test(o.name)) || null;
+      const tpl = inn.root.children.find((o) => /^FirstAidKit/.test(o.name));
+      player.carry = 'first_aid'; player.carriedObj = tpl ? tpl.clone() : null;   // a fresh kit, not one from the shelf
       sim.message(`Took a first-aid kit (${it.data.userData.kits} left). Press F to use it.`);
       break;
     case 'medbed':
@@ -540,7 +546,7 @@ addEventListener('mousemove', (e) => {
 });
 addEventListener('wheel', (e) => { wheel += Math.sign(e.deltaY); });
 canvas.addEventListener('mousedown', (e) => {
-  if (player.mode === 'walk' && document.pointerLockElement !== canvas) canvas.requestPointerLock?.();
+  if (player.mode === 'walk' && document.pointerLockElement !== canvas) lockPointer();
   if (player.mode === 'station' && e.button === 0 && (player.station === 'fuel' || player.station?.startsWith('bilge'))) pumpStroke(0);
   if (player.mode === 'station' && e.button === 0 && player.station === 'switchboard') { sim.act('mainBreaker'); sound.clunk(); }
   if (player.mode === 'scope' && e.button === 0) sim.markTarget(sim.sub.heading + sim.sub.periscopeBearing);
@@ -558,6 +564,7 @@ function drop() {
   if (player.carry === 'torpedo') sim.torpedoStock += 1;
   if (['fuel_can', 'oil_can', 'first_aid'].includes(player.carry) && player.carriedObj) {
     const o = player.carriedObj, item = player.carry;
+    if (!o.parent) inn.scene.add(o);
     o.position.set(player.pos.x + -Math.sin(player.yaw) * 0.5, player.pos.y + 0.01, player.pos.z - Math.cos(player.yaw) * 0.5); o.visible = true;
     inn.interactables.push({ pos: o.position.clone().add(new THREE.Vector3(0, 0.2, 0)), radius: 0.6, label: `Pick up ${CARRY_NAMES[item]}`, kind: 'pickup', data: { obj: o, item } });
   }
@@ -870,6 +877,7 @@ function updateHud() {
     sim.water.some((w) => w > 0.05) ? `<span style="color:#64b5f6">FLOODING ${(sim.floodFraction() * 100).toFixed(0)}% · ${ROOMS.map((r, i) => sim.water[i] > 0.05 ? `${r.label} ${sim.water[i].toFixed(1)}m` : '').filter(Boolean).join(', ')}</span>` : '',
     sim.smoke.some((q) => q > 0.08) ? `<span style="color:#c9b9a0">SMOKE: ${ROOMS.map((r, i) => sim.smoke[i] > 0.08 ? `${r.label} ${(sim.smoke[i] * 100).toFixed(0)}%` : '').filter(Boolean).join(', ')}</span>` : '',
   ].filter(Boolean).join('<br>');
+  $('score').style.top = `${$('status').offsetTop + $('status').offsetHeight + 8}px`;
   $('score').innerHTML = `WAVE ${sim.score.wave} · SHIPS SUNK ${sim.score.sunk}<br><span style="color:#f2ead6;font-weight:500">${objective()}</span>`;
   $('carry').textContent = player.carry ? `CARRYING: ${CARRY_NAMES[player.carry] || player.carry.toUpperCase()} (Q drop${player.carry.startsWith('food_c') || player.carry === 'food_burnt' ? ', F eat' : player.carry === 'first_aid' ? ', F use' : ''})` : '';
   const it = nearest();
@@ -938,8 +946,8 @@ function applyTest(name) {
   // deterministic scenarios for automated screenshots
   const s = sim.sub;
   if (name === 'leaks') { sim.damage(18, 'Test depth charge', 0.25); player.pos.set(10.5, 0, 0.4); player.yaw = 0; }
-  if (name === 'flood') {   // the torpedo room half full of water
-    sim.water[RI.TorpedoRoom] = 1.9; sim.addLeak(RI.TorpedoRoom, 1.0);
+  if (name === 'flood') {   // the torpedo room deep in water
+    sim.doors[5] = false; sim.water[RI.TorpedoRoom] = 2.45; sim.addLeak(RI.TorpedoRoom, 1.0);
     player.pos.set(4.6, -2.9, 0.2); player.yaw = Math.PI / 2;
   }
   if (name === 'engines') { s.depth = 8; s.ballast = 0.42; player.pos.set(42.6, 0, -0.2); player.yaw = Math.PI / 2; }
@@ -961,4 +969,4 @@ function applyTest(name) {
 
 document.querySelectorAll('#roles button').forEach((b) => b.addEventListener('click', () => start(b.dataset.role)));
 if (PARAMS.get('role')) start(PARAMS.get('role'));
-window.__game = { sim, player, inn, ext, enterStation, leaveStation, interact, keys, get net() { return net; } };
+window.__game = { sim, player, inn, ext, camera, enterStation, leaveStation, interact, keys, pumpStroke, get net() { return net; } };
