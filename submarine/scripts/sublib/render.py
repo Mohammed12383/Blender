@@ -144,14 +144,17 @@ def shot(name, loc, target, filepath, lens=20, samples=96, res=(1600, 900)):
     bpy.ops.render.render(write_still=True)
 
 
-def cutaway(rooms, filepath, samples=96, res=(1600, 900)):
-    """Bird's-eye view of the whole level with walls, ceiling and ceiling clutter hidden."""
+def cutaway(rooms, filepath, samples=96, res=(1600, 900), deck="upper"):
+    """Bird's-eye view of one deck with walls, ceiling and ceiling clutter hidden (deck="lower" hides the upper deck)."""
     hidden = []
     for r in rooms:
         for o in r.col.objects:
             n = o.name
             hide = n.endswith(("_Shell_Body", "_Structure")) or "CeilingLamp" in n or "ChainHoist" in n \
-                or "PendantLamp" in n or "CeilingHatch" in n or ("Bulkhead" in n and n.endswith("_Body"))
+                or "PendantLamp" in n or "CeilingHatch" in n or ("Bulkhead" in n and n.endswith("_Body")) \
+                or "DuctFan" in n or (o.parent and "DuctFan" in o.parent.name)
+            if deck == "lower" and getattr(r, "deck", "upper") == "upper":
+                hide = True
             if o.parent and ("CeilingLamp" in o.parent.name or "PendantLamp" in o.parent.name
                              or "ChainHoist" in o.parent.name or "CeilingHatch" in o.parent.name):
                 hide = True
@@ -172,8 +175,12 @@ def cutaway(rooms, filepath, samples=96, res=(1600, 900)):
     if cam.name not in col.objects:
         col.objects.link(cam)
     cam.data.type = "ORTHO"
-    cam.data.ortho_scale = 29.5
-    center = Vector((13.7, 0.0, 0.6))
+    if deck == "lower":
+        cam.data.ortho_scale = 18.5
+        center = Vector((8.0, 0.0, -2.3))
+    else:
+        cam.data.ortho_scale = 46.0
+        center = Vector((21.9, 0.0, 0.4))
     d = Vector((-0.18, 1.0, 1.05)).normalized()
     cam.location = center + d * 40
     cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
@@ -262,7 +269,7 @@ def exterior_shot(rooms, ext, filepath, samples=64, res=(1600, 900)):
     col.objects.link(cam)
     cam.data.lens = 30
     cam.data.clip_end = 3000
-    cam.location = (-27, -31, 4.6)
+    cam.location = (-36, -40, 5.2)
     cam.rotation_euler = (Vector((2.0, 0, 2.4)) - cam.location).to_track_quat("-Z", "Y").to_euler()
     sc = bpy.context.scene
     sc.camera = cam

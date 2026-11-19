@@ -39,7 +39,7 @@ def main():
     log(f"built {len(lib)} props")
     ext = {}
     lib_col = core.collection("Library")
-    for fn in (exterior.submarine, exterior.frigate, exterior.freighter, creatures.enemy_submarine,
+    for fn in (lambda: exterior.submarine(L=50.0), exterior.frigate, exterior.freighter, creatures.enemy_submarine,
                lambda: creatures.giant_squid(lib_col), lambda: creatures.shark(lib_col)):
         root = fn()
         ext[root.name] = root
@@ -93,12 +93,15 @@ def main():
     # crew at their stations (render-only, not part of the room exports)
     for role, loc, rz, pose in [("navigator", (12.0, 0.4, 0), 0, "operate"),
                                 ("weapons_officer", (9.05, 1.4, 0), 180, "operate"),
-                                ("torpedo_loader", (2.45, 0.15, 0), 20, "operate"),
+                                ("torpedo_loader", (2.45, 0.15, level.F), 20, "operate"),
                                 ("cook", (25.35, -1.3, 0), 0, "operate"),
                                 ("navigator", (19.75, 0.75, 0), 110, "wave"),
                                 ("weapons_officer", (18.35, -0.05, 0), 70, "relaxed")]:
         humans.place_copy(cast[role], rc, loc, rz, pose)
     log("level assembled")
+    import json
+    with open(os.path.join(MODELS, "nav.json"), "w") as fh:
+        json.dump(level.nav_data(), fh, indent=1)
 
     everything = []
     for r in rooms:
@@ -119,7 +122,14 @@ def main():
         shots = [
             ("control_room", (15.6, -0.75, 1.7), (9.2, 0.85, 1.0), 17),
             ("control_room_fwd", (7.75, -0.95, 1.7), (13.5, 1.1, 1.0), 17),
-            ("torpedo_room", (6.5, 1.35, 1.65), (0.6, -0.5, 1.15), 17),
+            ("torpedo_room", (6.6, -1.3, level.F + 1.65), (0.6, 0.4, level.F + 1.1), 17),
+            ("stairwell", (2.2, 0.2, 1.75), (5.6, 1.7, -0.9), 17),
+            ("fwd_quarters", (6.5, 0.3, 1.7), (0.8, -1.2, 0.9), 17),
+            ("battery_room", (7.8, -0.9, level.F + 1.65), (15.6, 0.9, level.F + 0.9), 17),
+            ("passageway", (27.9, -0.5, 1.6), (32.5, 0.4, 0.4), 17),
+            ("engine_room", (32.3, -0.35, 1.75), (40.5, 0.3, -0.2), 16),
+            ("engine_aft", (41.9, 1.6, 1.65), (34.5, -1.2, 0.0), 17),
+            ("engine_platform", (40.4, 0.2, 1.6), (44.0, -0.6, 0.8), 17),
             ("crew_mess", (22.2, 1.0, 1.6), (17.6, -0.9, 0.95), 17),
             ("galley", (23.25, 1.35, 1.65), (26.2, -1.75, 1.15), 17),
         ]
@@ -132,6 +142,9 @@ def main():
         if not only or "cutaway" in only:
             render.cutaway(rooms, os.path.join(RENDERS, "cutaway.png"), samples=spp, res=res)
             log("rendered cutaway")
+        if not only or "cutaway_lower" in only:
+            render.cutaway(rooms, os.path.join(RENDERS, "cutaway_lower.png"), samples=spp, res=res, deck="lower")
+            log("rendered lower-deck cutaway")
         if not only or "exterior" in only:
             render.exterior_shot(rooms, ext, os.path.join(RENDERS, "exterior.png"), samples=spp, res=res)
             log("rendered exterior")

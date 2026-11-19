@@ -813,6 +813,36 @@ def iris(name, color, size=512):
     save_rgb(name, col)
 
 
+def red_cross(name="label_red_cross", size=512):
+    if not needed(name):
+        return
+    img = Image.new("RGB", (size, size), (245, 244, 240))
+    d = ImageDraw.Draw(img)
+    a, b = size * 0.36, size * 0.64
+    d.rectangle([a, size * 0.14, b, size * 0.86], fill=(206, 32, 41))
+    d.rectangle([size * 0.14, a, size * 0.86, b], fill=(206, 32, 41))
+    img.save(path(name))
+
+
+def mimic_diagram(name="mimic_bus", w=1024, h=512):
+    """Painted single-line power diagram for the main switchboard."""
+    if not needed(name):
+        return
+    img = Image.new("RGB", (w, h), (196, 200, 192))
+    d = ImageDraw.Draw(img)
+    bus = (40, 80, 160)
+    d.line([(60, 120), (w - 60, 120)], fill=bus, width=10)
+    d.line([(60, 380), (w - 60, 380)], fill=bus, width=10)
+    for k, x in enumerate([150, 330, 510, 690, 870]):
+        d.line([(x, 120), (x, 380)], fill=bus, width=6)
+        d.rectangle([x - 26, 220, x + 26, 280], outline=bus, width=6, fill=(230, 230, 222))
+        d.text((x - 30, 300), ["GEN 1", "GEN 2", "BATT", "MOTOR", "AUX"][k], fill=(30, 30, 30), font=BOLD(26))
+    d.ellipse([110, 30, 190, 110], outline=bus, width=6)
+    d.ellipse([290, 30, 370, 110], outline=bus, width=6)
+    d.text((40, h - 70), "MAIN DC BUS  ·  250 V", fill=(30, 30, 30), font=BOLD(30))
+    img.save(path(name))
+
+
 # ------------------------------------------------------------- generate
 
 def generate_all():
@@ -825,7 +855,7 @@ def generate_all():
         ("paint_teal", "#2f7a7f", 10), ("paint_seafoam", "#8fbcaa", 11), ("paint_cream", "#e7dcc0", 12),
         ("paint_mustard", "#dc9f34", 13), ("paint_red", "#c9412d", 14), ("paint_navy", "#26394f", 15),
         ("paint_graphite", "#3c4146", 16), ("paint_olive", "#5f6b45", 17), ("paint_white", "#eeeae0", 18),
-        ("paint_gray", "#8a9095", 19),
+        ("paint_gray", "#8a9095", 19), ("paint_engine", "#4a6658", 20), ("paint_battery", "#2b2f33", 21),
     ]:
         paint_smooth(nm, c, seed=s)
     diamond_plate()
@@ -849,6 +879,8 @@ def generate_all():
                 boxes=[(50 + k * 238, 330, 210, 120, f"TUBE{k + 1}", k in (0, 2)) for k in range(4)])
     text_screen("screen_ballast", ["DEPTH   042 M", "TRIM    +0.4°", "BALLAST  62 %", "O2      21 %", "HULL    OK"],
                 color="#7dffb0", title="DIVE STATUS")
+    text_screen("screen_engine", ["DIESEL 1  STOPPED", "DIESEL 2  STOPPED", "", "FUEL DAY TANK  80%", "BATTERY  100%"],
+                color="#9effc0", title="ENGINES")
     camera_feed("screen_cam_fwd", "CAM 1  FWD", seed=1)
     camera_feed("screen_cam_aft", "CAM 2  AFT", seed=4, tint="#c8e0d8")
     periscope_display()
@@ -859,8 +891,17 @@ def generate_all():
     for nm, txt in [("navigation", "NAVIGATION"), ("fire_control", "FIRE CONTROL"), ("sonar", "SONAR"),
                     ("periscope", "PERISCOPE"), ("ballast", "BALLAST & TRIM"), ("control_room", "CONTROL ROOM"),
                     ("torpedo_room", "TORPEDO ROOM"), ("crew_mess", "CREW MESS"), ("galley", "GALLEY"),
-                    ("engine_room", "ENGINE ROOM · NO ENTRY")]:
+                    ("engine_room", "ENGINE ROOM"), ("quarters", "FORWARD QUARTERS"), ("battery_room", "BATTERY ROOM"),
+                    ("passage", "ENGINE ROOM PASSAGE"), ("diesel1", "DIESEL 1"), ("diesel2", "DIESEL 2"),
+                    ("bilge", "BILGE PUMP"), ("fuel_transfer", "FUEL TRANSFER PUMP"), ("smoke", "SMOKE EXTRACT"),
+                    ("main_breaker", "MAIN BREAKER"), ("engine_control", "ENGINE CONTROL"), ("switchboard", "MAIN SWITCHBOARD"),
+                    ("medical", "MEDICAL"), ("stores", "STORES"), ("down", "TORPEDO ROOM ▼")]:
         label_plate("label_" + nm, txt)
+    label_plate("label_engine_maker", "DEEPWATER MOTOR WORKS · 8 CYL", fg="#1d1d1f", bg="#c9a24a", w=1024, h=160, font_fn=BOLD)
+    for nm, txt in [("start", "START"), ("stop", "STOP"), ("oil", "OIL"), ("coolant", "COOLANT"), ("fuel", "FUEL")]:
+        label_plate("label_" + nm, txt, fg="#f3ead2", bg="#222426", w=512, h=160, border=False, font_fn=BOLD)
+    red_cross()
+    mimic_diagram()
     for k in range(1, 5):
         label_plate(f"label_tube{k}", str(k), fg="#1d1d1f", bg="#efb81d", w=256, h=256, font_fn=BLACK)
     for nm, txt in [("view", "VIEW"), ("zoom", "ZOOM"), ("fire", "FIRE"), ("arm", "ARM"), ("flood", "FLOOD"),

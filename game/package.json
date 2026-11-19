@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node test/sim.test.mjs"
+    "test": "node test/sim.test.mjs && node test/nav.test.mjs"
   },
   "dependencies": {
     "three": "0.170.0",

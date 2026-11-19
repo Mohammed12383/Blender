@@ -41,7 +41,7 @@ def _split_waterline(bm, levels):
 def submarine(name="SubmarineExterior", L=34.0, Rh=3.0):
     """Teal-and-red cigar hull with sail, deck casing, planes, rudder and a spinning propeller.
 
-    Origin at the waterline (surfaced), bow towards +X. Interior compartments fit inside x -14..14."""
+    Origin at the waterline (surfaced), bow towards +X."""
     p = Prop(name, category="vehicle", note="surfaced: waterline at z=0; submerge by lowering ~3.5 m")
     zc = 0.4  # hull axis height above the waterline when surfaced
     prof = [(0.0, -L / 2), (0.35, -L / 2 + 0.05), (1.1, -L / 2 + 1.5), (2.1, -L / 2 + 4), (2.8, -L / 2 + 7.5),
@@ -52,13 +52,14 @@ def submarine(name="SubmarineExterior", L=34.0, Rh=3.0):
     _split_waterline(hull, [-0.45, -0.2])
     p.add(hull, ["AntiFoul", "BootTop", "HullTeal"], smooth=180, name="hull", uv="keep")
     # deck casing
-    casing = bm_extrude(rrect(22.0, 1.9, 0.9, 8), 0.5)
+    cl = L * 0.65
+    casing = bm_extrude(rrect(cl, 1.9, 0.9, 8), 0.5)
     p.add(casing, "DeckGreen", (1.0, 0, zc + Rh - 0.05), bevel=0.05)
-    for k in range(30):  # limber holes along the casing sides
-        x = -9 + k * 0.7
+    for k in range(int((cl - 4) / 0.7)):  # limber holes along the casing sides
+        x = 1.0 - cl / 2 + 2 + k * 0.7
         for s in (-1, 1):
             p.box((0.35, 0.02, 0.08), (x, s * 0.95, zc + Rh - 0.12), "BootTop", bevel=0)
-    for x in (-6.0, 8.5):
+    for x in (-cl * 0.3, cl * 0.38):
         p.cyl(0.42, 0.12, (x, 0, zc + Rh + 0.26), "HullTeal", segs=32, bevel=0.03)
         p.cyl(0.32, 0.06, (x, 0, zc + Rh + 0.34), "BootTop", segs=32)
     # sail / conning tower
@@ -114,7 +115,8 @@ def submarine(name="SubmarineExterior", L=34.0, Rh=3.0):
         bmesh.ops.rotate(blade, verts=blade.verts, matrix=Matrix.Rotation(R(90), 3, "Y"))
         bmesh.ops.rotate(blade, verts=blade.verts, matrix=Matrix.Rotation(R(b * 60), 3, "X"))
         p.add(blade, "Brass", parent=prop, bevel=0.02, name="blade")
-    p.anchor("interior_origin", (-14.0, 0, zc - 1.45), note="place the interior level here (bow room at +X after a 180° turn)")
+    p.anchor("interior_origin", (L / 2 - 4.0, 0, zc), rot=(0, 0, 180),
+             note="interior level origin (bow bulkhead, upper deck floor); the interior's +X runs aft")
     return p.finish()
 
 

@@ -11,11 +11,17 @@
 </head>
 <body>
 <canvas id="view"></canvas>
+<div id="underwater" class="hidden"></div>
+<div id="smokeveil"></div>
+<div id="hurt"></div>
+<div id="blackout" class="hidden"><p>...</p></div>
 <div id="hud" class="hidden">
   <div id="bars">
+    <div class="bar"><span>HEALTH</span><div class="track"><div id="healthbar" class="fill red"></div></div></div>
     <div class="bar"><span>STAMINA</span><div class="track"><div id="stamina" class="fill blue"></div></div></div>
     <div class="bar"><span>HUNGER</span><div class="track"><div id="hunger" class="fill yellow"></div></div></div>
     <div class="bar"><span>HULL</span><div class="track"><div id="hullbar" class="fill green"></div></div></div>
+    <div class="bar hidden" id="breathrow"><span>BREATH</span><div class="track"><div id="breathbar" class="fill cyan"></div></div></div>
   </div>
   <div id="status"></div>
   <div id="score"></div>
@@ -43,7 +49,7 @@
     <label>Multiplayer server <input id="server" placeholder="ws://host:8080 (empty = solo)"></label>
     <label>Name <input id="pname" value="Sailor"></label>
   </div>
-  <p class="hint">Any role can use any station. WASD move · Shift run · E use · Q drop · Esc leave station · M mute</p>
+  <p class="hint">Any role can use any station. WASD move · Shift run · E use (hold for repairs) · Q drop · F eat / first aid · Space / C swim up / down · Esc leave station · M mute</p>
   <div id="loading"></div>
 </div>
 <div id="lost" class="hidden"><h1>SUBMARINE LOST</h1><p id="lostreason"></p><button onclick="location.reload()">TRY AGAIN</button></div>

@@ -69,6 +69,13 @@ MATLIB = {
     "PaintOlive": dict(tex="paint_olive", normal="paint_peel_n", roughness=0.5, normal_strength=0.35),
     "PaintWhite": dict(tex="paint_white", normal="paint_peel_n", roughness=0.4, normal_strength=0.35),
     "PaintGray": dict(tex="paint_gray", normal="paint_peel_n", roughness=0.45, normal_strength=0.35),
+    "PaintEngine": dict(tex="paint_engine", normal="paint_peel_n", roughness=0.4, normal_strength=0.4),
+    "PaintBattery": dict(tex="paint_battery", normal="paint_peel_n", roughness=0.35, normal_strength=0.3),
+    "Lagging": dict(color="#d6d0c0", roughness=0.95),
+    "FuelAmber": dict(color="#d98a1a", emission=("#ffa020", 1.2), roughness=0.1),
+    "Lead": dict(color="#6e7276", metallic=0.6, roughness=0.5),
+    "IVBag": dict(color="#cfe7f2", roughness=0.15, coat=0.8),
+    "MattressWhite": dict(color="#eef0f2", roughness=0.85),
     # raw materials
     "Steel": dict(color="#9aa1a7", metallic=1.0, roughness=0.32),
     "DarkSteel": dict(color="#4a4f55", metallic=1.0, roughness=0.42),

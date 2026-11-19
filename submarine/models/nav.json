@@ -1,0 +1,189 @@
+{
+ "decks": {
+  "upper": 0.0,
+  "lower": -2.9
+ },
+ "rooms": {
+  "FwdQuarters": {
+   "x0": 0.0,
+   "x1": 7.0,
+   "deck": "upper"
+  },
+  "ControlRoom": {
+   "x0": 7.3,
+   "x1": 16.3,
+   "deck": "upper"
+  },
+  "CrewMess": {
+   "x0": 16.6,
+   "x1": 22.6,
+   "deck": "upper"
+  },
+  "Galley": {
+   "x0": 22.9,
+   "x1": 27.4,
+   "deck": "upper"
+  },
+  "Passageway": {
+   "x0": 27.7,
+   "x1": 31.7,
+   "deck": "upper"
+  },
+  "EngineRoom": {
+   "x0": 32.0,
+   "x1": 44.0,
+   "deck": "upper"
+  },
+  "TorpedoRoom": {
+   "x0": 0.0,
+   "x1": 7.0,
+   "deck": "lower"
+  },
+  "BatteryRoom": {
+   "x0": 7.3,
+   "x1": 16.3,
+   "deck": "lower"
+  }
+ },
+ "doors": [
+  {
+   "between": [
+    "FwdQuarters",
+    "ControlRoom"
+   ],
+   "x": 7.0,
+   "deck": "upper",
+   "w": 1.0
+  },
+  {
+   "between": [
+    "ControlRoom",
+    "CrewMess"
+   ],
+   "x": 16.3,
+   "deck": "upper",
+   "w": 1.0
+  },
+  {
+   "between": [
+    "CrewMess",
+    "Galley"
+   ],
+   "x": 22.6,
+   "deck": "upper",
+   "w": 1.0
+  },
+  {
+   "between": [
+    "Galley",
+    "Passageway"
+   ],
+   "x": 27.4,
+   "deck": "upper",
+   "w": 1.0
+  },
+  {
+   "between": [
+    "Passageway",
+    "EngineRoom"
+   ],
+   "x": 31.7,
+   "deck": "upper",
+   "w": 1.0
+  },
+  {
+   "between": [
+    "TorpedoRoom",
+    "BatteryRoom"
+   ],
+   "x": 7.0,
+   "deck": "lower",
+   "w": 1.0
+  }
+ ],
+ "stairs": [
+  {
+   "name": "Stairs",
+   "bottom": [
+    6.3,
+    1.72,
+    -2.9
+   ],
+   "top": [
+    3.5999999999999996,
+    1.72,
+    0.0
+   ],
+   "width": 1.0,
+   "upper": "FwdQuarters",
+   "lower": "TorpedoRoom"
+  }
+ ],
+ "holes": [
+  {
+   "room": "FwdQuarters",
+   "x0": 3.5,
+   "x1": 6.4,
+   "y0": 1.15,
+   "y1": 2.3
+  }
+ ],
+ "pits": [
+  {
+   "room": "Passageway",
+   "x0": 27.7,
+   "x1": 31.7,
+   "depth": 0.6,
+   "walk": [
+    {
+     "x0": 27.7,
+     "x1": 31.7,
+     "y0": -0.6,
+     "y1": 0.6
+    }
+   ]
+  },
+  {
+   "room": "EngineRoom",
+   "x0": 32.6,
+   "x1": 44.0,
+   "depth": 1.2,
+   "walk": [
+    {
+     "x0": 32.6,
+     "x1": 41.8,
+     "y0": -0.6,
+     "y1": 0.6
+    },
+    {
+     "x0": 41.8,
+     "x1": 44.0,
+     "y0": -2.45,
+     "y1": 2.45
+    }
+   ]
+  }
+ ],
+ "half_w": {
+  "upper": 2.5,
+  "lower": 2.4
+ },
+ "ceil": {
+  "upper": 2.9,
+  "lower": -0.12
+ },
+ "engines": [
+  {
+   "id": 1,
+   "x": 36.1,
+   "y": 1.45,
+   "base": -1.2
+  },
+  {
+   "id": 2,
+   "x": 36.1,
+   "y": -1.45,
+   "base": -1.2
+  }
+ ]
+}

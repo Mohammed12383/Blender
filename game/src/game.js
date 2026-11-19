@@ -1,7 +1,7 @@
 // Deepwater Crew: main game - player, stations, hands, interactions, HUD, audio and the loop.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { Sim, TELEGRAPH_NAMES, ROOMS, PERISCOPE_DEPTH, TEST_DEPTH } from './sim.js';
+import { Sim, TELEGRAPH_NAMES, ROOMS, R as RI, PERISCOPE_DEPTH, TEST_DEPTH, SNORKEL_DEPTH, ENGINE_FAULTS } from './sim.js';
 import { Exterior } from './exterior.js';
 import { Interior } from './interior.js';
 import { Sound } from './sound.js';
@@ -23,6 +23,12 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 const loader = new GLTFLoader();
 
 const sim = new Sim();
+// player actions on shared machinery: run locally (instant feedback) and, as a guest, forward to the host
+sim.act = (fn, ...args) => {
+  const r = sim[fn](...args);
+  if (net && !net.isHost) net.send({ t: 'act', ev: { type: 'call', fn, args } });
+  return r;
+};
 const ext = new Exterior(renderer, loader);
 const inn = new Interior(renderer, loader);
 const sound = new Sound();
@@ -33,10 +39,12 @@ camera.rotation.order = 'YXZ';
 inn.scene.add(camera);
 
 const player = {
-  pos: new THREE.Vector3(14.6, 0, 0.6), yaw: Math.PI / 2, pitch: -0.05, stamina: 100, hunger: 100,
-  carry: null, mode: 'walk', station: null, role: 'navigator', hold: 0, shake: 0, transition: 0,
-  camFrom: new THREE.Vector3(), quatFrom: new THREE.Quaternion(),
+  pos: new THREE.Vector3(14.6, 0, 0.6), yaw: Math.PI / 2, pitch: -0.05, stamina: 100, hunger: 100, health: 100, breath: 100,
+  carry: null, mode: 'walk', station: null, role: 'navigator', hold: 0, shake: 0, transition: 0, swim: false, vy: 0,
+  camFrom: new THREE.Vector3(), quatFrom: new THREE.Quaternion(), carriedObj: null, task: null, down: 0,
 };
+const CARRY_NAMES = { torpedo: 'TORPEDO', wrench: 'WRENCH', extinguisher: 'EXTINGUISHER', fuel_can: 'JERRYCAN', oil_can: 'OIL CAN', first_aid: 'FIRST-AID KIT',
+  food_raw: 'RAW STEAK', food_cooked: 'COOKED STEAK', food_burnt: 'BURNT STEAK' };
 const keys = new Set();
 let mouseDX = 0, mouseDY = 0, wheel = 0, clicked = false;
 const griddle = { power: false, slots: [null, null, null, null] };   // {state:'raw'|'cooked'|'burnt', t}
@@ -119,7 +127,7 @@ async function loadFood() {
 
 // ------------------------------------------------------------ hands (IK)
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
-const CURL = { relax: [0.35, 0.3], grip: [1.15, 0.7], pinch: [0.9, 0.6], press: [1.3, 0.9], palm: [0.08, 0.1], carry: [1.0, 0.6] };
+const CURL = { relax: [0.35, 0.3], grip: [1.15, 0.7], pinch: [0.9, 0.6], press: [1.3, 0.9], palm: [0.08, 0.1], carry: [1.0, 0.6], swim: [0.12, 0.15] };
 
 function aimBone(bone, from, to, childWorld) {
   // rotate `bone` so the direction from its head (from) to childWorld points at `to`
@@ -161,7 +169,7 @@ function solveArm(S, target, pose, dt) {
 }
 
 // Point the hand along the view with the palm facing the control.
-const ROLL = { relax: 0.5, grip: 1.25, pinch: 0.9, press: 0.35, palm: 0.0, carry: Math.PI };
+const ROLL = { relax: 0.5, grip: 1.25, pinch: 0.9, press: 0.35, palm: 0.0, carry: Math.PI, swim: 1.45 };
 function orientHand(S, pose) {
   const fwd = camera.getWorldDirection(new THREE.Vector3());
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
@@ -196,10 +204,28 @@ function updateHands(dt) {
     }
   }
   const bob = Math.sin(performance.now() / 160) * (keys.size ? 0.01 : 0.003);
+  if (player.swim && player.mode === 'walk') {
+    // breaststroke: reach forward together, sweep out and back, tuck in, glide
+    const moving = ['w', 'a', 's', 'd', ' ', 'c'].some((k) => keys.has(k));
+    player.stroke = (player.stroke || 0) + dt * (moving ? 1.25 : 0.45);
+    const ph = player.stroke % 1;
+    const K = [[0.0, 0.06, -0.12, -0.62], [0.35, 0.42, -0.18, -0.48], [0.62, 0.3, -0.36, -0.2], [0.82, 0.1, -0.3, -0.3], [1.0, 0.06, -0.12, -0.62]];
+    let a = K[0], b = K[1];
+    for (let i = 0; i < K.length - 1; i++) if (ph >= K[i][0] && ph <= K[i + 1][0]) { a = K[i]; b = K[i + 1]; }
+    const t = (ph - a[0]) / Math.max(1e-3, b[0] - a[0]), e = t * t * (3 - 2 * t);
+    const x = a[1] + (b[1] - a[1]) * e, y = a[2] + (b[2] - a[2]) * e, z = a[3] + (b[3] - a[3]) * e;
+    targets.L = camLocal(-x, y, z); targets.R = camLocal(x, y, z); poses.L = poses.R = 'swim';
+  }
   if (player.carry === 'torpedo') { targets.L ||= camLocal(-0.22, -0.42 + bob, -0.55); targets.R ||= camLocal(0.22, -0.42 + bob, -0.55); poses.L = poses.R = 'carry'; }
   if (player.carry === 'wrench') { targets.R ||= camLocal(0.24, -0.3 + bob, -0.42); poses.R = 'grip'; }
   if (player.carry && player.carry.startsWith('food')) { targets.L ||= camLocal(-0.2, -0.3 + bob, -0.4); poses.L = 'palm'; }
   if (player.carry === 'extinguisher') { targets.L ||= camLocal(-0.12, -0.36 + bob, -0.5); targets.R ||= camLocal(0.14, -0.3 + bob, -0.48); poses.L = poses.R = 'grip'; }
+  if (player.carry === 'fuel_can' || player.carry === 'oil_can') { targets.R ||= camLocal(0.22, -0.42 + bob, -0.42); poses.R = 'grip'; }
+  if (player.carry === 'first_aid') { targets.L ||= camLocal(-0.2, -0.36 + bob, -0.42); poses.L = 'grip'; }
+  if (player.task) {   // pouring / topping up / fixing: the hand goes to the job
+    const it = player.task.it;
+    if (it) { targets.R = it.pos.clone(); poses.R = 'grip'; if (player.carry === 'fuel_can') targets.L = it.pos.clone().add(new THREE.Vector3(0, 0.1, 0)); }
+  }
   if (player.repairing) targets.R = inn.interactables.find((i) => i.kind === 'leak' && i.data === player.repairing)?.pos.clone() || targets.R;
   targets.L ||= camLocal(-0.32, -0.75, -0.25);
   targets.R ||= camLocal(0.32, -0.75, -0.25);
@@ -231,6 +257,18 @@ function updateHands(dt) {
     if (!fp.food) { fp.food = food[player.carry === 'food_raw' ? 'SteakRaw' : 'SteakCooked'].clone(); camera.add(fp.food); }
     fp.food.position.set(-0.2, -0.27 + bob, -0.42);
   } else if (fp.food) { camera.remove(fp.food); fp.food = null; }
+  // jerrycans, oil cans and first-aid kits: carry the real prop in the hand
+  const held = ['fuel_can', 'oil_can', 'first_aid'].includes(player.carry) ? player.carriedObj : null;
+  if (held !== fp.heldSrc) {
+    if (fp.held) camera.remove(fp.held);
+    fp.held = held ? held.clone() : null; fp.heldSrc = held;
+    if (fp.held) { fp.held.visible = true; fp.held.position.set(0, 0, 0); fp.held.traverse((o) => { if (o.isMesh) { o.renderOrder = 2; o.frustumCulled = false; } }); camera.add(fp.held); }
+  }
+  if (fp.held) {
+    const pour = player.task && (player.task.kind === 'filler' || player.task.kind === 'oil');
+    if (player.carry === 'first_aid') { fp.held.position.set(-0.2, -0.42 + bob, -0.45); fp.held.rotation.set(0.3, 0.4, 0); }
+    else { fp.held.position.set(0.2, -0.62 + bob + (pour ? 0.18 : 0), -0.46); fp.held.rotation.set(pour ? -1.1 : 0, Math.PI * 0.5, pour ? 0.3 : 0); }
+  }
 }
 
 // --------------------------------------------------------------- stations
@@ -244,6 +282,10 @@ const HELP = {
   griddle: ['GRIDDLE', 'P  power on / off\nE  put raw food on / take cooked food off\nCook ~8 s. Leave it too long and it burns!\nEsc leave'],
 };
 for (let n = 1; n <= 4; n++) HELP[`tube${n}`] = [`TUBE ${n} BREECH`, 'E  open / close the breech door\nCarry a torpedo here with the door open to load\nEsc leave'];
+HELP.engines = ['ENGINE CONTROLS', `1 / 2   start / stop DIESEL 1 / 2\nThe diesels charge the battery but need air:\nsurface or snorkel at ${SNORKEL_DEPTH} m or shallower.\nWatch TEMP (coolant valves on the engines),\nOIL (oil cans) and the DAY TANK (fuel pump).\nEsc leave`];
+HELP.fuel = ['FUEL TRANSFER PUMP', 'CLICK (or W / S)  pump the lever up and down\nEvery stroke lifts diesel from the main bunkers\ninto the day tank (sight glass on the left).\nNo fuel left? Pour JERRYCANS into the filler on top.\nEsc leave'];
+HELP.switchboard = ['MAIN SWITCHBOARD', '1 - 8   close / open the breakers\nM or CLICK   MAIN BREAKER (restores power once\n        every tripped breaker is closed)\nEsc leave'];
+for (const r of [RI.TorpedoRoom, RI.BatteryRoom, RI.EngineRoom]) HELP[`bilge${r}`] = [`BILGE PUMP - ${ROOMS[r].label}`, 'CLICK (or W / S)  pump the handle up and down\nEvery stroke lifts water out of this compartment.\nFix the leaks first or you will never keep up!\nEsc leave'];
 const stationInput = { press: false };
 
 function enterStation(key) {
@@ -261,9 +303,11 @@ function enterStation(key) {
     if (sim.sub.periscopeUp) setTimeout(() => { if (player.station === 'periscope') player.mode = 'scope'; }, 450);
   }
   if (net) net.claim(key);
+  player.swim = false;
 }
 
 function leaveStation() {
+  if (player.mode === 'lie') { player.mode = 'walk'; $('crosshair').classList.remove('hidden'); canvas.requestPointerLock?.(); return; }
   if (player.mode === 'bridge' || player.mode === 'chase') { player.mode = player.station ? 'station' : 'walk'; if (!player.station) $('crosshair').classList.remove('hidden'); return; }
   player.mode = 'walk'; player.station = null;
   $('station').classList.add('hidden'); $('scope').classList.add('hidden');
@@ -309,6 +353,13 @@ function stationKey(k, down) {
   } else if (key === 'griddle') {
     if (k === 'p') { griddle.power = !griddle.power; sim.message(griddle.power ? 'Griddle on.' : 'Griddle off.'); }
     if (k === 'e') griddleUse();
+  } else if (key === 'engines') {
+    if (k === '1' || k === '2') { const i = +k - 1; sim.act('toggleEngine', i); inn.pressed = { ...inn.pressed, [`engine${i}`]: inn.time + 0.25 }; sound.click(); }
+  } else if (key === 'fuel' || key.startsWith('bilge')) {
+    if (k === 'w' || k === 's') pumpStroke(k === 'w' ? 1 : -1);
+  } else if (key === 'switchboard') {
+    if ('12345678'.includes(k) && k.length === 1) { const b = +k - 1; sim.act('setBreaker', b, !sim.breakers[b]); sound.clunk(); }
+    if (k === 'm' || k === ' ') { sim.act('mainBreaker'); sound.clunk(); player.shake = 0.3; }
   } else if (key.startsWith('tube')) {
     const n = +key.slice(4);
     if (k === 'e') {
@@ -317,6 +368,22 @@ function stationKey(k, down) {
     }
   }
   if (net) net.sendControls();
+}
+
+// pump levers: each click throws the handle to the other end; a completed throw is one stroke
+function pumpStroke(dir) {
+  const key = player.station;
+  const L = (inn.levers[key] ||= { target: -0.42, angle: -0.42 });
+  const want = dir ? (dir > 0 ? -0.42 : 0.42) : (L.target < 0 ? 0.42 : -0.42);
+  if (want === L.target) return;
+  L.target = want;
+  stationInput.press = true; setTimeout(() => { stationInput.press = false; }, 150);
+  setTimeout(() => {
+    if (key === 'fuel') sim.act('fuelStroke');
+    else sim.act('bilgeStroke', +key.slice(5));
+    sound.pump(key === 'fuel');
+  }, 120);
+  player.stamina = Math.max(0, player.stamina - 0.6);
 }
 
 function griddleUse() {
@@ -388,7 +455,37 @@ function interact(it) {
     case 'coffee': player.stamina = Math.min(100, player.stamina + 40); sim.message('Hot coffee. Stamina up!'); break;
     case 'rest': player.stamina = 100; sim.message('A quick nap. Fully rested.'); break;
     case 'eat': eat(); break;
-    case 'shock': if (!sim.power) sim.resetPower(); else sim.hullShock(); break;
+    case 'shock': sim.hullShock(); break;
+    case 'vent': sim.act('setVent', it.data, !sim.vents[it.data]); sound.clunk(); break;
+    case 'engine_button': sim.act('toggleEngine', it.data); sound.click(); break;
+    case 'coolant': sim.act('setCoolant', it.data, !sim.engines[it.data].coolant); sound.clunk(); break;
+    case 'oil': if (player.carry !== 'oil_can') sim.message('You need an OIL CAN (stores, battery room / engine room).', 'warn'); break;
+    case 'filler': if (player.carry !== 'fuel_can') sim.message('Bring a JERRYCAN to pour into the day tank - or pump fuel up with the transfer pump.', 'warn'); break;
+    case 'engine_fault':
+      if (sim.engines[it.data].fault !== 'injector') sim.message(sim.engines[it.data].fault ? `Diesel ${it.data + 1}: ${ENGINE_FAULTS[sim.engines[it.data].fault]} - no injector work needed.` : `Diesel ${it.data + 1} injectors look fine.`);
+      else if (player.carry !== 'wrench') sim.message('You need a WRENCH to fix the injectors.', 'warn');
+      break;
+    case 'pickup': {
+      if (player.carry) return sim.message('Your hands are full (Q to drop).', 'warn');
+      const { obj, item } = it.data;
+      obj.visible = false; player.carry = item; player.carriedObj = obj;
+      inn.interactables = inn.interactables.filter((q) => q !== it);
+      sim.message({ fuel_can: 'Jerrycan of diesel: pour it into the DAY TANK filler (engine room).', oil_can: 'Oil can: top up a diesel at its OIL FILLER.', first_aid: 'First-aid kit: press F to patch yourself up.' }[item]);
+      break;
+    }
+    case 'medcab':
+      inn.cabinetOpen = inn.time + 2.5;
+      if (player.carry) return sim.message('Your hands are full (Q to drop).', 'warn');
+      if (it.data.userData.kits <= 0) return sim.message('The medical cabinet is empty.', 'warn');
+      it.data.userData.kits -= 1;
+      player.carry = 'first_aid'; player.carriedObj = inn.root.children.find((o) => /^FirstAidKit/.test(o.name)) || null;
+      sim.message(`Took a first-aid kit (${it.data.userData.kits} left). Press F to use it.`);
+      break;
+    case 'medbed':
+      player.mode = 'lie'; player.station = null; player.transition = 0;
+      camera.getWorldPosition(player.camFrom); camera.getWorldQuaternion(player.quatFrom);
+      sim.message('Resting on the med bed... (E or Esc to get up)');
+      break;
     case 'extinguisher':
       if (player.carry) return sim.message('Your hands are full (Q to drop).', 'warn');
       player.carry = 'extinguisher'; sim.message('Fire extinguisher ready: hold E at a fire.');
@@ -403,6 +500,10 @@ function interact(it) {
 }
 
 function eat() {
+  if (player.carry === 'first_aid') {
+    player.health = Math.min(100, player.health + 45); player.carry = null; player.carriedObj = null;
+    sim.message('Patched up with the first-aid kit. +45 health.'); return;
+  }
   if (player.carry === 'food_cooked' || player.carry === 'food_burnt') {
     player.hunger = Math.min(100, player.hunger + (player.carry === 'food_cooked' ? 50 : 20));
     player.carry = null; sim.message('Delicious. Hunger restored.');
@@ -416,26 +517,32 @@ addEventListener('keydown', (e) => {
   if (keys.has(k)) return;
   keys.add(k);
   if (k === 'm') sound.toggle();
-  if (k === 'escape') { leaveStation(); return; }
+  if (player.mode === 'down') return;
+  if (k === 'escape' || (player.mode === 'lie' && k === 'e')) { leaveStation(); return; }
   if (player.mode === 'station' || player.mode === 'scope') { stationKey(k, true); return; }
   if (player.mode === 'walk') {
     if (k === 'e') {
       const it = nearest();
       if (it && it.kind === 'leak' && player.carry === 'wrench') { player.repairing = it.data; player.hold = 0; }
       else if (it && it.kind === 'fire' && player.carry === 'extinguisher') player.spraying = it.data;
+      else if (it && it.kind === 'filler' && player.carry === 'fuel_can') player.task = { kind: 'filler', it, t: 0, need: 2.2 };
+      else if (it && it.kind === 'oil' && player.carry === 'oil_can') player.task = { kind: 'oil', it, t: 0, need: 2.0 };
+      else if (it && it.kind === 'engine_fault' && player.carry === 'wrench' && sim.engines[it.data].fault === 'injector') player.task = { kind: 'injector', it, t: 0, need: 3.0 };
       else interact(it);
     }
     if (k === 'q') drop();
     if (k === 'f') eat();
   }
 });
-addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); keys.delete(k); if (k === 'e') { player.repairing = null; player.hold = 0; player.spraying = null; } });
+addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); keys.delete(k); if (k === 'e') { player.repairing = null; player.hold = 0; player.spraying = null; player.task = null; } });
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement === canvas || player.mode === 'scope' || player.mode === 'bridge' || player.mode === 'chase') { mouseDX += e.movementX; mouseDY += e.movementY; }
 });
 addEventListener('wheel', (e) => { wheel += Math.sign(e.deltaY); });
 canvas.addEventListener('mousedown', (e) => {
   if (player.mode === 'walk' && document.pointerLockElement !== canvas) canvas.requestPointerLock?.();
+  if (player.mode === 'station' && e.button === 0 && (player.station === 'fuel' || player.station?.startsWith('bilge'))) pumpStroke(0);
+  if (player.mode === 'station' && e.button === 0 && player.station === 'switchboard') { sim.act('mainBreaker'); sound.clunk(); }
   if (player.mode === 'scope' && e.button === 0) sim.markTarget(sim.sub.heading + sim.sub.periscopeBearing);
   if (player.mode === 'bridge' && e.button === 2) ext.look.zoom = true;
 });
@@ -445,11 +552,16 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 function drop() {
   if (!player.carry) return;
   if (player.carry === 'wrench' && player.wrenchObj) {
-    player.wrenchObj.position.set(player.pos.x, 0.02, player.pos.z); player.wrenchObj.visible = true;
-    inn.interactables.push({ pos: player.wrenchObj.position.clone().setY(0.1), radius: 0.6, label: 'Pick up WRENCH', kind: 'wrench', data: player.wrenchObj });
+    player.wrenchObj.position.set(player.pos.x, player.pos.y + 0.02, player.pos.z); player.wrenchObj.visible = true;
+    inn.interactables.push({ pos: player.wrenchObj.position.clone().add(new THREE.Vector3(0, 0.08, 0)), radius: 0.6, label: 'Pick up WRENCH', kind: 'wrench', data: player.wrenchObj });
   }
   if (player.carry === 'torpedo') sim.torpedoStock += 1;
-  player.carry = null;
+  if (['fuel_can', 'oil_can', 'first_aid'].includes(player.carry) && player.carriedObj) {
+    const o = player.carriedObj, item = player.carry;
+    o.position.set(player.pos.x + -Math.sin(player.yaw) * 0.5, player.pos.y + 0.01, player.pos.z - Math.cos(player.yaw) * 0.5); o.visible = true;
+    inn.interactables.push({ pos: o.position.clone().add(new THREE.Vector3(0, 0.2, 0)), radius: 0.6, label: `Pick up ${CARRY_NAMES[item]}`, kind: 'pickup', data: { obj: o, item } });
+  }
+  player.carry = null; player.carriedObj = null;
 }
 
 // -------------------------------------------------------------------- loop
@@ -466,7 +578,8 @@ function loop(now) {
   continuousInput(dt);
   updatePlayer(dt);
   handleEvents();
-  inn.update(sim, dt);
+  inn.update(sim, dt, camera);
+  updateEnvironment(dt);
   ext.sync(sim, dt);
   updateGriddle(dt);
   updateHands(dt);
@@ -537,38 +650,77 @@ function continuousInput(dt) {
 }
 
 function updatePlayer(dt) {
-  // hunger / stamina
+  // hunger / stamina / health
   player.hunger = Math.max(0, player.hunger - dt * 100 / 480);
   const moving = player.mode === 'walk' && ['w', 'a', 's', 'd'].some((k) => keys.has(k));
-  const sprint = moving && keys.has('shift') && player.stamina > 5 && player.carry !== 'torpedo';
+  const sprint = moving && !player.swim && keys.has('shift') && player.stamina > 5 && player.carry !== 'torpedo';
   const regen = player.hunger > 0 && sim.sub.oxygen > 15 ? 7 : 1;
-  player.stamina = Math.max(0, Math.min(100, player.stamina + (sprint ? -14 : regen) * dt));
+  player.stamina = Math.max(0, Math.min(100, player.stamina + (sprint ? -14 : player.swim && moving ? -2 : regen) * dt));
+  if (player.mode === 'down') {
+    player.down -= dt;
+    if (player.down <= 0) respawn();
+    return;
+  }
   if (player.mode === 'walk') {
     player.yaw -= mouseDX * 0.0022; player.pitch = Math.max(-1.4, Math.min(1.4, player.pitch - mouseDY * 0.0022));
+    const room = sim.roomAt(player.pos.x, player.pos.y);
+    const surface = room >= 0 ? sim.surface(room) : -99;
+    const depthHere = surface - player.pos.y;             // water above the feet
+    // swim once the water is chest deep (or when there is no floor under us)
+    if (!player.swim && depthHere > 1.25) { player.swim = true; player.vy = 0; sim.message('Swimming! SPACE swim up, C dive. Watch your breath.', 'warn'); }
+    if (player.swim && depthHere < 1.05) player.swim = false;
     let speed = sprint ? 4.6 : 2.6;
     if (player.carry === 'torpedo') speed = 1.5;
     if (player.hunger <= 0) speed *= 0.7;
-    const room = inn.roomAt(player.pos.x);
-    if (room >= 0 && sim.water[room] > 0.4) speed *= 0.6;
+    if (!player.swim && depthHere > 0.3) speed *= Math.max(0.45, 1 - depthHere * 0.5);   // wading
+    if (player.swim) speed = keys.has('shift') && player.stamina > 5 ? 2.2 : 1.5;
     const f = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)), r = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
     const mv = new THREE.Vector3();
     if (keys.has('w')) mv.add(f); if (keys.has('s')) mv.sub(f); if (keys.has('d')) mv.add(r); if (keys.has('a')) mv.sub(r);
-    if (mv.lengthSq()) player.pos.addScaledVector(mv.normalize(), speed * dt);
-    inn.collide(player.pos, 0.28, sim);
-    const bob = moving ? Math.sin(performance.now() / (sprint ? 90 : 140)) * 0.03 : 0;
-    camera.position.set(player.pos.x, EYE + bob, player.pos.z);
-    camera.rotation.set(player.pitch, player.yaw, 0);
+    if (mv.lengthSq()) mv.normalize().multiplyScalar(speed * dt);
+    const floor = inn.nav.move(player.pos, mv.x, mv.z, sim.doors, player.swim);
+    if (player.swim) {
+      // float with the head just out of the water; SPACE swims up, C dives
+      const ceil = inn.nav.ceilingAt(player.pos.x, player.pos.z, player.pos.y);
+      const top = Math.min(surface - EYE + 0.1, ceil - EYE - 0.05);
+      const want = keys.has('c') ? -1.6 : keys.has(' ') ? 1.3 : (top - player.pos.y) * 2.5;
+      player.vy += (want - player.vy) * Math.min(1, dt * 3);
+      player.pos.y += player.vy * dt;
+      player.pos.y = Math.min(player.pos.y, ceil - EYE - 0.05, surface - 0.4);
+      if (floor !== null) player.pos.y = Math.max(player.pos.y, floor);
+    } else if (floor !== null) {
+      player.pos.y += (floor - player.pos.y) * Math.min(1, dt * 18);
+      if (Math.abs(floor - player.pos.y) < 0.01) player.pos.y = floor;
+    }
+    const bob = moving ? Math.sin(performance.now() / (sprint ? 90 : 140)) * (player.swim ? 0.05 : 0.03) : player.swim ? Math.sin(performance.now() / 600) * 0.04 : 0;
+    camera.position.set(player.pos.x, player.pos.y + EYE + bob, player.pos.z);
+    camera.rotation.set(player.pitch, player.yaw, player.swim ? Math.sin(performance.now() / 700) * 0.03 : 0);
     // fighting a fire
     if (player.spraying) {
       sim.extinguish(player.spraying, dt);
       if (net && !net.isHost) net.send({ t: 'act', ev: { type: 'extinguish', id: player.spraying, dt } });
-      if (!sim.fires.some((f) => f.id === player.spraying && !f.out)) player.spraying = null;
+      if (!sim.fires.some((q) => q.id === player.spraying && !q.out)) player.spraying = null;
     }
     // repairing a leak
     if (player.repairing) {
       const it = inn.interactables.find((i) => i.kind === 'leak' && i.data === player.repairing);
       if (!it || it.pos.distanceTo(camera.position) > 2.4) { player.repairing = null; }
       else { player.hold += dt; if (player.hold > 2.5) { sim.fixLeak(player.repairing); player.repairing = null; player.hold = 0; sound.clunk(); } }
+    }
+    // pouring fuel, topping up oil, fixing injectors
+    if (player.task) {
+      const t = player.task;
+      if (t.it.pos.distanceTo(camera.position) > 2.6) player.task = null;
+      else {
+        t.t += dt;
+        if (t.kind === 'filler' && Math.random() < dt * 8) sound.glug();
+        if (t.t >= t.need) {
+          if (t.kind === 'filler') { sim.act('pourFuel', 20); player.carry = null; player.carriedObj = null; }
+          if (t.kind === 'oil') { sim.act('addOil', t.it.data); player.carry = null; player.carriedObj = null; }
+          if (t.kind === 'injector') { sim.act('fixEngine', t.it.data); sound.clunk(); }
+          player.task = null;
+        }
+      }
     }
   } else if (player.mode === 'station' && player.station) {
     const st = inn.stations[player.station];
@@ -578,13 +730,83 @@ function updatePlayer(dt) {
     if (st.cam) { st.cam.getWorldPosition(p); st.cam.getWorldQuaternion(q); }
     camera.position.lerpVectors(player.camFrom, p, k);
     camera.quaternion.slerpQuaternions(player.quatFrom, q, k);
+  } else if (player.mode === 'lie') {
+    // on the med bed: look up at the deckhead and heal
+    player.transition = Math.min(1, player.transition + dt * 1.5);
+    const k = player.transition * player.transition * (3 - 2 * player.transition);
+    const lie = inn.medbed?.userData.lie || new THREE.Vector3(1.35, 0.9, 1.97);
+    const p = lie.clone().add(new THREE.Vector3(0, 0.25, 0));
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(1.35, Math.PI / 2, 0, 'YXZ'));
+    camera.position.lerpVectors(player.camFrom, p, k);
+    camera.quaternion.slerpQuaternions(player.quatFrom, q, k);
+    player.health = Math.min(100, player.health + dt * 12);
+    player.stamina = Math.min(100, player.stamina + dt * 15);
+    if (player.health >= 100 && !player._healedMsg) { player._healedMsg = true; sim.message('Fully healed. Press E to get up.'); }
+    if (player.health < 100) player._healedMsg = false;
   }
+  updateHealth(dt);
   // the boat's motion and explosions shake the view
   player.shake = Math.max(0, player.shake - dt * 1.5);
   if (player.mode === 'walk' || player.mode === 'station') {
     camera.rotation.z += sim.sub.roll * 0.6;
     if (player.shake > 0) { camera.position.x += (Math.random() - 0.5) * player.shake * 0.08; camera.position.y += (Math.random() - 0.5) * player.shake * 0.08; }
   }
+}
+
+// drowning, smoke and flames hurt; food slowly heals
+function updateHealth(dt) {
+  if (player.mode === 'down') return;
+  const eye = camera.getWorldPosition(new THREE.Vector3());
+  const env = inn.envAt(sim, eye);
+  const under = eye.y < env.surface - 0.02;
+  player.underwater = under;
+  player.breath = Math.max(0, Math.min(100, player.breath + (under ? -9 : 30) * dt));
+  let hurt = 0;
+  if (under && player.breath <= 0) hurt += 14;
+  if (env.smoke > 0.35 && !under) hurt += (env.smoke - 0.35) * 16;
+  for (const f of sim.fires) if (!f.out && Math.hypot(f.x - player.pos.x, f.z - player.pos.z) < 1.0 && Math.abs((f.y ?? 0) - player.pos.y) < 1.2) hurt += 10 * f.intensity;
+  if (sim.sub.oxygen < 8) hurt += 2;
+  if (hurt > 0) { player.health -= hurt * dt; player.hurtT = 0.4; }
+  else if (player.hunger > 40 && player.health < 100) player.health = Math.min(100, player.health + dt * 0.4);
+  player.hurtT = Math.max(0, (player.hurtT || 0) - dt);
+  if (player.health <= 0) blackout(under ? 'You drowned' : env.smoke > 0.35 ? 'You passed out in the smoke' : 'You were badly burnt');
+}
+
+function blackout(why) {
+  player.health = 0; player.mode = 'down'; player.down = 4; player.swim = false;
+  player.repairing = player.spraying = player.task = null;
+  if (player.station) { player.station = null; $('station').classList.add('hidden'); $('scope').classList.add('hidden'); }
+  drop();
+  sim.message(`${why}! Your crewmates carry you to the sick bay...`, 'danger');
+  $('blackout').classList.remove('hidden');
+}
+
+function respawn() {
+  const p = inn.medSpawn;
+  player.pos.set(p.x, 0, p.z); player.yaw = Math.PI / 2; player.pitch = -0.1;
+  player.health = 55; player.breath = 100; player.mode = 'walk'; player.vy = 0;
+  $('blackout').classList.add('hidden');
+  sim.message('You wake up in the sick bay. Lie on the MED BED to heal fully.');
+}
+
+// fog from smoke, a blue murk underwater, and the water-line overlay
+const FOG_SMOKE = new THREE.Color(0x2a2724), FOG_WATER = new THREE.Color(0x0d4656), FOG_CLEAR = new THREE.Color(0x0b0f12);
+function updateEnvironment(dt) {
+  const eye = camera.getWorldPosition(new THREE.Vector3());
+  const env = inn.envAt(sim, eye);
+  const under = eye.y < env.surface - 0.02;
+  if (!inn.scene.fog) inn.scene.fog = new THREE.FogExp2(0x0b0f12, 0.01);
+  const fog = inn.scene.fog;
+  if (under) { fog.color.copy(FOG_WATER); fog.density = 0.32; }
+  else {
+    const sm = Math.max(0, env.smoke);
+    fog.color.copy(FOG_CLEAR).lerp(FOG_SMOKE, Math.min(1, sm * 2.5));
+    fog.density = 0.008 + sm * sm * 0.55 + sm * 0.12;
+  }
+  inn.scene.background = fog.color;
+  $('underwater').classList.toggle('hidden', !under);
+  $('smokeveil').style.opacity = under ? 0 : Math.min(0.55, env.smoke * 0.6);
+  sound.setUnderwater(under);
 }
 
 function handleEvents() {
@@ -607,6 +829,9 @@ function handleEvents() {
     if (ev.type === 'enemyLaunch') sound.alarm();
     if (ev.type === 'shock') { flash('#7fd9ff'); sound.zap(); }
     if (ev.type === 'grab') { player.shake = 1.5; sound.boom(0.6); }
+    if (ev.type === 'engineCrank') sound.crank();
+    if (ev.type === 'engineFault') { sound.alarm(); }
+    if (ev.type === 'breaker') sound.clunk();
     if (ev.type === 'lost') { setTimeout(() => { $('lost').classList.remove('hidden'); $('lostreason').textContent = `${ev.reason} Ships sunk: ${sim.score.sunk}.`; document.exitPointerLock?.(); }, 3500); }
     if (net && !ev.remote) net.event(ev);
   }
@@ -625,24 +850,33 @@ function updateHud() {
   $('stamina').style.width = `${player.stamina}%`;
   $('hunger').style.width = `${player.hunger}%`;
   $('hullbar').style.width = `${s.hull}%`;
-  const room = inn.roomAt(player.pos.x);
+  $('healthbar').style.width = `${Math.max(0, player.health)}%`;
+  $('breathrow').classList.toggle('hidden', player.breath >= 99.5 && !player.swim);
+  $('breathbar').style.width = `${player.breath}%`;
+  $('hurt').style.opacity = player.hurtT > 0 ? 0.35 + (1 - player.health / 100) * 0.4 : Math.max(0, (35 - player.health) / 70);
+  const room = sim.roomAt(player.pos.x, player.pos.y);
   const leaks = sim.leaks.filter((l) => !l.fixed);
+  const eng = sim.engines.map((e) => `${e.id}:${e.fault ? '<span style="color:#ff6b5b">FAULT</span>' : e.running ? '<span style="color:#63e08f">RUN</span>' : e.crank ? 'START' : 'OFF'}`).join(' ');
   $('status').innerHTML = [
-    `${room >= 0 ? ROOMS[room].label : 'BULKHEAD'}`,
+    `${room >= 0 ? ROOMS[room].label + (ROOMS[room].deck === 'lower' ? ' · LOWER DECK' : '') : 'BULKHEAD'}`,
     `DEPTH ${s.depth.toFixed(0)} m ${s.depth > TEST_DEPTH ? '<span style="color:#ff6b5b">CRUSH!</span>' : ''} · <span style="color:${(s.belowKeel ?? 99) < 15 ? '#ff6b5b' : 'inherit'}">${(s.belowKeel ?? 0).toFixed(0)} m under keel</span>`,
     `${TELEGRAPH_NAMES[s.telegraph]} · ${s.speed.toFixed(1)} m/s`,
     `HEADING ${sim.deg(s.heading)}° · RUDDER ${s.rudder > 0.05 ? 'PORT' : s.rudder < -0.05 ? 'STBD' : 'MID'}`,
     `BALLAST ${s.valve.toUpperCase()} ${(s.ballast * 100).toFixed(0)}% · PERISCOPE ${s.periscopeUp ? 'UP' : 'DOWN'}`,
-    `BATTERY ${s.battery.toFixed(0)}% · O₂ <span style="color:${s.oxygen < 20 ? '#ff6b5b' : 'inherit'}">${s.oxygen.toFixed(0)}%</span>`,
-    leaks.length ? `<span style="color:#ff6b5b">LEAKS: ${leaks.map((l) => ROOMS[l.room].label).join(', ')}</span>` : 'NO LEAKS',
-    sim.water.some((w) => w > 0.05) ? `<span style="color:#64b5f6">FLOODING ${sim.water.map((w) => w.toFixed(1)).join(' / ')} m</span>` : '',
+    `BATTERY ${s.battery.toFixed(0)}%${s.charging ? ' ⚡' : ''} · O₂ <span style="color:${s.oxygen < 20 ? '#ff6b5b' : 'inherit'}">${s.oxygen.toFixed(0)}%</span>`,
+    `DIESELS ${eng} · FUEL ${sim.fuel.day.toFixed(0)}/${sim.fuel.main.toFixed(0)} L`,
+    sim.power ? '' : '<span style="color:#ff6b5b">NO POWER</span>',
+    leaks.length ? `<span style="color:#ff6b5b">LEAKS: ${[...new Set(leaks.map((l) => ROOMS[l.room].label))].join(', ')}</span>` : 'NO LEAKS',
+    sim.water.some((w) => w > 0.05) ? `<span style="color:#64b5f6">FLOODING ${(sim.floodFraction() * 100).toFixed(0)}% · ${ROOMS.map((r, i) => sim.water[i] > 0.05 ? `${r.label} ${sim.water[i].toFixed(1)}m` : '').filter(Boolean).join(', ')}</span>` : '',
+    sim.smoke.some((q) => q > 0.08) ? `<span style="color:#c9b9a0">SMOKE: ${ROOMS.map((r, i) => sim.smoke[i] > 0.08 ? `${r.label} ${(sim.smoke[i] * 100).toFixed(0)}%` : '').filter(Boolean).join(', ')}</span>` : '',
   ].filter(Boolean).join('<br>');
   $('score').innerHTML = `WAVE ${sim.score.wave} · SHIPS SUNK ${sim.score.sunk}<br><span style="color:#f2ead6;font-weight:500">${objective()}</span>`;
-  $('carry').textContent = player.carry ? `CARRYING: ${player.carry.replace('food_', '').toUpperCase()} (Q drop${player.carry.startsWith('food_c') || player.carry === 'food_burnt' ? ', F eat' : ''})` : '';
+  $('carry').textContent = player.carry ? `CARRYING: ${CARRY_NAMES[player.carry] || player.carry.toUpperCase()} (Q drop${player.carry.startsWith('food_c') || player.carry === 'food_burnt' ? ', F eat' : player.carry === 'first_aid' ? ', F use' : ''})` : '';
   const it = nearest();
   $('prompt').textContent = it ? `[E] ${it.label}` : '';
-  $('progress').classList.toggle('hidden', !player.repairing);
-  $('progressfill').style.width = `${Math.min(100, player.hold / 2.5 * 100)}%`;
+  const prog = player.repairing ? player.hold / 2.5 : player.task ? player.task.t / player.task.need : null;
+  $('progress').classList.toggle('hidden', prog === null);
+  $('progressfill').style.width = `${Math.min(100, (prog || 0) * 100)}%`;
   const scope = player.mode === 'scope';
   $('scope').classList.toggle('hidden', !scope);
   if (scope) {
@@ -651,7 +885,8 @@ function updateHud() {
   }
   $('crosshair').classList.toggle('hidden', player.mode !== 'walk');
   if (net) {
-    const st = { helm: 'HELM', chart: 'CHART', weapons: 'FIRE CONTROL', periscope: 'PERISCOPE', sonar: 'SONAR', ballast: 'BALLAST', griddle: 'GRIDDLE' };
+    const st = { helm: 'HELM', chart: 'CHART', weapons: 'FIRE CONTROL', periscope: 'PERISCOPE', sonar: 'SONAR', ballast: 'BALLAST', griddle: 'GRIDDLE',
+      engines: 'ENGINES', fuel: 'FUEL PUMP', switchboard: 'SWITCHBOARD', bilge5: 'BILGE PUMP', bilge6: 'BILGE PUMP', bilge7: 'BILGE PUMP' };
     $('carry').title = '';
     $('crew').innerHTML = ['<b>CREW</b>', `${$('pname').value} (you) · ${st[player.station] || 'walking'}`,
       ...[...net.peers.values()].map((p) => `${p.name} · ${p.role.replace('_', ' ')} · ${st[p.station] || (p.carry ? 'carrying ' + p.carry : 'walking')}`)].join('<br>');
@@ -677,15 +912,24 @@ const m3d = () => player.mode === 'chase' || player.mode === 'bridge' || player.
 
 function objective() {
   const s = sim.sub;
+  if (player.health < 30) return '▸ You are badly hurt: lie on the MED BED (forward quarters) or use a first-aid kit';
   const fires = sim.fires.filter((f) => !f.out);
   if (fires.length) return `▸ FIRE in the ${ROOMS[fires[0].room].label}: grab an extinguisher`;
-  if (!sim.power) return '▸ Power out: reset the breakers (electrical cabinet, control room)';
+  if (!sim.power) return '▸ Power out: close the tripped breakers + MAIN BREAKER (battery room, lower deck)';
   const open = sim.leaks.filter((l) => !l.fixed);
   if (open.length) return `▸ Fix ${open.length} leak${open.length > 1 ? 's' : ''} with a wrench (${ROOMS[open[0].room].label})`;
+  const wet = ROOMS.map((r, i) => i).filter((i) => sim.water[i] > 0.25).sort((a, b) => sim.water[b] - sim.water[a]);
+  if (wet.length) return `▸ Water in the ${ROOMS[wet[0]].label}: work the BILGE PUMPS (torpedo room, battery room, engine room)`;
+  const smoky = ROOMS.map((r, i) => i).filter((i) => sim.smoke[i] > 0.25 && !sim.vents[i]);
+  if (smoky.length) return `▸ Smoke in the ${ROOMS[smoky[0]].label}: switch on its SMOKE EXTRACT fans`;
   if (sim.entities.some((e) => e.alive && e.attached)) return '▸ Squid on the hull! HULL SHOCK in the control room';
   if (sim.torpedoes.some((t) => t.owner !== 'player')) return '▸ Incoming torpedo: turn hard, noisemaker at fire control';
+  const faulty = sim.engines.find((e) => e.fault || (e.running && !e.coolant));
+  if (faulty) return `▸ Diesel ${faulty.id}: ${faulty.fault === 'injector' ? 'fix the injectors with a wrench' : faulty.fault === 'oil' ? 'top up the oil (oil can)' : faulty.fault === 'overheat' ? 'open the coolant valve and let it cool' : 'open the coolant valve!'}`;
+  if (s.battery < 25 && !sim.engines.some((e) => e.running)) return s.depth > SNORKEL_DEPTH ? `▸ Battery low: rise to ${SNORKEL_DEPTH} m and start the diesels (engine room)` : '▸ Battery low: start the diesels at the ENGINE CONTROLS (engine room)';
+  if (sim.fuel.day < 15) return '▸ Day tank nearly dry: pump fuel up at the FUEL TRANSFER PUMP (engine room)';
   if (player.hunger < 25) return '▸ You are starving: cook and eat (galley)';
-  if (!sim.tubes.some((t) => t.loaded)) return '▸ All tubes empty: reload in the torpedo room';
+  if (!sim.tubes.some((t) => t.loaded)) return '▸ All tubes empty: reload in the torpedo room (lower deck, stairs in the forward quarters)';
   if (!sim.weapons.lock) return s.depth > PERISCOPE_DEPTH ? '▸ Rise to periscope depth (14 m) or use sonar to find targets' : '▸ Find a target: periscope or sonar, then mark it';
   return '▸ Target locked: flood, open door, arm and FIRE at fire control';
 }
@@ -693,7 +937,13 @@ function objective() {
 function applyTest(name) {
   // deterministic scenarios for automated screenshots
   const s = sim.sub;
-  if (name === 'leaks') { sim.damage(18, 'Test depth charge', 0.4); player.pos.set(10.5, 0, 0.4); player.yaw = 0; }
+  if (name === 'leaks') { sim.damage(18, 'Test depth charge', 0.25); player.pos.set(10.5, 0, 0.4); player.yaw = 0; }
+  if (name === 'flood') {   // the torpedo room half full of water
+    sim.water[RI.TorpedoRoom] = 1.9; sim.addLeak(RI.TorpedoRoom, 1.0);
+    player.pos.set(4.6, -2.9, 0.2); player.yaw = Math.PI / 2;
+  }
+  if (name === 'engines') { s.depth = 8; s.ballast = 0.42; player.pos.set(42.6, 0, -0.2); player.yaw = Math.PI / 2; }
+  if (name === 'fire') { sim.addFire(RI.CrewMess); sim.fires[sim.fires.length - 1].intensity = 1; sim.smoke[RI.CrewMess] = 0.5; player.pos.set(17.4, 0, 0.3); player.yaw = -Math.PI / 2; }
   if (name === 'surface') { s.depth = 0; s.ballast = 0.3; }
   if (name === 'deep') { s.depth = 90; s.ballast = 0.5; }
   if (name === 'convoy') {

@@ -7,14 +7,43 @@
 export const TELEGRAPH = { '-2': -3.0, '-1': -1.5, '0': 0, '1': 2.0, '2': 4.0, '3': 6.0, '4': 8.0 };
 export const TELEGRAPH_NAMES = { '-2': 'FULL ASTERN', '-1': 'HALF ASTERN', '0': 'ALL STOP', '1': 'SLOW AHEAD',
   '2': 'HALF AHEAD', '3': 'FULL AHEAD', '4': 'FLANK' };
+// Interior compartments (three.js coordinates: x along the boat from the bow, y up, z = -port).
+// floor = height of the walking surface, bottom = lowest point (pit floor), height = floor-to-deckhead.
+export const LOWER = -2.9;
+const room = (name, label, x0, x1, floor, opts = {}) => {
+  const w = floor < -1 ? 4.8 : 5.0;
+  const bottom = floor - (opts.pit || 0);
+  const height = (floor < -1 ? 2.9 : 2.9) + (opts.pit || 0);
+  return { name, label, x0, x1, floor, bottom, height, area: (x1 - x0) * w, halfW: w / 2, deck: floor < -1 ? 'lower' : 'upper', ...opts };
+};
 export const ROOMS = [
-  { name: 'TorpedoRoom', label: 'TORPEDO ROOM', x0: 0.0, x1: 7.0 },
-  { name: 'ControlRoom', label: 'CONTROL ROOM', x0: 7.3, x1: 16.3 },
-  { name: 'CrewMess', label: 'CREW MESS', x0: 16.6, x1: 22.6 },
-  { name: 'Galley', label: 'GALLEY', x0: 22.9, x1: 27.4 },
+  room('FwdQuarters', 'FORWARD QUARTERS', 0.0, 7.0, 0),
+  room('ControlRoom', 'CONTROL ROOM', 7.3, 16.3, 0),
+  room('CrewMess', 'CREW MESS', 16.6, 22.6, 0),
+  room('Galley', 'GALLEY', 22.9, 27.4, 0),
+  room('Passageway', 'ENGINE PASSAGE', 27.7, 31.7, 0, { pit: 0.6 }),
+  room('EngineRoom', 'ENGINE ROOM', 32.0, 44.0, 0, { pit: 1.2 }),
+  room('TorpedoRoom', 'TORPEDO ROOM', 0.0, 7.0, LOWER),
+  room('BatteryRoom', 'BATTERY ROOM', 7.3, 16.3, LOWER),
 ];
+export const R = Object.fromEntries(ROOMS.map((r, i) => [r.name, i]));
+// watertight doors (index = sim.doors index); x = forward face of the bulkhead plate
+export const DOORS = [
+  { a: R.FwdQuarters, b: R.ControlRoom, x: 7.0, sill: 0 },
+  { a: R.ControlRoom, b: R.CrewMess, x: 16.3, sill: 0 },
+  { a: R.CrewMess, b: R.Galley, x: 22.6, sill: 0 },
+  { a: R.Galley, b: R.Passageway, x: 27.4, sill: 0 },
+  { a: R.Passageway, b: R.EngineRoom, x: 31.7, sill: 0 },
+  { a: R.TorpedoRoom, b: R.BatteryRoom, x: 7.0, sill: LOWER },
+];
+// the open stairwell joins the forward quarters (above) and the torpedo room (below)
+export const STAIRWELL = { upper: R.FwdQuarters, lower: R.TorpedoRoom };
+export const PUMP_ROOMS = [R.TorpedoRoom, R.BatteryRoom, R.EngineRoom];   // rooms with a hand bilge pump
 export const TEST_DEPTH = 180;   // beyond this the hull starts to fail
 export const PERISCOPE_DEPTH = 14;
+export const SNORKEL_DEPTH = 12;  // the diesels need air: surfaced or snorkelling
+export const DAY_TANK = 100;      // litres
+export const ENGINE_FAULTS = { injector: 'injector fault', overheat: 'overheated', oil: 'low oil pressure' };
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -40,11 +69,17 @@ export class Sim {
     this.tubes = [1, 2, 3, 4].map((n) => ({ n, loaded: n <= 2, flooded: false, outerOpen: false, breechOpen: false }));
     this.weapons = { selected: 1, armed: false, guardOpen: false, lock: null, gyro: 0 };
     this.torpedoStock = 6;     // spares in the racks
-    this.water = ROOMS.map(() => 0);   // flood level per room (m)
-    this.doors = [true, true, true];   // watertight doors between rooms (open = water and crew can pass)
+    this.water = ROOMS.map(() => 0);   // flood depth per room above its lowest point (m)
+    this.smoke = ROOMS.map(() => 0);   // smoke density per room 0..1
+    this.vents = ROOMS.map(() => false);   // SMOKE EXTRACT fans per room
+    this.doors = DOORS.map(() => true);    // watertight doors between rooms (open = water, smoke and crew pass)
     this.leaks = [];           // {id, room, x, y, side, severity, fixed}
-    this.fires = [];           // {id, room, x, side, intensity, out}
+    this.fires = [];           // {id, room, x, y, z, intensity, out}
     this.power = true;
+    this.breakers = [true, true, true, true, true, true, true, true];   // switchboard breakers (main = this.power)
+    this.engines = [1, 2].map((id) => ({ id, running: false, crank: 0, rpm: 0, temp: 24, oil: 100, coolant: true, fault: null,
+      faultTimer: rand(120, 260) }));
+    this.fuel = { day: 70, main: 420 };   // litres: engine-room day tank and the main bunkers
     this.contacts = new Map(); // id -> {bearing, range, known, lastSeen}
     this.entities = [];        // ships, subs, creatures
     this.torpedoes = [];       // {id, owner, x, z, depth, heading, speed, life, target, homing}
@@ -150,7 +185,7 @@ export class Sim {
     let heading = s.periscopeUp ? s.heading + s.periscopeBearing : s.heading;   // manual aim: along the periscope
     const target = this.entities.find((e) => e.id === w.lock && e.alive);
     if (target) heading = Math.atan2(-(target.z - s.z), target.x - s.x);
-    const bowX = s.x + Math.cos(s.heading) * 17, bowZ = s.z - Math.sin(s.heading) * 17;
+    const bowX = s.x + Math.cos(s.heading) * 25, bowZ = s.z - Math.sin(s.heading) * 25;
     this.torpedoes.push({ id: this.nextId++, owner: 'player', x: bowX, z: bowZ, depth: Math.max(4, s.depth), heading, speed: 22,
       life: 95, target: target ? target.id : null, homing: target ? 0.25 : 0 });
     s.noise += 2;
@@ -186,6 +221,99 @@ export class Sim {
   }
   toggleDoor(i) { this.doors[i] = !this.doors[i]; this.events.push({ type: 'door', index: i, open: this.doors[i] }); }
 
+  // ------------------------------------------------------------ compartments
+  surface(r) { return ROOMS[r].bottom + this.water[r]; }          // water surface height (y) in a room
+  roomAt(x, y = 0) {
+    const lower = y < -1.45;
+    return ROOMS.findIndex((r) => (r.deck === 'lower') === lower && x >= r.x0 - 0.16 && x <= r.x1 + 0.16);
+  }
+  floodFraction() {
+    let v = 0, vmax = 0;
+    ROOMS.forEach((r, i) => { v += this.water[i] * r.area; vmax += r.height * r.area; });
+    return v / vmax;
+  }
+  bilgeStroke(r) {
+    // one half-stroke of a hand bilge pump lifts ~0.3 m3 of water overboard
+    if (!PUMP_ROOMS.includes(r)) return;
+    this.water[r] = Math.max(0, this.water[r] - 0.3 / ROOMS[r].area);
+    this.events.push({ type: 'stroke', room: r });
+  }
+  setVent(r, on) {
+    this.vents[r] = on;
+    if (on && !this.power) this.message('SMOKE EXTRACT switched on, but there is no power for the fans!', 'warn');
+    else this.message(`Smoke extract ${on ? 'ON' : 'OFF'} in the ${ROOMS[r].label}.`);
+  }
+
+  // --------------------------------------------------------------- engines
+  startEngine(i) {
+    const e = this.engines[i], s = this.sub, n = `Diesel ${e.id}`;
+    if (e.running || e.crank > 0) return false;
+    if (e.fault) { this.message(`${n}: ${ENGINE_FAULTS[e.fault]} - fix it first.`, 'warn'); return false; }
+    if (this.fuel.day <= 0.5) { this.message('Day tank empty! Pump fuel up from the main tanks (fuel transfer pump).', 'warn'); return false; }
+    if (e.oil < 12) { this.message(`${n} is out of oil - top it up with an oil can.`, 'warn'); return false; }
+    if (s.depth > SNORKEL_DEPTH) { this.message(`The diesels need air: rise to snorkel depth (${SNORKEL_DEPTH} m) or surface.`, 'warn'); return false; }
+    e.crank = 2.2;
+    this.events.push({ type: 'engineCrank', id: e.id });
+    return true;
+  }
+  stopEngine(i, why) {
+    const e = this.engines[i];
+    if (!e.running && !e.crank) return;
+    e.running = false; e.crank = 0;
+    this.events.push({ type: 'engineStop', id: e.id });
+    this.message(why ? `Diesel ${e.id} stopped: ${why}` : `Diesel ${e.id} stopped.`, why ? 'warn' : 'info');
+  }
+  toggleEngine(i) { const e = this.engines[i]; if (e.running || e.crank) this.stopEngine(i); else this.startEngine(i); }
+  setCoolant(i, open) {
+    const e = this.engines[i];
+    e.coolant = open;
+    this.message(`Diesel ${e.id} coolant valve ${open ? 'OPEN' : 'SHUT'}.`, open ? 'info' : 'warn');
+  }
+  addOil(i) {
+    const e = this.engines[i];
+    e.oil = 100;
+    if (e.fault === 'oil') e.fault = null;
+    this.message(`Diesel ${e.id} topped up with oil.`);
+  }
+  fixEngine(i) {
+    const e = this.engines[i];
+    if (e.fault === 'injector') { e.fault = null; e.faultTimer = rand(140, 300); this.message(`Diesel ${e.id}: injector fixed. She runs sweet again.`); return true; }
+    return false;
+  }
+  fuelStroke() {
+    // fuel transfer pump: one half-stroke moves 1.5 litres from the main bunkers to the day tank
+    if (this.fuel.main <= 0) { this.message('Main fuel bunkers are dry! Use the jerrycans from the stores.', 'warn'); return; }
+    const q = Math.min(1.5, this.fuel.main, DAY_TANK - this.fuel.day);
+    this.fuel.main -= q; this.fuel.day += q;
+    this.events.push({ type: 'fuelStroke' });
+  }
+  pourFuel(litres = 20) {
+    const q = Math.min(litres, DAY_TANK - this.fuel.day);
+    this.fuel.day += q;
+    this.message(`Poured ${q.toFixed(0)} litres into the day tank.`);
+    return q;
+  }
+
+  // -------------------------------------------------------------- switchboard
+  setBreaker(k, on) {
+    this.breakers[k] = on;
+    this.events.push({ type: 'breaker', k, on });
+  }
+  mainBreaker() {
+    if (this.power) return;
+    const open = this.breakers.map((b, k) => (b ? null : k + 1)).filter(Boolean);
+    if (open.length) { this.message(`Close the tripped breakers first: ${open.join(', ')}.`, 'warn'); return; }
+    this.power = true; this.events.push({ type: 'power', on: true }); this.message('MAIN BREAKER closed - power restored.');
+  }
+  tripPower() {
+    if (!this.power) return;
+    this.power = false;
+    const n = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) this.breakers[Math.floor(Math.random() * 8)] = false;
+    this.events.push({ type: 'power', on: false });
+    this.message('POWER FAILURE! Close the tripped breakers and the MAIN BREAKER (battery room, lower deck).', 'danger');
+  }
+
   reveal(e, ranged) {
     const s = this.sub;
     const c = this.contacts.get(e.id) || {};
@@ -196,32 +324,65 @@ export class Sim {
   }
 
   // ------------------------------------------------------------------ damage
+  roomsAlongHull(t) {
+    // compartments at a fraction t (0 bow .. 1 stern) of the pressure hull
+    const x = Math.max(0, Math.min(1, t)) * 44;
+    const hit = ROOMS.map((r, i) => i).filter((i) => x >= ROOMS[i].x0 - 0.3 && x <= ROOMS[i].x1 + 0.3);
+    return hit.length ? hit : [R.ControlRoom];
+  }
   damage(amount, source, hitAlongHull = Math.random()) {
     const s = this.sub;
     if (s.lost) return;
     s.hull = Math.max(0, s.hull - amount);
-    const room = Math.min(3, Math.max(0, Math.floor(hitAlongHull * 4)));
+    const near = this.roomsAlongHull(hitAlongHull);
+    const room = near[Math.floor(Math.random() * near.length)];
     const leaks = amount >= 20 ? 3 : amount >= 8 ? 2 : 1;
-    for (let i = 0; i < leaks; i++) this.addLeak(Math.random() < 0.7 ? room : Math.floor(Math.random() * 4), amount / 20);
-    this.events.push({ type: 'hit', amount, source });
+    for (let i = 0; i < leaks; i++) this.addLeak(Math.random() < 0.7 ? room : Math.floor(Math.random() * ROOMS.length), amount / 20);
+    this.events.push({ type: 'hit', amount, source, room });
     if (amount >= 12 && Math.random() < 0.35) this.addFire(room);
-    if (amount >= 18 && this.power && Math.random() < 0.45) { this.power = false; this.events.push({ type: 'power', on: false }); this.message('POWER FAILURE! Reset the breakers at the electrical cabinet (control room).', 'danger'); }
+    if (amount >= 18 && this.power && Math.random() < 0.45) this.tripPower();
     this.message(`HIT! ${source}. Hull ${Math.round(s.hull)}%`, 'danger');
     if (s.hull <= 0) this.lose('The hull gave way.');
   }
+  leakSpot(room) {
+    // somewhere on the hull plating a crewman can reach
+    const r = ROOMS[room];
+    if (r.name === 'EngineRoom') return Math.random() < 0.7 ? { x: rand(42.0, 43.7), y: rand(0.5, 1.8) } : { x: rand(32.1, 32.5), y: rand(0.5, 1.8) };
+    if (r.name === 'Passageway') return { x: rand(r.x0 + 0.5, r.x1 - 0.5), y: rand(1.05, 1.9) };
+    if (r.name === 'FwdQuarters') return { x: rand(0.6, 3.2), y: rand(0.5, 1.8) };
+    return { x: rand(r.x0 + 0.6, r.x1 - 0.6), y: r.floor + rand(0.5, 1.9) };
+  }
   addLeak(room, severity = 1) {
     const r = ROOMS[room];
-    const l = { id: this.nextId++, room, x: rand(r.x0 + 0.6, r.x1 - 0.6), y: rand(0.5, 1.9), side: Math.random() < 0.5 ? -1 : 1,
+    const spot = this.leakSpot(room);
+    const side = r.name === 'FwdQuarters' ? 1 : Math.random() < 0.5 ? -1 : 1;    // quarters: starboard (clear of the stairwell)
+    const l = { id: this.nextId++, room, x: spot.x, y: spot.y, side, z: -side * (r.halfW - 0.47),
       severity: Math.min(1.5, 0.6 + severity * 0.6), fixed: false };
     this.leaks.push(l);
     this.events.push({ type: 'leak', leak: l });
   }
+  fireSpot(room) {
+    const r = ROOMS[room], side = Math.random() < 0.5 ? -1 : 1;
+    if (r.name === 'EngineRoom') {
+      if (Math.random() < 0.6) return { x: rand(33.2, 38.8), y: 0.25, z: side * 1.0 };     // on top of a diesel
+      return { x: rand(42.1, 43.6), y: 0.05, z: rand(-2.0, 2.0) };
+    }
+    if (r.name === 'Passageway') return { x: rand(r.x0 + 0.5, r.x1 - 0.5), y: 0.05, z: rand(-0.4, 0.4) };
+    return { x: rand(r.x0 + 0.8, r.x1 - 0.8), y: r.floor + 0.05, z: -side * (r.halfW - 0.65) };
+  }
   addFire(room) {
     const r = ROOMS[room];
-    const f = { id: this.nextId++, room, x: rand(r.x0 + 0.8, r.x1 - 0.8), side: Math.random() < 0.5 ? -1 : 1, intensity: 0.3, out: false };
+    const f = { id: this.nextId++, room, ...this.fireSpot(room), intensity: 0.3, out: false };
     this.fires.push(f);
     this.events.push({ type: 'fire', fire: f });
     this.message(`FIRE in the ${r.label}! Grab an extinguisher!`, 'danger');
+  }
+  neighbours(room) {
+    const out = [];
+    DOORS.forEach((d, i) => { if (this.doors[i]) { if (d.a === room) out.push(d.b); if (d.b === room) out.push(d.a); } });
+    if (room === STAIRWELL.upper) out.push(STAIRWELL.lower);
+    if (room === STAIRWELL.lower) out.push(STAIRWELL.upper);
+    return out;
   }
   extinguish(id, dt) {
     const f = this.fires.find((q) => q.id === id && !q.out);
@@ -229,7 +390,7 @@ export class Sim {
     f.intensity -= dt * 0.45;
     if (f.intensity <= 0) { f.out = true; this.events.push({ type: 'fireOut', fire: f }); this.message(`Fire out in the ${ROOMS[f.room].label}.`); }
   }
-  resetPower() { if (!this.power) { this.power = true; this.events.push({ type: 'power', on: true }); this.message('Breakers reset - power restored.'); } }
+  resetPower() { this.breakers.fill(true); this.mainBreaker(); }
 
   lose(reason) {
     const s = this.sub;
@@ -246,21 +407,31 @@ export class Sim {
     const s = this.sub;
     if (s.lost) { s.depth += dt * 6; s.pitch = Math.min(0.5, s.pitch + dt * 0.05); return; }
 
-    // power: electric motors drain the battery submerged; the diesels recharge it on the surface
+    // power: the electric motors drain the battery; the diesels (surfaced or snorkelling) recharge it
     const surfaced = s.depth < 2;
-    if (surfaced) { s.battery = Math.min(100, s.battery + dt * 1.5); s.oxygen = Math.min(100, s.oxygen + dt * 6); }
-    else {
-      s.battery = Math.max(0, s.battery - dt * (0.02 + Math.abs(s.speed) * Math.abs(s.speed) * 0.004));
-      s.oxygen = Math.max(0, s.oxygen - dt * 0.12);
-    }
-    // fires burn oxygen, scorch the hull and spread
+    this.updateEngines(dt);
+    const charging = this.engines.reduce((a, e) => a + (e.running ? (e.fault === 'injector' ? 0.25 : 0.5) : 0), 0);
+    s.charging = charging;
+    s.battery = Math.max(0, Math.min(100, s.battery + dt * (charging - 0.02 - Math.abs(s.speed) * Math.abs(s.speed) * 0.004)));
+    if (surfaced) s.oxygen = Math.min(100, s.oxygen + dt * 6);
+    else if (charging > 0 && s.depth <= SNORKEL_DEPTH) s.oxygen = Math.min(100, s.oxygen + dt * 1.5);   // the snorkel draws fresh air
+    else s.oxygen = Math.max(0, s.oxygen - dt * 0.12);
+    if (s.battery < 20 && !this._battWarn) { this._battWarn = true; this.message('Battery below 20% - run the diesels at snorkel depth to recharge.', 'warn'); }
+    if (s.battery > 30) this._battWarn = false;
+    // fires burn oxygen, scorch the hull, fill the room with smoke and spread
     for (const f of this.fires) {
       if (f.out) continue;
       f.intensity = Math.min(1.2, f.intensity + dt * 0.025);
       s.oxygen = Math.max(0, s.oxygen - dt * 0.25 * f.intensity);
       s.hull = Math.max(0, s.hull - dt * 0.05 * f.intensity);
-      if (f.intensity > 0.9 && Math.random() < dt * 0.02 && this.fires.filter((q) => !q.out).length < 6) this.addFire(Math.random() < 0.7 ? f.room : Math.max(0, Math.min(3, f.room + (Math.random() < 0.5 ? -1 : 1))));
+      this.smoke[f.room] = Math.min(1, this.smoke[f.room] + dt * 0.08 * f.intensity * 35 / ROOMS[f.room].area);
+      if (this.water[f.room] + ROOMS[f.room].bottom > f.y + 0.15) { f.intensity -= dt * 0.6; if (f.intensity <= 0) { f.out = true; this.events.push({ type: 'fireOut', fire: f }); this.message(`The flood water put out the fire in the ${ROOMS[f.room].label}.`); } }
+      if (f.intensity > 0.9 && Math.random() < dt * 0.02 && this.fires.filter((q) => !q.out).length < 6) {
+        const nb = this.neighbours(f.room);
+        this.addFire(Math.random() < 0.7 || !nb.length ? f.room : nb[Math.floor(Math.random() * nb.length)]);
+      }
     }
+    this.updateSmoke(dt);
     if (s.hull <= 0) this.lose('Fire gutted the boat.');
     if (!this.power && s.telegraph > 1) { s.telegraph = 1; }
     if (s.battery <= 0 && !surfaced && s.telegraph > 1) { s.telegraph = 1; this.message('Battery flat! Only SLOW AHEAD until we surface to recharge.', 'warn'); }
@@ -279,8 +450,8 @@ export class Sim {
     if (s.valve === 'flood') s.ballast = Math.min(1, s.ballast + dt * 0.05);
     if (s.valve === 'blow') { if (s.air > 0) { s.ballast = Math.max(0, s.ballast - dt * 0.09); s.air = Math.max(0, s.air - dt * 2.5); } else s.valve = 'hold'; }
     if (s.valve !== 'blow') s.air = Math.min(100, s.air + dt * 0.4);
-    const flooded = this.water.reduce((a, b) => a + b, 0) / 4;
-    const buoy = (s.ballast - 0.5) * 1.2 + flooded * 0.6;           // >0 sinks
+    const flooded = this.floodFraction();
+    const buoy = (s.ballast - 0.5) * 1.2 + flooded * 1.6;           // >0 sinks
     const planeLift = -s.planes * Math.abs(s.speed) * 0.09;           // planes up (+) climbs
     s.vy += (buoy + planeLift - s.vy * 0.6) * dt;
     s.depth = Math.max(0, s.depth + s.vy * dt);
@@ -303,20 +474,13 @@ export class Sim {
 
     // noise (how easy we are to detect)
     s.noise = Math.max(0, s.noise - dt * 0.8);
-    const noise = Math.abs(s.speed) * 0.6 + s.noise + (s.periscopeUp ? 2 : 0) + (s.valve === 'blow' ? 2 : 0) + (s.depth < 3 ? 4 : 0);
+    const noise = Math.abs(s.speed) * 0.6 + s.noise + (s.periscopeUp ? 2 : 0) + (s.valve === 'blow' ? 2 : 0) + (s.depth < 3 ? 4 : 0)
+      + this.engines.filter((e) => e.running).length * 2.5;
     s.sonarPingCooldown = Math.max(0, s.sonarPingCooldown - dt);
     s.shockCooldown = Math.max(0, s.shockCooldown - dt);
 
-    // flooding and pumps
-    for (let r = 0; r < 4; r++) {
-      const inflow = this.leaks.filter((l) => !l.fixed && l.room === r).reduce((a, l) => a + l.severity, 0) * 0.006 * (1 + s.depth / 80);
-      this.water[r] = Math.max(0, this.water[r] + (inflow - 0.0025) * dt);
-    }
-    for (let i = 0; i < 3; i++) if (this.doors[i]) {   // water equalises through open doors
-      const a = this.water[i], b = this.water[i + 1], f = (a - b) * Math.min(1, dt * 0.5);
-      this.water[i] -= f; this.water[i + 1] += f;
-    }
-    if (Math.min(...this.water) > 1.5) this.lose('The boat flooded.');
+    this.updateFlooding(dt);
+    if (this.floodFraction() > 0.55) this.lose('The boat flooded.');
 
     this.updateEntities(dt, noise);
     this.updateWeapons(dt);
@@ -329,6 +493,86 @@ export class Sim {
       this.add({ kind: 'squid', x: s.x + rand(-120, 120), z: s.z + rand(-120, 120), depth: s.depth + rand(10, 30), heading: 0, speed: 3,
         hp: 2, length: 13, state: 'stalk', grabTimer: 0 });
       this.message('Sonar: something huge is moving below us...', 'alert');
+    }
+  }
+
+  updateFlooding(dt) {
+    const s = this.sub;
+    // leaks pour water in (harder the deeper we are); the electric bilge pumps fight back while there is power
+    ROOMS.forEach((r, i) => {
+      const inflow = this.leaks.filter((l) => !l.fixed && l.room === i).reduce((a, l) => a + l.severity, 0) * 0.2 * (1 + s.depth / 80);
+      const pumps = this.power ? 0.05 : 0;
+      this.water[i] = Math.max(0, Math.min(r.height, this.water[i] + (inflow - pumps) * dt / r.area));
+    });
+    // water runs through open doors over the sill towards the lower side
+    DOORS.forEach((d, i) => {
+      if (!this.doors[i]) return;
+      const sa = this.surface(d.a), sb = this.surface(d.b);
+      const [hiR, loR] = sa >= sb ? [d.a, d.b] : [d.b, d.a];
+      const hi = Math.max(sa, sb), lo = Math.max(Math.min(sa, sb), d.sill);
+      if (hi <= d.sill + 1e-4 || hi - lo < 1e-4) return;
+      const A = ROOMS[hiR].area, B = ROOMS[loR].area;
+      const eq = (hi - lo) / (1 / A + 1 / B);
+      const dv = Math.min(eq, Math.min(1, dt * 0.8) * eq, (hi - d.sill) * A);
+      this.water[hiR] -= dv / A; this.water[loR] = Math.min(ROOMS[loR].height, this.water[loR] + dv / B);
+    });
+    // the stairwell: the quarters drain straight down into the torpedo room until it is full
+    const up = STAIRWELL.upper, dn = STAIRWELL.lower, ru = ROOMS[up], rd = ROOMS[dn];
+    const room = (ru.floor - this.surface(dn)) * rd.area;            // spare volume below the upper deck
+    if (this.water[up] > 0 && room > 0) {
+      const dv = Math.min(this.water[up] * ru.area, room, dt * 4.0);
+      this.water[up] -= dv / ru.area; this.water[dn] += dv / rd.area;
+    } else if (room < 0) {                                           // torpedo room overflowing: it backs up the stairs
+      this.water[dn] += room / rd.area; this.water[up] += -room / ru.area;
+    }
+  }
+
+  updateSmoke(dt) {
+    // smoke drifts through open doors, rises up the stairwell and is sucked out by the vent fans (with power)
+    const sm = this.smoke;
+    DOORS.forEach((d, i) => {
+      if (!this.doors[i]) return;
+      const f = (sm[d.a] - sm[d.b]) * Math.min(1, dt * 0.12);
+      sm[d.a] -= f; sm[d.b] += f;
+    });
+    const up = STAIRWELL.upper, dn = STAIRWELL.lower;
+    const rise = sm[dn] * Math.min(1, dt * 0.12) - sm[up] * Math.min(1, dt * 0.03);
+    sm[dn] -= rise; sm[up] += rise;
+    this.engines.forEach((e) => { if (e.running && e.fault === 'injector') sm[R.EngineRoom] += dt * 0.012; });
+    for (let i = 0; i < sm.length; i++) {
+      const fan = this.vents[i] && this.power ? 0.12 : 0;
+      sm[i] = Math.max(0, Math.min(1, sm[i] - dt * (0.004 + fan)));
+    }
+  }
+
+  updateEngines(dt) {
+    const s = this.sub;
+    for (const [i, e] of this.engines.entries()) {
+      if (e.crank > 0) {
+        e.crank -= dt; e.rpm = 180 + Math.random() * 60;
+        if (e.crank <= 0) { e.crank = 0; e.running = true; this.events.push({ type: 'engineStart', id: e.id }); this.message(`Diesel ${e.id} running - charging the battery.`); }
+      }
+      if (e.running) {
+        e.rpm += ((e.fault === 'injector' ? 480 + Math.random() * 120 : 720) - e.rpm) * Math.min(1, dt * 1.5);
+        this.fuel.day = Math.max(0, this.fuel.day - dt * 0.07);
+        e.oil = Math.max(0, e.oil - dt * 0.05);
+        e.temp += ((e.coolant ? 82 : 140) - e.temp) * dt * 0.035;
+        e.faultTimer -= dt;
+        if (e.faultTimer <= 0 && !e.fault) {
+          e.faultTimer = rand(120, 280);
+          if (Math.random() < 0.55) { e.fault = 'injector'; this.message(`Diesel ${e.id} is running rough and smoking - INJECTOR FAULT! Fix it with a wrench.`, 'danger'); }
+          else { e.coolant = false; this.message(`Diesel ${e.id} is overheating - the coolant valve has shaken shut!`, 'danger'); }
+          this.events.push({ type: 'engineFault', id: e.id });
+        }
+        if (e.temp > 118) { e.fault = 'overheat'; this.stopEngine(i, 'OVERHEATED. Open the coolant valve and let it cool.'); }
+        else if (e.oil < 10) { e.fault = 'oil'; this.stopEngine(i, 'LOW OIL PRESSURE. Top up the oil.'); }
+        else if (this.fuel.day <= 0) this.stopEngine(i, 'the day tank is empty. Pump up more fuel!');
+        else if (s.depth > SNORKEL_DEPTH) this.stopEngine(i, 'the snorkel went under - no air for the diesels.');
+      } else if (!e.crank) {
+        e.rpm = Math.max(0, e.rpm - dt * 400);
+        e.temp += (24 - e.temp) * dt * 0.02;
+        if (e.fault === 'overheat' && e.temp < 70) { e.fault = null; this.message(`Diesel ${e.id} has cooled down and can be restarted.`); }
+      }
     }
   }
 

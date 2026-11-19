@@ -27,7 +27,7 @@ export class Net {
   event(ev) {
     // guests forward actions that change the shared world to the host
     if (this.isHost) return;
-    if (['launch', 'leakFixed', 'door', 'ping', 'shock', 'noisemaker', 'power'].includes(ev.type)) this.send({ t: 'act', ev: { ...ev, leak: ev.leak ? { id: ev.leak.id } : undefined, fire: undefined } });
+    if (['launch', 'leakFixed', 'door', 'ping', 'shock', 'noisemaker'].includes(ev.type)) this.send({ t: 'act', ev: { ...ev, leak: ev.leak ? { id: ev.leak.id } : undefined, fire: undefined } });
   }
   async avatar(peer) {
     if (this.avatars[peer.id]) return this.avatars[peer.id];
@@ -52,6 +52,11 @@ export class Net {
       Object.assign(sim.sub, m.sub);
       sim.entities = m.entities; sim.torpedoes = m.torpedoes; sim.charges = m.charges; sim.tubes = m.tubes;
       sim.water = m.water; sim.doors = m.doors; sim.score = m.score; sim.torpedoStock = m.torpedoStock;
+      if (m.smoke) sim.smoke = m.smoke;
+      if (m.vents) sim.vents = m.vents;
+      if (m.breakers) sim.breakers = m.breakers;
+      if (m.fuel) sim.fuel = m.fuel;
+      if (m.engines) m.engines.forEach((e, i) => Object.assign(sim.engines[i], e));
       Object.assign(sim.weapons, m.weapons);
       sim.contacts = new Map(m.contacts);
       for (const l of m.leaks) if (!sim.leaks.some((q) => q.id === l.id)) { sim.leaks.push(l); sim.events.push({ type: 'leak', leak: l }); }
@@ -73,25 +78,29 @@ export class Net {
       if (ev.type === 'shock') sim.hullShock();
       if (ev.type === 'noisemaker') sim.countermeasure();
       if (ev.type === 'launch') sim.fire();
-      if (ev.type === 'power' && ev.on) sim.resetPower();
       if (ev.type === 'extinguish') sim.extinguish(ev.id, ev.dt);
+      // shared machinery: only these simulation calls may be made remotely
+      const ALLOWED = ['toggleEngine', 'startEngine', 'stopEngine', 'setCoolant', 'addOil', 'fixEngine', 'fuelStroke', 'pourFuel', 'bilgeStroke',
+        'setVent', 'setBreaker', 'mainBreaker', 'toggleDoor', 'fixLeak'];
+      if (ev.type === 'call' && ALLOWED.includes(ev.fn) && Array.isArray(ev.args)) sim[ev.fn](...ev.args);
     }
   }
   update(dt, player) {
     this.sendT -= dt;
     if (this.sendT > 0) return;
     this.sendT = 0.1;
-    this.send({ t: 'pos', x: player.pos.x, z: player.pos.z, yaw: player.yaw, station: player.station, carry: player.carry });
+    this.send({ t: 'pos', x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw, station: player.station, carry: player.carry, swim: player.swim });
     if (this.isHost) {
       const sim = this.sim;
       const strip = (e) => { const { view, ...rest } = e; return rest; };
       this.send({ t: 'state', sub: sim.sub, entities: sim.entities, torpedoes: sim.torpedoes, charges: sim.charges.map(strip), tubes: sim.tubes,
         water: sim.water, doors: sim.doors, score: sim.score, torpedoStock: sim.torpedoStock, weapons: sim.weapons,
+        smoke: sim.smoke, vents: sim.vents, breakers: sim.breakers, fuel: sim.fuel, engines: sim.engines,
         contacts: [...sim.contacts], leaks: sim.leaks, fires: sim.fires, power: sim.power, events: this.outEvents || [] });
       this.outEvents = [];
     }
     for (const p of this.peers.values()) {
-      this.avatar(p).then((a) => { if (a && a !== 'loading') { a.position.set(p.x ?? 0, 0, p.z ?? 0); a.rotation.y = (p.yaw ?? 0) + Math.PI; } });
+      this.avatar(p).then((a) => { if (a && a !== 'loading') { a.position.set(p.x ?? 0, (p.y ?? 0) - (p.swim ? 1.1 : 0), p.z ?? 0); a.rotation.y = (p.yaw ?? 0) + Math.PI; } });
     }
   }
 }

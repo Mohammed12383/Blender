@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { seabed } from './sim.js';
+import { seabed, SNORKEL_DEPTH } from './sim.js';
+import { Particles } from './particles.js';
 
 const MODELS = '../submarine/models/';
 
@@ -79,6 +80,12 @@ export class Exterior {
     this.player = this.templates.SubmarineExterior.clone();
     s.add(this.player);
     this.playerProp = this.player.getObjectByName('SubmarineExterior_Propeller');
+    // diesel exhaust and the snorkel mast that pokes above the waves when we run the engines submerged
+    this.exhaust = new Particles(260, { kind: 'smoke', additive: false });
+    this.scene.add(this.exhaust.points);
+    this.snorkel = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 1, 12), new THREE.MeshStandardMaterial({ color: 0x1d2a2c, roughness: 0.6, metalness: 0.4 }));
+    this.snorkel.visible = false;
+    this.scene.add(this.snorkel);
   }
 
   makeSeabed() {
@@ -250,6 +257,23 @@ export class Exterior {
       const back = new THREE.Vector3(-Math.cos(s.heading) * 18, -s.depth, Math.sin(s.heading) * 18).add(new THREE.Vector3(s.x, 0, s.z));
       this.bubbles.push(back);
     }
+    // diesels: snorkel up and exhaust smoke
+    const running = sim.engines ? sim.engines.filter((e) => e.running).length : 0;
+    const fwd = new THREE.Vector3(Math.cos(s.heading), 0, -Math.sin(s.heading));
+    const sailTop = -s.depth + 7.0;
+    this.snorkel.visible = running > 0 && s.depth > 1.5 && s.depth <= SNORKEL_DEPTH + 1;
+    if (this.snorkel.visible) {
+      const top = 1.2, h = top - sailTop;
+      this.snorkel.scale.set(1, Math.max(0.1, h), 1);
+      this.snorkel.position.set(s.x + fwd.x * 2.6, sailTop + h / 2, s.z + fwd.z * 2.6);
+    }
+    if (running) {
+      const y = s.depth > 1.5 ? 1.3 : sailTop + 0.4;
+      const p = [s.x + fwd.x * 2.6, y, s.z + fwd.z * 2.6];
+      if (Math.random() < dt * 14 * running) this.exhaust.emit(p, [(Math.random() - 0.5) * 0.6 - fwd.x * 0.8, 1.2 + Math.random() * 0.8, (Math.random() - 0.5) * 0.6 - fwd.z * 0.8], 5 + Math.random() * 2, 1.2, 7);
+    }
+    this.exhaust.setScale(this.renderer.domElement.height);
+    this.exhaust.update(dt, (i, t) => [0.2, 0.2, 0.21, Math.min(1, t * 6) * (1 - t) * 0.45]);
     // entities
     const alive = new Set();
     for (const e of sim.entities) {
@@ -418,7 +442,7 @@ export class Exterior {
     const s = sim.sub;
     const fwd = new THREE.Vector3(Math.cos(s.heading), 0, -Math.sin(s.heading));
     const sign = aft ? -1 : 1;
-    cam.position.set(s.x + fwd.x * 18 * sign, -s.depth + 1.5, s.z + fwd.z * 18 * sign);
+    cam.position.set(s.x + fwd.x * 26 * sign, -s.depth + 1.5, s.z + fwd.z * 26 * sign);
     cam.lookAt(s.x + fwd.x * 200 * sign, -s.depth + 1.5, s.z + fwd.z * 200 * sign);
   }
 
