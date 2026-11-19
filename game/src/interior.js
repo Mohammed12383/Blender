@@ -113,10 +113,7 @@ export class Interior {
       const thin = (box.max.x - box.min.x) < 0.05 || (box.max.z - box.min.z) < 0.05;
       if (!thin && !passable.test(name)) this.nav.colliders.push({ minX: box.min.x, maxX: box.max.x, minY: box.min.y, maxY: box.max.y, minZ: box.min.z, maxZ: box.max.z, name });
     }
-    // under the stairs on the lower deck (the treads are too low to walk beneath)
-    for (const s of this.nav.stairs) {
-      this.nav.colliders.push({ minX: s.tx, maxX: s.tx + (s.bx - s.tx) * 0.78, minY: -2.9, maxY: -2.3, minZ: s.zc - 0.56, maxZ: s.zc + 0.56, name: 'UnderStairs' });
-    }
+    // (the space under the stairs is cut out of the lower deck in nav.js, so no extra collider is needed)
     const find = (root, test) => { let f = null; root.traverse((o) => { if (!f && test(o)) f = o; }); return f; };
     const all = (root, test) => { const out = []; root.traverse((o) => { if (test(o)) out.push(o); }); return out; };
     const center = (r) => new THREE.Box3().setFromObject(r).getCenter(new THREE.Vector3());
