@@ -161,6 +161,15 @@ def cutaway(rooms, filepath, samples=96, res=(1600, 900), deck="upper"):
             if hide and not o.hide_render:
                 o.hide_render = True
                 hidden.append(o)
+    if deck == "lower":   # crew standing on the upper deck would float over the lower rooms in this view
+        crew_col = bpy.data.collections.get("RenderCrew")
+        for o in [q for q in (crew_col.all_objects if crew_col else []) if q is not None]:
+            top = o
+            while getattr(top, "parent", None) is not None:
+                top = top.parent
+            if top.matrix_world.translation.z > -1.45 and not o.hide_render:
+                o.hide_render = True
+                hidden.append(o)
     col = core.collection("RenderOnly")
     sun = bpy.data.objects.get("CutawaySun")
     if sun is None:
