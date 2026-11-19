@@ -17,8 +17,8 @@ See **[submarine/README.md](submarine/README.md)**.
 ### Deepwater Crew: the playable game
 
 A browser game that uses these models: 1–4 players crew the submarine, drive and dive it, hunt
-convoys through the periscope, reload torpedoes by hand, and fight enemy subs, sharks and a giant
-squid. Keep the boat alive: fix hull leaks with a wrench, pump out rising flood water (and swim when it
+convoys through the periscope, plan a route on the chart table, aim and fire torpedoes, reload them by hand, and
+fight enemy subs, sharks and a giant squid. A ship-status console shows every system at a glance. Keep the boat alive: fix hull leaks with a wrench, pump out rising flood water (and swim when it
 gets deep), fight fires and clear the smoke, run and repair the diesels, and reset the switchboard.
 See **[game/README.md](game/README.md)**.
 

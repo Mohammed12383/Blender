@@ -70,8 +70,8 @@ platform, the stairwell opening and the pits) so a game can build its navigation
 
 | Player | Station(s) | Interactive parts on the model |
 |---|---|---|
-| **Navigator** | Chart table, nav console, ballast panel | joystick, zoom dial, buttons, map markers, ruler and dividers, BLOW/VENT/FLOOD wheels, trim levers, depth gauge needle |
-| **Weapons officer** | Fire control, periscope, sonar | 4 tube-select toggles, ARM key, guarded FIRE button (flip guard), handset; periscope head trains 360° with a twin-ocular eyepiece in a rubber hood, bearing compass, TARGET IDENTIFICATION screen, MARK/CLEAR buttons, 1–8 tag slider, knurled ZOOM and TILT knobs and fold-down training handles on angled brackets; sonar knobs and headphones |
+| **Navigator** | Chart table, nav console, ballast panel, ship status console | joystick, zoom dial, buttons, map markers, ruler and dividers, a route-planning pod on the chart table (cursor stick, ADD/DEL WPT keys, zoom knob), BLOW/VENT/FLOOD wheels, trim levers, depth gauge needle, DIVE PROFILE screen; SHIP STATUS console with eight back-lit page keys, a guarded GENERAL ALARM button and side handles |
+| **Weapons officer** | Fire control, periscope, sonar | 4 tube-select toggles, ARM key, guarded FIRE button (flip guard), AIM stick, DECOY button, handset; periscope head trains 360° with a twin-ocular eyepiece in a rubber hood, bearing compass, TARGET IDENTIFICATION screen, MARK/CLEAR buttons, 1–8 tag slider, knurled ZOOM and TILT knobs and fold-down training handles on angled brackets; sonar knobs and headphones |
 | **Torpedo loader** | Torpedo room | 4 breech doors (hinged), locking wheels, latches, flood valves; loading cradle (carriage slides, tray lifts to the upper/lower tubes); chain hoist (trolley slides, hook lowers); torpedoes are carryable with spinning propellers |
 | **Cook** | Galley | griddle power button and knobs, cupboard doors, 4 cook slots; food in raw and cooked versions (steak, drumstick, patty); fridge doors, taps, knife; coffee urn tap |
 
