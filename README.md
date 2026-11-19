@@ -7,16 +7,20 @@ model is a script, so it can be regenerated, tweaked and version-controlled.
 
 ### Submarine: 4-player co-op crew game
 
-A complete, game-ready submarine interior: four compartments, 73 props with moving parts,
-four rigged crew characters and exterior ships. See **[submarine/README.md](submarine/README.md)**.
+A complete, game-ready submarine interior on two decks: eight compartments (control room, torpedo room,
+engine room with two detailed diesels, battery room, crew mess, galley, sick bay, grated engine passage),
+about 100 props with moving parts, four rigged crew characters and exterior ships.
+See **[submarine/README.md](submarine/README.md)**.
 
-![Submarine control room](submarine/renders/control_room.png)
+![Engine room](submarine/renders/engine_room.png)
 
 ### Deepwater Crew: the playable game
 
 A browser game that uses these models: 1–4 players crew the submarine, drive and dive it, hunt
-convoys through the periscope, reload torpedoes by hand, fight enemy subs, sharks and a giant
-squid, and fix hull leaks with a wrench. See **[game/README.md](game/README.md)**.
+convoys through the periscope, reload torpedoes by hand, and fight enemy subs, sharks and a giant
+squid. Keep the boat alive: fix hull leaks with a wrench, pump out rising flood water (and swim when it
+gets deep), fight fires and clear the smoke, run and repair the diesels, and reset the switchboard.
+See **[game/README.md](game/README.md)**.
 
 ```bash
 cd game && npm install && npm start      # then open http://localhost:8080/game/
