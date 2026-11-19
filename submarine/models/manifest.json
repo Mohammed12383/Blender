@@ -1,6 +1,16 @@
 {
  "props": [
   {
+   "name": "AftPlatform",
+   "category": "walkway",
+   "walkable": true,
+   "length": 2.2,
+   "width": 4.9,
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
    "name": "AirTanks",
    "category": "decor",
    "parts": [
@@ -115,6 +125,55 @@
     },
     {
      "name": "BallastPanel_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "BatteryBank",
+   "category": "machine",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "BilgePump",
+   "category": "station",
+   "station": "bilge",
+   "parts": [
+    {
+     "name": "BilgePump_GaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "BilgePump_Lever",
+     "interact": "pump_lever",
+     "rotate_axis": "X",
+     "min_deg": -25,
+     "max_deg": 25,
+     "note": "each full up-down stroke pumps water out of this room"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "BilgePump_HAND_L_Lever",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "Lever"
+    },
+    {
+     "name": "BilgePump_HAND_R_Lever",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "Lever"
+    },
+    {
+     "name": "BilgePump_INTERACT_operate",
      "interaction": "operate"
     }
    ],
@@ -270,6 +329,190 @@
    "lights": []
   },
   {
+   "name": "DieselEngineP",
+   "category": "machine",
+   "station": "engine",
+   "engine": 1,
+   "service_side": -1,
+   "parts": [
+    {
+     "name": "DieselEngineP_CoolantValve",
+     "interact": "coolant_valve",
+     "rotate_axis": "Y",
+     "engine": 1
+    },
+    {
+     "name": "DieselEngineP_FaultLamp",
+     "interact": "fault_lamp",
+     "engine": 1
+    },
+    {
+     "name": "DieselEngineP_Flywheel",
+     "interact": "spin",
+     "rotate_axis": "X",
+     "engine": 1
+    },
+    {
+     "name": "DieselEngineP_OilFiller",
+     "interact": "oil_filler",
+     "engine": 1,
+     "rotate_axis": "Z"
+    },
+    {
+     "name": "DieselEngineP_OilGaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "DieselEngineP_RpmGaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "DieselEngineP_StartButton",
+     "interact": "engine_start",
+     "translate_axis": "Y",
+     "travel": 0.006,
+     "engine": 1
+    },
+    {
+     "name": "DieselEngineP_StopButton",
+     "interact": "engine_stop",
+     "translate_axis": "Y",
+     "travel": 0.006,
+     "engine": 1
+    },
+    {
+     "name": "DieselEngineP_TempGaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "DieselEngineP_HAND_L_CoolantValve",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "CoolantValve"
+    },
+    {
+     "name": "DieselEngineP_HAND_R_StartButton",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "press",
+     "control": "StartButton"
+    },
+    {
+     "name": "DieselEngineP_INTERACT_fault_point",
+     "interaction": "fault_point",
+     "engine": 1,
+     "note": "injector bank: fix faults here with a wrench"
+    },
+    {
+     "name": "DieselEngineP_INTERACT_service",
+     "interaction": "service",
+     "engine": 1
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "DieselEngineS",
+   "category": "machine",
+   "station": "engine",
+   "engine": 2,
+   "service_side": 1,
+   "parts": [
+    {
+     "name": "DieselEngineS_CoolantValve",
+     "interact": "coolant_valve",
+     "rotate_axis": "Y",
+     "engine": 2
+    },
+    {
+     "name": "DieselEngineS_FaultLamp",
+     "interact": "fault_lamp",
+     "engine": 2
+    },
+    {
+     "name": "DieselEngineS_Flywheel",
+     "interact": "spin",
+     "rotate_axis": "X",
+     "engine": 2
+    },
+    {
+     "name": "DieselEngineS_OilFiller",
+     "interact": "oil_filler",
+     "engine": 2,
+     "rotate_axis": "Z"
+    },
+    {
+     "name": "DieselEngineS_OilGaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "DieselEngineS_RpmGaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "DieselEngineS_StartButton",
+     "interact": "engine_start",
+     "translate_axis": "Y",
+     "travel": 0.006,
+     "engine": 2
+    },
+    {
+     "name": "DieselEngineS_StopButton",
+     "interact": "engine_stop",
+     "translate_axis": "Y",
+     "travel": 0.006,
+     "engine": 2
+    },
+    {
+     "name": "DieselEngineS_TempGaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "DieselEngineS_HAND_L_CoolantValve",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "grip",
+     "control": "CoolantValve"
+    },
+    {
+     "name": "DieselEngineS_HAND_R_StartButton",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "press",
+     "control": "StartButton"
+    },
+    {
+     "name": "DieselEngineS_INTERACT_fault_point",
+     "interaction": "fault_point",
+     "engine": 2,
+     "note": "injector bank: fix faults here with a wrench"
+    },
+    {
+     "name": "DieselEngineS_INTERACT_service",
+     "interaction": "service",
+     "engine": 2
+    }
+   ],
+   "lights": []
+  },
+  {
    "name": "DrumstickCooked",
    "category": "pickup",
    "interact": "pickup",
@@ -286,6 +529,19 @@
    "item": "drumstick_raw",
    "cook_state": "raw",
    "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "DuctFan",
+   "category": "machine",
+   "parts": [
+    {
+     "name": "DuctFan_Fan",
+     "interact": "spin",
+     "rotate_axis": "Z"
+    }
+   ],
    "interaction_points": [],
    "lights": []
   },
@@ -402,7 +658,141 @@
     {
      "name": "EnemySubmarine_INTERACT_interior_origin",
      "interaction": "interior_origin",
-     "note": "place the interior level here (bow room at +X after a 180\u00b0 turn)"
+     "note": "interior level origin (bow bulkhead, upper deck floor); the interior's +X runs aft"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "EngineCatwalk",
+   "category": "walkway",
+   "walkable": true,
+   "length": 9.2,
+   "width": 1.2,
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "EngineConsole",
+   "category": "station",
+   "station": "engine_control",
+   "parts": [
+    {
+     "name": "EngineConsole_ChargeAmmeterNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "EngineConsole_Fault1",
+     "interact": "fault_lamp",
+     "engine": 1
+    },
+    {
+     "name": "EngineConsole_Fault2",
+     "interact": "fault_lamp",
+     "engine": 2
+    },
+    {
+     "name": "EngineConsole_Oil1Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "EngineConsole_Oil2Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "EngineConsole_Rpm1Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "EngineConsole_Rpm2Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "EngineConsole_Start1",
+     "interact": "engine_start",
+     "translate_axis": "Y",
+     "travel": 0.006,
+     "engine": 1
+    },
+    {
+     "name": "EngineConsole_Start2",
+     "interact": "engine_start",
+     "translate_axis": "Y",
+     "travel": 0.006,
+     "engine": 2
+    },
+    {
+     "name": "EngineConsole_Stop1",
+     "interact": "engine_stop",
+     "translate_axis": "Y",
+     "travel": 0.006,
+     "engine": 1
+    },
+    {
+     "name": "EngineConsole_Stop2",
+     "interact": "engine_stop",
+     "translate_axis": "Y",
+     "travel": 0.006,
+     "engine": 2
+    },
+    {
+     "name": "EngineConsole_Temp1Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "EngineConsole_Temp2Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "EngineConsole_Throttle1",
+     "interact": "lever",
+     "engine": 1,
+     "rotate_axis": "X",
+     "min_deg": -30,
+     "max_deg": 30
+    },
+    {
+     "name": "EngineConsole_Throttle2",
+     "interact": "lever",
+     "engine": 2,
+     "rotate_axis": "X",
+     "min_deg": -30,
+     "max_deg": 30
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "EngineConsole_HAND_L_Start1",
+     "interaction": "hand_target",
+     "hand": "L",
+     "hand_pose": "press",
+     "control": "Start1"
+    },
+    {
+     "name": "EngineConsole_HAND_R_Start2",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "press",
+     "control": "Start2"
+    },
+    {
+     "name": "EngineConsole_INTERACT_operate",
+     "interaction": "operate"
     }
    ],
    "lights": []
@@ -411,7 +801,6 @@
    "name": "EngineRoomDoor",
    "category": "door",
    "interact": "door",
-   "locked": true,
    "parts": [
     {
      "name": "EngineRoomDoor_Leaf",
@@ -569,6 +958,15 @@
    "lights": []
   },
   {
+   "name": "FirstAidKit",
+   "category": "pickup",
+   "interact": "carry",
+   "item": "first_aid",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
    "name": "FloorHatch",
    "category": "door",
    "interact": "hatch",
@@ -608,6 +1006,56 @@
     {
      "name": "Fridge_INTERACT_use",
      "interaction": "use"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "FuelStation",
+   "category": "station",
+   "station": "fuel",
+   "parts": [
+    {
+     "name": "FuelStation_FillerCap",
+     "interact": "fuel_filler",
+     "rotate_axis": "Z"
+    },
+    {
+     "name": "FuelStation_FuelGaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "FuelStation_FuelLevel",
+     "interact": "fuel_level",
+     "scale_axis": "Z",
+     "note": "scale Z = day tank fraction"
+    },
+    {
+     "name": "FuelStation_PumpLever",
+     "interact": "pump_lever",
+     "rotate_axis": "X",
+     "min_deg": -28,
+     "max_deg": 28,
+     "note": "pump strokes move fuel from the main tanks into the day tank"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "FuelStation_HAND_R_PumpLever",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "PumpLever"
+    },
+    {
+     "name": "FuelStation_INTERACT_filler",
+     "interaction": "filler"
+    },
+    {
+     "name": "FuelStation_INTERACT_operate",
+     "interaction": "operate"
     }
    ],
    "lights": []
@@ -732,6 +1180,15 @@
    "lights": []
   },
   {
+   "name": "Jerrycan",
+   "category": "pickup",
+   "interact": "carry",
+   "item": "fuel_can",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
    "name": "JunctionBox",
    "category": "decor",
    "parts": [],
@@ -831,9 +1288,205 @@
    "lights": []
   },
   {
+   "name": "MainSwitchboard",
+   "category": "station",
+   "station": "switchboard",
+   "parts": [
+    {
+     "name": "MainSwitchboard_BreakerL1",
+     "interact": "breaker",
+     "rotate_axis": "X",
+     "min_deg": 0,
+     "max_deg": 150
+    },
+    {
+     "name": "MainSwitchboard_BreakerL2",
+     "interact": "breaker",
+     "rotate_axis": "X",
+     "min_deg": 0,
+     "max_deg": 150
+    },
+    {
+     "name": "MainSwitchboard_BreakerL3",
+     "interact": "breaker",
+     "rotate_axis": "X",
+     "min_deg": 0,
+     "max_deg": 150
+    },
+    {
+     "name": "MainSwitchboard_BreakerL4",
+     "interact": "breaker",
+     "rotate_axis": "X",
+     "min_deg": 0,
+     "max_deg": 150
+    },
+    {
+     "name": "MainSwitchboard_BreakerR1",
+     "interact": "breaker",
+     "rotate_axis": "X",
+     "min_deg": 0,
+     "max_deg": 150
+    },
+    {
+     "name": "MainSwitchboard_BreakerR2",
+     "interact": "breaker",
+     "rotate_axis": "X",
+     "min_deg": 0,
+     "max_deg": 150
+    },
+    {
+     "name": "MainSwitchboard_BreakerR3",
+     "interact": "breaker",
+     "rotate_axis": "X",
+     "min_deg": 0,
+     "max_deg": 150
+    },
+    {
+     "name": "MainSwitchboard_BreakerR4",
+     "interact": "breaker",
+     "rotate_axis": "X",
+     "min_deg": 0,
+     "max_deg": 150
+    },
+    {
+     "name": "MainSwitchboard_MainBreaker",
+     "interact": "main_breaker",
+     "rotate_axis": "X",
+     "min_deg": -60,
+     "max_deg": 60,
+     "note": "+60 = ON (up), -60 = tripped (down)"
+    },
+    {
+     "name": "MainSwitchboard_MeterL1Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "MainSwitchboard_MeterL2Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "MainSwitchboard_MeterL3Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "MainSwitchboard_MeterR1Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "MainSwitchboard_MeterR2Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "MainSwitchboard_MeterR3Needle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "MainSwitchboard_HAND_R_MainBreaker",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "grip",
+     "control": "MainBreaker"
+    },
+    {
+     "name": "MainSwitchboard_INTERACT_operate",
+     "interaction": "operate"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "MedBed",
+   "category": "station",
+   "station": "medical",
+   "interact": "heal",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "MedBed_INTERACT_lie",
+     "interaction": "lie",
+     "note": "lie here to heal"
+    },
+    {
+     "name": "MedBed_INTERACT_use",
+     "interaction": "use"
+    }
+   ],
+   "lights": []
+  },
+  {
+   "name": "MedicalCabinet",
+   "category": "station",
+   "station": "medical",
+   "parts": [
+    {
+     "name": "MedicalCabinet_DoorL",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": -110,
+     "max_deg": 0
+    },
+    {
+     "name": "MedicalCabinet_DoorR",
+     "interact": "door",
+     "rotate_axis": "Z",
+     "min_deg": 0,
+     "max_deg": 110
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "MedicalCabinet_INTERACT_restock",
+     "interaction": "restock"
+    }
+   ],
+   "lights": []
+  },
+  {
    "name": "MessTable",
    "category": "furniture",
    "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "MotorP",
+   "category": "machine",
+   "engine": 1,
+   "parts": [
+    {
+     "name": "MotorP_Shaft",
+     "interact": "spin",
+     "rotate_axis": "X"
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "MotorS",
+   "category": "machine",
+   "engine": 2,
+   "parts": [
+    {
+     "name": "MotorS_Shaft",
+     "interact": "spin",
+     "rotate_axis": "X"
+    }
+   ],
    "interaction_points": [],
    "lights": []
   },
@@ -995,6 +1648,25 @@
    "lights": []
   },
   {
+   "name": "OilCan",
+   "category": "pickup",
+   "interact": "carry",
+   "item": "oil_can",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "PassageCatwalk",
+   "category": "walkway",
+   "walkable": true,
+   "length": 4.0,
+   "width": 1.2,
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
    "name": "PattyCooked",
    "category": "pickup",
    "interact": "pickup",
@@ -1081,6 +1753,59 @@
      "note": "anchor rotates with Head in game"
     }
    ],
+   "lights": []
+  },
+  {
+   "name": "PipeBankA",
+   "category": "decor",
+   "parts": [
+    {
+     "name": "PipeBankA_GaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "PipeBankA_Valve2",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "PipeBankA_Valve3",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "PipeBankB",
+   "category": "decor",
+   "parts": [
+    {
+     "name": "PipeBankB_GaugeNeedle",
+     "interact": "gauge_needle",
+     "rotate_axis": "Y",
+     "note": "0 deg = straight up; dial spans -135..+135"
+    },
+    {
+     "name": "PipeBankB_Valve0",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "PipeBankB_Valve3",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    },
+    {
+     "name": "PipeBankB_Valve4",
+     "interact": "valve_wheel",
+     "rotate_axis": "Y"
+    }
+   ],
+   "interaction_points": [],
    "lights": []
   },
   {
@@ -1597,6 +2322,13 @@
    "lights": []
   },
   {
+   "name": "RoomSign_Battery_Room",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
    "name": "RoomSign_Control_Room",
    "category": "decor",
    "parts": [],
@@ -1605,6 +2337,13 @@
   },
   {
    "name": "RoomSign_Crew_Mess",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "RoomSign_Down",
    "category": "decor",
    "parts": [],
    "interaction_points": [],
@@ -1625,9 +2364,43 @@
    "lights": []
   },
   {
+   "name": "RoomSign_Medical",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "RoomSign_Passage",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "RoomSign_Quarters",
+   "category": "decor",
+   "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
    "name": "RoomSign_Torpedo_Room",
    "category": "decor",
    "parts": [],
+   "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "ShaftLine",
+   "category": "machine",
+   "parts": [
+    {
+     "name": "ShaftLine_Shaft",
+     "interact": "spin",
+     "rotate_axis": "X"
+    }
+   ],
    "interaction_points": [],
    "lights": []
   },
@@ -1778,6 +2551,25 @@
    "lights": []
   },
   {
+   "name": "Stairs",
+   "category": "stairs",
+   "interact": "climb",
+   "rise": 2.9,
+   "run": 2.7,
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "Stairs_INTERACT_bottom",
+     "interaction": "bottom"
+    },
+    {
+     "name": "Stairs_INTERACT_top",
+     "interaction": "top"
+    }
+   ],
+   "lights": []
+  },
+  {
    "name": "SteakCooked",
    "category": "pickup",
    "interact": "pickup",
@@ -1806,6 +2598,29 @@
    "lights": []
   },
   {
+   "name": "StoresShelf",
+   "category": "storage",
+   "parts": [],
+   "interaction_points": [
+    {
+     "name": "StoresShelf_INTERACT_slot1",
+     "interaction": "slot1",
+     "slot": 1
+    },
+    {
+     "name": "StoresShelf_INTERACT_slot2",
+     "interaction": "slot2",
+     "slot": 2
+    },
+    {
+     "name": "StoresShelf_INTERACT_slot3",
+     "interaction": "slot3",
+     "slot": 3
+    }
+   ],
+   "lights": []
+  },
+  {
    "name": "SubmarineExterior",
    "category": "vehicle",
    "note": "surfaced: waterline at z=0; submerge by lowering ~3.5 m",
@@ -1820,7 +2635,7 @@
     {
      "name": "SubmarineExterior_INTERACT_interior_origin",
      "interaction": "interior_origin",
-     "note": "place the interior level here (bow room at +X after a 180\u00b0 turn)"
+     "note": "interior level origin (bow bulkhead, upper deck floor); the interior's +X runs aft"
     }
    ],
    "lights": []
@@ -2204,6 +3019,30 @@
     }
    ],
    "interaction_points": [],
+   "lights": []
+  },
+  {
+   "name": "VentPanel",
+   "category": "station",
+   "station": "vent",
+   "parts": [
+    {
+     "name": "VentPanel_FanSwitch",
+     "interact": "vent_switch",
+     "rotate_axis": "Y",
+     "min_deg": -45,
+     "max_deg": 45
+    }
+   ],
+   "interaction_points": [
+    {
+     "name": "VentPanel_HAND_R_FanSwitch",
+     "interaction": "hand_target",
+     "hand": "R",
+     "hand_pose": "pinch",
+     "control": "FanSwitch"
+    }
+   ],
    "lights": []
   },
   {
