@@ -96,7 +96,9 @@ def main():
                                 ("torpedo_loader", (2.45, 0.15, level.F), 20, "operate"),
                                 ("cook", (25.35, -1.3, 0), 0, "operate"),
                                 ("navigator", (19.75, 0.75, 0), 110, "wave"),
-                                ("weapons_officer", (18.35, -0.05, 0), 70, "relaxed")]:
+                                ("weapons_officer", (18.35, -0.05, 0), 70, "relaxed"),
+                                ("torpedo_loader", (37.3, -0.15, 0), 180, "operate"),
+                                ("cook", (42.75, -0.55, 0), 90, "operate")]:
         humans.place_copy(cast[role], rc, loc, rz, pose)
     log("level assembled")
     import json

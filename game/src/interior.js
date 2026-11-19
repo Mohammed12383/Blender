@@ -167,7 +167,10 @@ export class Interior {
       this.vents.push({ room, root, sw, rest: sw ? sw.quaternion.clone() : null, k: 0 });
       this.interactables.push({ pos: p, radius: 0.8, label: 'SMOKE EXTRACT fans on / off', kind: 'vent', data: room });
     }
-    this.fans = tops.filter((r) => /^DuctFan/.test(r.name)).map((r) => ({ room: this.roomAt(r.position.x, r.position.y - 2.4), fan: find(r, (o) => baseName(o.name).endsWith('_Fan')) }));
+    this.fans = tops.filter((r) => /^DuctFan/.test(r.name)).map((r) => {
+      const fan = find(r, (o) => baseName(o.name).endsWith('_Fan'));
+      return { room: this.roomAt(r.position.x, r.position.y - 2.4), fan, pos: (fan || r).getWorldPosition(new THREE.Vector3()) };
+    });
     // engines
     this.engines = [];
     for (const [i, re] of [[0, /^DieselEngineP/], [1, /^DieselEngineS/]]) {
@@ -488,6 +491,16 @@ export class Interior {
     // splashes where leak jets hit the water / floor
     this.splash = new Particles(500, { kind: 'drop', additive: false });
     this.scene.add(this.splash.points);
+    // expanding ripple rings on the water surface (wading, swimming, leak jets)
+    const ringGeo = new THREE.RingGeometry(0.42, 0.5, 40);
+    ringGeo.rotateX(-Math.PI / 2);
+    this.ripples = Array.from({ length: 24 }, () => {
+      const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xdff6ff, transparent: true, opacity: 0, depthWrite: false }));
+      m.visible = false; m.renderOrder = 2; m.userData = { t: 1, life: 1, size: 1 };
+      this.scene.add(m);
+      return m;
+    });
+    this.rippleNext = 0;
   }
 
   makeSmoke() {
@@ -578,6 +591,7 @@ export class Interior {
         v.vel[i].y -= 9.8 * dt;
         p.array[i * 3] += v.vel[i].x * dt; p.array[i * 3 + 1] += v.vel[i].y * dt; p.array[i * 3 + 2] += v.vel[i].z * dt;
         if (p.array[i * 3 + 1] < floor) {
+          if (sim.water[v.leak.room] > 0.05 && Math.random() < 0.012) this.ripple(p.array[i * 3], floor, p.array[i * 3 + 2], 0.6);
           if (Math.random() < 0.25) this.splash.emit([p.array[i * 3], floor + 0.01, p.array[i * 3 + 2]], [(Math.random() - 0.5) * 1.4, 1 + Math.random() * 1.5, (Math.random() - 0.5) * 1.4], 0.45, 0.05, 0.02);
           v.age[i] = 2;
           p.array[i * 3 + 1] = -100;
@@ -586,6 +600,13 @@ export class Interior {
       p.needsUpdate = true;
     }
     this.splash.update(dt, (i, t) => [0.85, 0.95, 1.0, 0.7 * (1 - t)], (i) => { this.splash.vel[i * 3 + 1] -= 9.8 * dt; });
+    for (const m of this.ripples) {
+      if (!m.visible) continue;
+      const u = m.userData; u.t += dt / u.life;
+      if (u.t >= 1) { m.visible = false; continue; }
+      m.scale.setScalar(0.2 + u.t * 1.6 * u.size);
+      m.material.opacity = (1 - u.t) * 0.5;
+    }
     const bb = this.bubbles;
     bb.update(dt, (i, t) => [0.8, 0.95, 1.0, 0.75 * (1 - t * t)], (i, dt2) => { bb.vel[i * 3] += Math.sin(this.time * 11 + i) * dt2 * 0.8; });
     // fires: flames, embers and smoke plumes
@@ -758,20 +779,21 @@ export class Interior {
       f.ang = (f.ang || 0) + f.speed * dt;
       set(f.fan, Y_AXIS, f.ang);
       if (on && sim.smoke[f.room] > 0.05 && f.fan) {
-        const p = f.fan.getWorldPosition(new THREE.Vector3());
-        if (Math.random() < dt * 30 * sim.smoke[f.room]) this.fanFx.emit([p.x + (Math.random() - 0.5) * 1.6, p.y - 0.6 - Math.random() * 0.4, p.z + (Math.random() - 0.5) * 1.6], [0, 0, 0], 0.9, 0.6, 0.15);
+        const p = f.pos;
+        if (Math.random() < dt * 30 * sim.smoke[f.room]) {
+          const i = this.fanFx.emit([p.x + (Math.random() - 0.5) * 1.6, p.y - 0.6 - Math.random() * 0.4, p.z + (Math.random() - 0.5) * 1.6], [0, 0, 0], 0.9, 0.6, 0.15);
+          this.fanFx.kind[i] = this.fans.indexOf(f);
+        }
       }
     }
     const st = this.steamFx;
     st.update(dt, (i, t) => (st.kind[i] ? [0.1, 0.1, 0.1, Math.min(1, t * 5) * (1 - t) * 0.5] : [0.92, 0.94, 0.95, Math.min(1, t * 6) * (1 - t) * 0.45]));
     const ff = this.fanFx, fans = this.fans;
-    ff.update(dt, (i, t) => [0.16, 0.15, 0.14, Math.sin(t * Math.PI) * 0.4], (i, dt2) => {
-      // drawn up into the nearest fan
-      const x = ff.pos[i * 3];
-      const fan = fans.reduce((a, f) => (f.fan && Math.abs(f.fan.getWorldPosition(new THREE.Vector3()).x - x) < Math.abs((a?.fan?.getWorldPosition(new THREE.Vector3()).x ?? 1e9) - x) ? f : a), null);
-      if (!fan?.fan) return;
-      const p = fan.fan.getWorldPosition(new THREE.Vector3());
-      ff.vel[i * 3] = (p.x - x) * 1.6; ff.vel[i * 3 + 1] = (p.y - ff.pos[i * 3 + 1]) * 1.6; ff.vel[i * 3 + 2] = (p.z - ff.pos[i * 3 + 2]) * 1.6;
+    ff.update(dt, (i, t) => [0.16, 0.15, 0.14, Math.sin(t * Math.PI) * 0.4], (i) => {
+      // drawn up into the fan that is sucking it out
+      const p = fans[ff.kind[i]]?.pos;
+      if (!p) return;
+      ff.vel[i * 3] = (p.x - ff.pos[i * 3]) * 1.6; ff.vel[i * 3 + 1] = (p.y - ff.pos[i * 3 + 1]) * 1.6; ff.vel[i * 3 + 2] = (p.z - ff.pos[i * 3 + 2]) * 1.6;
     });
     // switchboard: breakers up = closed, down = tripped; the main breaker follows the power
     const sb = this.stations.switchboard;
@@ -792,6 +814,11 @@ export class Interior {
     const L = (this.levers[key] ||= { target: -0.42, angle: -0.42 });
     L.angle += (L.target - L.angle) * Math.min(1, dt * 14);
     return L.angle;
+  }
+
+  ripple(x, y, z, size = 1) {
+    const m = this.ripples[this.rippleNext]; this.rippleNext = (this.rippleNext + 1) % this.ripples.length;
+    m.position.set(x, y + 0.012, z); m.userData = { t: 0, life: 0.9 + size * 0.5, size }; m.visible = true;
   }
 
   // breath bubbles rising from the swimmer to the surface

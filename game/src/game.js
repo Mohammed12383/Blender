@@ -818,7 +818,10 @@ function updateEnvironment(dt) {
   const wet = env.surface - player.pos.y;
   if (player.mode === 'walk' && wet > 0.15 && ['w', 'a', 's', 'd'].some((k) => keys.has(k))) {
     player.splashT = (player.splashT || 0) - dt;
-    if (player.splashT <= 0) { player.splashT = player.swim ? 0.7 : 0.42; sound.splash(player.swim ? 0.6 : Math.min(1, wet)); }
+    if (player.splashT <= 0) {
+      player.splashT = player.swim ? 0.7 : 0.42; sound.splash(player.swim ? 0.6 : Math.min(1, wet));
+      inn.ripple(player.pos.x, env.surface, player.pos.z, player.swim ? 1.3 : 0.9);
+    }
   }
   $('smokeveil').style.opacity = under ? 0 : Math.min(0.55, env.smoke * 0.6);
   sound.setUnderwater(under);

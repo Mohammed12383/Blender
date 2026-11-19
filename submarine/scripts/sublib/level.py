@@ -334,7 +334,6 @@ def torpedo_room(lib):
     r.port("AirTanks", 3.75)
     r.put("SupplyCrate", (5.05, 1.85, 0), 5)
     r.put("SparePartsCrate", (5.0, 1.85, 0.45), -4)
-    r.put("SupplyCrate", (5.75, 1.9, 0), -2)
     r.stbd("Workbench", 6.15)
     r.put("Toolbox", (5.75, -(w - 0.3), 0.9), 172)
     r.aft_face("BilgePump", -1.25, 0)
