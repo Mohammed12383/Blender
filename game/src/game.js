@@ -133,7 +133,7 @@ async function loadFood() {
 
 // ------------------------------------------------------------ hands (IK)
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
-const CURL = { relax: [0.35, 0.3], grip: [1.15, 0.7], bar: [1.25, 0.85], pinch: [0.9, 0.6], press: [1.3, 0.9], palm: [0.08, 0.1], carry: [1.0, 0.6], swim: [0.12, 0.15] };
+const CURL = { relax: [0.35, 0.3], grip: [1.15, 0.7], bar: [1.25, 0.85], knob: [1.0, 0.75], pinch: [0.9, 0.6], press: [1.3, 0.9], palm: [0.08, 0.1], carry: [1.0, 0.6], swim: [0.12, 0.15] };
 
 function aimBone(bone, from, to, childWorld) {
   // rotate `bone` so the direction from its head (from) to childWorld points at `to`
@@ -175,7 +175,7 @@ function solveArm(S, target, pose, dt) {
 }
 
 // Point the hand along the view with the palm facing the control.
-const ROLL = { relax: 0.5, grip: 1.25, bar: 0.2, pinch: 0.9, press: 0.35, palm: 0.0, carry: Math.PI, swim: 1.45 };
+const ROLL = { relax: 0.5, grip: 1.25, bar: 0.2, knob: -0.8, pinch: 0.9, press: 0.35, palm: 0.0, carry: Math.PI, swim: 1.45 };
 function orientHand(S, pose) {
   const fwd = camera.getWorldDirection(new THREE.Vector3());
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
@@ -193,6 +193,7 @@ function orientHand(S, pose) {
 
 function updateHands(dt) {
   if (!fp) return;
+  camera.updateWorldMatrix(true, false);
   const show = player.mode === 'walk' || player.mode === 'station';
   fp.holder.visible = show;
   if (!show) return;
@@ -206,8 +207,7 @@ function updateHands(dt) {
       // back the wrist off the control so the fingers land on it
       targets[side] = p.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(-0.07));
       poses[side] = h.userData.hand_pose;
-      // the periscope's training handles are sideways bars: palm down over the top, fingers wrapped round
-      if (player.station === 'periscope') { poses[side] = 'bar'; targets[side].y += 0.045; }
+      if (poses[side] === 'bar') targets[side].y += 0.045;      // sideways bars (periscope handles): the wrist sits over the top
       if (stationInput.press && side === 'R') targets[side].add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.03));
     }
     if (player.station === 'periscope' && periHand.part && nowMs() < periHand.until) {
@@ -239,6 +239,29 @@ function updateHands(dt) {
     if (it) { targets.R = it.pos.clone(); poses.R = 'grip'; if (player.carry === 'fuel_can') targets.L = it.pos.clone().add(new THREE.Vector3(0, 0.1, 0)); }
   }
   if (player.repairing) targets.R = inn.interactables.find((i) => i.kind === 'leak' && i.data === player.repairing)?.pos.clone() || targets.R;
+  // reaching: when a control is further than arm's reach the shoulder joint slides towards it (the torso stays
+  // put, and the shoulder stays below the bottom of the view), like leaning in over a desk
+  const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  for (const sd of ['L', 'R']) {
+    const S = fp.sides[sd]; if (!S) continue;
+    if (!S.sh0) { S.upPos0 = S.up.position.clone(); fp.rig.updateMatrixWorld(true); S.sh0 = fp.holder.worldToLocal(S.up.getWorldPosition(new THREE.Vector3())); S.lean = new THREE.Vector3(); }
+    const off = _v2.set(0, 0, 0);
+    if (targets[sd]) {
+      const tl = camera.worldToLocal(targets[sd].clone()), reach = 0.94 * (S.L1 + S.L2);
+      for (let it = 0; it < 4; it++) {
+        const sh = _v1.copy(S.sh0).add(off), d = tl.distanceTo(sh);
+        if (d <= reach) break;
+        off.addScaledVector(tl.clone().sub(sh).normalize(), d - reach);
+        const y = S.sh0.y + off.y, maxY = -(tanHalf + 0.5) * Math.max(0, -(S.sh0.z + off.z)) - 0.08;
+        if (y > maxY) off.y += maxY - y;
+      }
+      off.clampLength(0, 0.8);
+    }
+    S.lean.lerp(off, Math.min(1, dt * 6));
+    const w = fp.holder.localToWorld(S.sh0.clone().add(S.lean));
+    S.up.position.copy(S.up.parent.worldToLocal(w));
+  }
+  fp.rig.updateMatrixWorld(true);
   targets.L ||= camLocal(-0.32, -0.75, -0.25);
   targets.R ||= camLocal(0.32, -0.75, -0.25);
   for (const sd of ['L', 'R']) if (fp.sides[sd]) solveArm(fp.sides[sd], targets[sd], poses[sd], dt);
@@ -723,7 +746,8 @@ function updatePlayer(dt) {
     player.yaw -= mouseDX * 0.0022; player.pitch = Math.max(-1.4, Math.min(1.4, player.pitch - mouseDY * 0.0022));
     const room = sim.roomAt(player.pos.x, player.pos.y);
     const surface = room >= 0 ? sim.surface(room) : -99;
-    const depthHere = surface - player.pos.y;             // water above the feet
+    // water above the feet (only real water: halfway down the stairs your feet are below the upper deck's dry floor)
+    const depthHere = room >= 0 && sim.water[room] > 0.02 ? surface - player.pos.y : 0;
     // swim once the water is chest deep (or when there is no floor under us)
     if (!player.swim && depthHere > 1.25) { player.swim = true; player.vy = 0; sim.message('Swimming! SPACE swim up, C dive. Watch your breath.', 'warn'); }
     if (player.swim && depthHere < 1.05) player.swim = false;

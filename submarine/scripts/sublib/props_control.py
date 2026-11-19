@@ -317,8 +317,8 @@ def periscope(name="Periscope", ceiling=2.9):
     # ---- camera, hands, anchor
     p.use_camera((0, -1.0, 1.63), (0, -0.2, 1.42), lens=20, parent=head)
     gx = W / 2 + 0.03 + 0.062 + 0.045                    # middle of the grip, where the palm closes
-    p.hand("L", (-gx, gy, hz), "grip", parent=head, control="HandleL")
-    p.hand("R", (gx, gy, hz), "grip", parent=head, control="HandleR")
+    p.hand("L", (-gx, gy, hz), "bar", parent=head, control="HandleL")
+    p.hand("R", (gx, gy, hz), "bar", parent=head, control="HandleR")
     p.anchor("operate", (0, -1.02, 0), note="anchor rotates with Head in game")
     return p.finish()
 
@@ -352,8 +352,8 @@ def sonar_station(name="SonarStation"):
     p.tube([(0, 0.11, -0.05), (0.02, 0.12, -0.25), (-0.05, 0.05, -0.62), (-0.2, 0.05, -0.7)], 0.004, "BlackPlastic",
            round_r=0.1, parent=hp)
     p.use_camera((0, -0.9, 1.55), (0, -0.3, 1.32), lens=26)
-    p.hand("R", (0.4, -0.345, 1.5), "pinch", control="RangeKnob")
-    p.hand("L", (-0.4, -0.345, 1.3), "pinch", control="BearingKnob")
+    p.hand("R", (0.4, -0.345, 1.5), "knob", control="RangeKnob")
+    p.hand("L", (-0.4, -0.345, 1.3), "knob", control="BearingKnob")
     p.anchor("operate", (0, -D - 0.35, 0))
     return p.finish()
 

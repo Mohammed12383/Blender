@@ -27,22 +27,23 @@ const tex = (k) => (TEX[k] ||= softTexture(k));
 
 const VERT = `
 attribute float size; attribute float alpha; attribute vec3 tint;
-varying float vAlpha; varying vec3 vTint;
+varying float vAlpha; varying vec3 vTint; varying float vNear;
 uniform float scale;
 #include <fog_pars_vertex>
 void main() {
   vAlpha = alpha; vTint = tint;
   vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
   gl_PointSize = size * scale / max(0.05, -mvPosition.z);
+  vNear = clamp((-mvPosition.z - 0.1) / 0.5, 0.0, 1.0);   // fade out sprites right in front of the lens
   gl_Position = projectionMatrix * mvPosition;
   #include <fog_vertex>
 }`;
 const FRAG = `
-uniform sampler2D map; uniform float premul; uniform float cover; varying float vAlpha; varying vec3 vTint;
+uniform sampler2D map; uniform float premul; uniform float cover; varying float vAlpha; varying vec3 vTint; varying float vNear;
 #include <fog_pars_fragment>
 void main() {
   vec4 t = texture2D(map, gl_PointCoord);
-  float a = t.a * vAlpha;
+  float a = t.a * vAlpha * vNear;
   if (a < 0.003) discard;
   gl_FragColor = vec4(vTint, a);
   #include <fog_fragment>

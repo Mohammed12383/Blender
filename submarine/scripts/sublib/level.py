@@ -323,7 +323,7 @@ def torpedo_room(lib):
     r.put("Stairs", (sx, sy, 0), 180)
     r.put("TorpedoTubes", (0.0, 0, 0), 90)
     r.put("LoadingCradle", (0.55, -0.62, 0), 90)
-    r.put("Torpedo", (2.05, -0.62, 0.76), 180)
+    r.put("Torpedo", (2.8, -0.62, 0.76), 180)                # on the cradle, run back clear of the tube-3 loader
     r.put("ChainHoist", (0.5, 0.0, r.ceil - r.floor), 90)
     w = r.wall
     r.port("TorpedoRack", 2.1)

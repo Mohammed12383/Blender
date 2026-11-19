@@ -115,7 +115,7 @@ Conventions the game code can rely on:
 - **Station cameras**: every station has a glTF camera named `*_CAM_use` (the torpedo tubes have
   `TorpedoTubes_CAM_tube1..4`). When a player uses the station, move the view to it.
 - **Hand targets**: empty nodes named `*_HAND_L` / `*_HAND_R` sit on the controls (joystick, dials,
-  FIRE button, valve wheels, periscope handles). Their extras give `hand_pose` (`grip`, `pinch`,
+  FIRE button, valve wheels, periscope handles). Their extras give `hand_pose` (`grip`, `bar` for a sideways handle, `knob`, `pinch`,
   `press`, `palm`) and the `control` they belong to. Drive the first-person arms there with two-bone IK.
 - **Interaction points** are empty nodes named `*_INTERACT_<what>` (for example `NavConsole_INTERACT_operate`,
   `TorpedoTubes_INTERACT_tube3`, `Griddle_INTERACT_cook_slot2`). They mark where a player
