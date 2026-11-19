@@ -153,11 +153,12 @@ test('fires fill the room with smoke, smoke spreads, vent fans clear it (with po
   step(sim, 15);
   assert.ok(sim.smoke[R.CrewMess] > 0.3, `mess ${sim.smoke[R.CrewMess]}`);
   assert.ok(sim.smoke[R.ControlRoom] > 0.01, 'drifts through the open door');
-  sim.fires[0].out = true;
+  sim.fires.forEach((f) => { f.out = true; });
+  sim.doors.fill(false);                           // seal the mess: only its own fans can clear it now
   const s0 = sim.smoke[R.CrewMess];
   sim.setVent(R.CrewMess, true);
   sim.power = false; step(sim, 5);
-  assert.ok(sim.smoke[R.CrewMess] > s0 * 0.6, 'no fans without power');
+  assert.ok(sim.smoke[R.CrewMess] > s0 * 0.9, `no fans without power (${s0.toFixed(2)} -> ${sim.smoke[R.CrewMess].toFixed(2)})`);
   sim.power = true; step(sim, 15);
   assert.ok(sim.smoke[R.CrewMess] < 0.1, `cleared ${sim.smoke[R.CrewMess]}`);
 });
