@@ -133,7 +133,7 @@ async function loadFood() {
 
 // ------------------------------------------------------------ hands (IK)
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
-const CURL = { relax: [0.35, 0.3], grip: [1.15, 0.7], pinch: [0.9, 0.6], press: [1.3, 0.9], palm: [0.08, 0.1], carry: [1.0, 0.6], swim: [0.12, 0.15] };
+const CURL = { relax: [0.35, 0.3], grip: [1.15, 0.7], bar: [1.25, 0.85], pinch: [0.9, 0.6], press: [1.3, 0.9], palm: [0.08, 0.1], carry: [1.0, 0.6], swim: [0.12, 0.15] };
 
 function aimBone(bone, from, to, childWorld) {
   // rotate `bone` so the direction from its head (from) to childWorld points at `to`
@@ -175,7 +175,7 @@ function solveArm(S, target, pose, dt) {
 }
 
 // Point the hand along the view with the palm facing the control.
-const ROLL = { relax: 0.5, grip: 1.25, pinch: 0.9, press: 0.35, palm: 0.0, carry: Math.PI, swim: 1.45 };
+const ROLL = { relax: 0.5, grip: 1.25, bar: 0.2, pinch: 0.9, press: 0.35, palm: 0.0, carry: Math.PI, swim: 1.45 };
 function orientHand(S, pose) {
   const fwd = camera.getWorldDirection(new THREE.Vector3());
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
@@ -206,6 +206,8 @@ function updateHands(dt) {
       // back the wrist off the control so the fingers land on it
       targets[side] = p.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(-0.07));
       poses[side] = h.userData.hand_pose;
+      // the periscope's training handles are sideways bars: palm down over the top, fingers wrapped round
+      if (player.station === 'periscope') { poses[side] = 'bar'; targets[side].y += 0.045; }
       if (stationInput.press && side === 'R') targets[side].add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.03));
     }
     if (player.station === 'periscope' && periHand.part && nowMs() < periHand.until) {
