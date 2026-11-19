@@ -37,6 +37,7 @@ export class Sound {
   }
   setUnderwater(u) { if (this.muffle && this._under !== u) { this._under = u; this.muffle.frequency.setTargetAtTime(u ? 420 : 20000, this.ctx.currentTime, 0.08); if (u) this.noise(0.5, 300, 0.25); } }
   pump(fuel) { this.tone(fuel ? 300 : 220, 0.12, 'triangle', 0.12); this.noise(0.35, fuel ? 900 : 500, 0.18, 'bandpass'); }
+  splash(k = 1) { this.noise(0.25 + k * 0.2, 700 + Math.random() * 500, 0.08 + k * 0.1, 'bandpass'); }
   glug() { this.tone(180 + Math.random() * 120, 0.08, 'sine', 0.1); }
   crank() { if (!this.ctx) return; for (let i = 0; i < 9; i++) setTimeout(() => { this.tone(55 + i * 4, 0.12, 'sawtooth', 0.18); this.noise(0.1, 400, 0.15); }, i * 210); }
   toggle() { this.on = !this.on; if (this.master) this.master.gain.value = this.on ? 0.5 : 0; }

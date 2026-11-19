@@ -56,6 +56,7 @@ export class Particles {
     this.pos = new Float32Array(n * 3); this.vel = new Float32Array(n * 3);
     this.age = new Float32Array(n).fill(1); this.life = new Float32Array(n).fill(1);
     this.s0 = new Float32Array(n); this.s1 = new Float32Array(n);
+    this.kind = new Uint8Array(n);       // free per-particle tag for the colour function
     this.size = new Float32Array(n); this.alpha = new Float32Array(n); this.tint = new Float32Array(n * 3);
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));

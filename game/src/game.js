@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Sim, TELEGRAPH_NAMES, ROOMS, R as RI, PERISCOPE_DEPTH, TEST_DEPTH, SNORKEL_DEPTH, ENGINE_FAULTS } from './sim.js';
 import { Exterior } from './exterior.js';
-import { Interior } from './interior.js';
+import { Interior, dial } from './interior.js';
 import { Sound } from './sound.js';
 import { Net } from './net.js';
 import { DROP } from './exterior.js';
@@ -613,8 +613,9 @@ function animateInstruments(dt) {
   const s = sim.sub, bp = inn.stations.ballast;
   if (!bp) return;
   const set = (o, axis, ang) => { if (!o) return; o.userData.rest ||= o.quaternion.clone(); o.quaternion.copy(o.userData.rest).multiply(new THREE.Quaternion().setFromAxisAngle(axis, ang)); };
-  set(bp.parts.DepthGaugeNeedle, Z_AXIS, (Math.min(300, s.depth) / 300) * 4.7 - 2.35 + 1.4);
-  set(bp.parts.PressureGaugeNeedle, Z_AXIS, s.air / 100 * 3 - 1.5);
+  dial(bp.parts.DepthGaugeNeedle, -80, s.depth / 250);
+  dial(bp.parts.PressureGaugeNeedle, 10, s.ballast);
+  dial(bp.parts.AirGaugeNeedle, -20, s.air / 100);
   bp.spin = (bp.spin || 0) + dt * (s.valve === 'flood' ? 3 : s.valve === 'blow' ? -3 : 0);
   set(bp.parts.FloodValve, Z_AXIS, s.valve === 'flood' ? bp.spin : 0);
   set(bp.parts.BlowValve, Z_AXIS, s.valve === 'blow' ? bp.spin : 0);
@@ -628,7 +629,7 @@ function continuousInput(dt) {
     if (keys.has('a')) sim.setRudder(s.rudder + dt * 1.2);
     if (keys.has('d')) sim.setRudder(s.rudder - dt * 1.2);
     const js = inn.stations.helm?.parts?.Joystick;
-    if (js) { js.rotation.x = -s.telegraph * 0.06; js.rotation.z = -s.rudder * 0.3; }
+    if (js) { js.userData.rest ||= js.quaternion.clone(); js.quaternion.copy(js.userData.rest).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-s.telegraph * 0.06, 0, -s.rudder * 0.3))); }
   }
   if (player.mode === 'station' && player.station === 'ballast') {
     if (keys.has('w')) sim.setPlanes(s.planes + dt * 1.0);
@@ -643,7 +644,7 @@ function continuousInput(dt) {
     if (keys.has('z')) s.periscopeZoom = Math.min(6, s.periscopeZoom + dt * 3);
     if (!s.periscopeUp) player.mode = 'station';
     const head = inn.stations.periscope?.parts?.Head;
-    if (head) head.rotation.y = s.periscopeBearing;
+    if (head) { head.userData.rest ||= head.quaternion.clone(); head.quaternion.copy(head.userData.rest).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), s.periscopeBearing)); }
   }
   if (player.mode === 'bridge') {
     ext.look.yaw -= mouseDX * 0.0025; ext.look.pitch = Math.max(-0.6, Math.min(0.6, ext.look.pitch - mouseDY * 0.0025));
@@ -812,6 +813,13 @@ function updateEnvironment(dt) {
   }
   inn.scene.background = fog.color;
   $('underwater').classList.toggle('hidden', !under);
+  if (under) inn.breathe(eye, env.surface, dt);
+  // splashing about in the flood water
+  const wet = env.surface - player.pos.y;
+  if (player.mode === 'walk' && wet > 0.15 && ['w', 'a', 's', 'd'].some((k) => keys.has(k))) {
+    player.splashT = (player.splashT || 0) - dt;
+    if (player.splashT <= 0) { player.splashT = player.swim ? 0.7 : 0.42; sound.splash(player.swim ? 0.6 : Math.min(1, wet)); }
+  }
   $('smokeveil').style.opacity = under ? 0 : Math.min(0.55, env.smoke * 0.6);
   sound.setUnderwater(under);
 }

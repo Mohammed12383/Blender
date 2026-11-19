@@ -13,6 +13,13 @@ const FIRE_LIGHTS = 3;
 const Y_AXIS = new THREE.Vector3(0, 1, 0), X_AXIS = new THREE.Vector3(1, 0, 0), NZ_AXIS = new THREE.Vector3(0, 0, -1);
 // GLTFLoader drops the '.' from Blender's duplicate suffixes ("Lever.001" -> "Lever001"): compare base names
 export const baseName = (n) => n.replace(/\d{3}$/, '');
+// Needles turn about the dial's axis; their rest pose is already turned by restDeg. f = 0..1 of full scale.
+export function dial(o, restDeg, f) {
+  if (!o) return;
+  o.userData.rest ||= o.quaternion.clone();
+  const deg = -135 + 270 * Math.max(0, Math.min(1, f)) - restDeg;
+  o.quaternion.copy(o.userData.rest).multiply(new THREE.Quaternion().setFromAxisAngle(NZ_AXIS, deg * Math.PI / 180));
+}
 
 function cloudTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 256;
@@ -167,7 +174,7 @@ export class Interior {
       const root = tops.find((r) => re.test(r.name)); if (!root) continue;
       const part = (n) => find(root, (o) => baseName(o.name).endsWith(`_${n}`) && !/_HAND_/.test(o.name));
       const v = { root, rest: root.position.clone(), fly: part('Flywheel'), lamp: part('FaultLamp'), valve: part('CoolantValve'),
-        gauges: { oil: part('OilGauge'), temp: part('TempGauge'), rpm: part('RpmGauge') }, start: part('StartButton') };
+        gauges: { oil: part('OilGaugeNeedle'), temp: part('TempGaugeNeedle'), rpm: part('RpmGaugeNeedle') }, start: part('StartButton') };
       for (const g of Object.values(v.gauges)) if (g) g.userData.rest = g.quaternion.clone();
       if (v.valve) v.valve.userData.rest = v.valve.quaternion.clone();
       if (v.lamp) v.lamp.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); v.lampMat = o.material; } });
@@ -508,6 +515,9 @@ export class Interior {
     for (const p of [this.flames, this.embers, this.smokeFx]) this.scene.add(p.points);
     this.fanFx = new Particles(240, { kind: 'smoke', additive: false });
     this.scene.add(this.fanFx.points);
+    this.steamFx = new Particles(260, { kind: 'smoke', additive: false });     // engine steam and exhaust leaks
+    this.bubbles = new Particles(200, { kind: 'drop', additive: false });      // your breath underwater
+    this.scene.add(this.steamFx.points); this.scene.add(this.bubbles.points);
   }
 
   spawnLeak(l) {
@@ -552,7 +562,7 @@ export class Interior {
     this.time += dt;
     const camPos = camera.getWorldPosition(new THREE.Vector3());
     const H = this.renderer.domElement.height;
-    for (const p of [this.flames, this.embers, this.smokeFx, this.splash, this.fanFx]) p.setScale(H);
+    for (const p of [this.flames, this.embers, this.smokeFx, this.splash, this.fanFx, this.steamFx, this.bubbles]) p.setScale(H);
     // leaks: high pressure spray, stronger with depth; splashes where it lands
     for (const v of this.leakViews.values()) {
       const p = v.spray.geometry.attributes.position, o = v.g.position, inward = -Math.sign(o.z);
@@ -576,6 +586,8 @@ export class Interior {
       p.needsUpdate = true;
     }
     this.splash.update(dt, (i, t) => [0.85, 0.95, 1.0, 0.7 * (1 - t)], (i) => { this.splash.vel[i * 3 + 1] -= 9.8 * dt; });
+    const bb = this.bubbles;
+    bb.update(dt, (i, t) => [0.8, 0.95, 1.0, 0.75 * (1 - t * t)], (i, dt2) => { bb.vel[i * 3] += Math.sin(this.time * 11 + i) * dt2 * 0.8; });
     // fires: flames, embers and smoke plumes
     const fires = [...this.fireViews.values()];
     fires.sort((a, b) => a.base.distanceTo(camPos) - b.base.distanceTo(camPos));
@@ -687,12 +699,22 @@ export class Interior {
       const v = this.engines[i]; if (!v) return;
       v.spin = (v.spin || 0) + dt * e.rpm / 60 * 6.283;
       set(v.fly, X_AXIS, v.spin);
-      set(v.gauges.rpm, NZ_AXIS, e.rpm / 900 * 4.2 - 2.1);
-      set(v.gauges.temp, NZ_AXIS, (e.temp - 20) / 120 * 4.2 - 2.1);
-      set(v.gauges.oil, NZ_AXIS, e.oil / 100 * 4.2 - 2.1);
+      dial(v.gauges.rpm, -120, e.rpm / 900);
+      dial(v.gauges.temp, -60, (e.temp - 20) / 120);
+      dial(v.gauges.oil, -30, e.oil / 100);
       v.valveAng = (v.valveAng || 0) + ((e.coolant ? 0 : -2.6) - (v.valveAng || 0)) * Math.min(1, dt * 4);
       set(v.valve, Y_AXIS, v.valveAng);
       if (v.lampMat) { const on = e.fault || !e.coolant || e.temp > 105; v.lampMat.emissive?.setHex(on && Math.sin(this.time * 8) > -0.3 ? 0xff2010 : 0x000000); if (v.lampMat.emissive) v.lampMat.emissiveIntensity = 3; }
+      // a sick diesel shows it: black smoke from the injectors, steam when it overheats
+      const top = v.root.position;
+      if (e.running && e.fault === 'injector' && Math.random() < dt * 14) {
+        const i = this.steamFx.emit([top.x + (Math.random() - 0.5) * 4.5, top.y + 2.3, top.z + (Math.random() - 0.5) * 0.4], [(Math.random() - 0.5) * 0.3, 0.5 + Math.random() * 0.4, (Math.random() - 0.5) * 0.3], 3.5, 0.3, 1.6);
+        this.steamFx.kind[i] = 1;
+      }
+      if (e.temp > 100 && Math.random() < dt * (e.temp - 95) * 0.6) {
+        const i = this.steamFx.emit([top.x - 2.6 + Math.random() * 0.4, top.y + 2.35, top.z + (Math.random() - 0.5) * 0.3], [(Math.random() - 0.5) * 0.4, 1.2 + Math.random() * 0.8, (Math.random() - 0.5) * 0.4], 1.6, 0.15, 1.1);
+        this.steamFx.kind[i] = 0;
+      }
       const shake = e.running ? 0.0025 : e.crank ? 0.006 : 0;
       v.root.position.set(v.rest.x + (Math.random() - 0.5) * shake, v.rest.y + (Math.random() - 0.5) * shake, v.rest.z + (Math.random() - 0.5) * shake);
     });
@@ -707,16 +729,16 @@ export class Interior {
       const p = ec.parts;
       sim.engines.forEach((e, i) => {
         const n = i + 1;
-        set(p[`Rpm${n}`], NZ_AXIS, e.rpm / 900 * 4.2 - 2.1);
-        set(p[`Temp${n}`], NZ_AXIS, (e.temp - 20) / 120 * 4.2 - 2.1);
-        set(p[`Oil${n}`], NZ_AXIS, e.oil / 100 * 4.2 - 2.1);
+        dial(p[`Rpm${n}Needle`], -120, e.rpm / 900);
+        dial(p[`Temp${n}Needle`], -60, (e.temp - 20) / 120);
+        dial(p[`Oil${n}Needle`], -40, e.oil / 100);
         set(p[`Throttle${n}`], X_AXIS, e.running ? -0.45 : 0.2);
         const m = p[`Fault${n}`]?.userData.mat;
         if (m && m.emissive) { m.emissive.setHex(e.fault ? 0xff2010 : e.running ? 0x20ff40 : 0x000000); m.emissiveIntensity = 2.5; }
         const pressed = (this.pressed?.[`engine${i}`] || 0) > this.time;
         const b = p[`Start${n}`]; if (b) { b.userData.restPos ||= b.position.clone(); b.position.copy(b.userData.restPos); if (pressed) b.translateZ(0.012); }
       });
-      set(p.ChargeAmmeter, NZ_AXIS, (sim.sub.charging || 0) * 2.4 - 1.2);
+      dial(p.ChargeAmmeterNeedle, 20, 0.5 + Math.min(0.5, (sim.sub.charging || 0) * 0.5) - (sim.sub.charging ? 0 : Math.min(0.4, Math.abs(sim.sub.speed) * 0.05)));
     }
     // fuel day tank sight glass and transfer pump lever
     const fu = this.stations.fuel;
@@ -740,6 +762,8 @@ export class Interior {
         if (Math.random() < dt * 30 * sim.smoke[f.room]) this.fanFx.emit([p.x + (Math.random() - 0.5) * 1.6, p.y - 0.6 - Math.random() * 0.4, p.z + (Math.random() - 0.5) * 1.6], [0, 0, 0], 0.9, 0.6, 0.15);
       }
     }
+    const st = this.steamFx;
+    st.update(dt, (i, t) => (st.kind[i] ? [0.1, 0.1, 0.1, Math.min(1, t * 5) * (1 - t) * 0.5] : [0.92, 0.94, 0.95, Math.min(1, t * 6) * (1 - t) * 0.45]));
     const ff = this.fanFx, fans = this.fans;
     ff.update(dt, (i, t) => [0.16, 0.15, 0.14, Math.sin(t * Math.PI) * 0.4], (i, dt2) => {
       // drawn up into the nearest fan
@@ -768,6 +792,15 @@ export class Interior {
     const L = (this.levers[key] ||= { target: -0.42, angle: -0.42 });
     L.angle += (L.target - L.angle) * Math.min(1, dt * 14);
     return L.angle;
+  }
+
+  // breath bubbles rising from the swimmer to the surface
+  breathe(pos, surface, dt) {
+    if (Math.random() < dt * 6) {
+      const i = this.bubbles.emit([pos.x + (Math.random() - 0.5) * 0.15, pos.y - 0.1, pos.z + (Math.random() - 0.5) * 0.15],
+        [(Math.random() - 0.5) * 0.15, 0.9 + Math.random() * 0.5, (Math.random() - 0.5) * 0.15], Math.max(0.3, (surface - pos.y) / 1.1), 0.03 + Math.random() * 0.03, 0.05);
+      this.bubbles.top = surface;
+    }
   }
 
   roomAt(x, y) {
