@@ -636,7 +636,15 @@ function controlUnder(e) {
   raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
   const hit = raycaster.intersectObject(st.root, true)[0];
   for (let o = hit?.object; o && o !== st.root; o = o.parent) { const nm = st.partNames.get(o); if (nm && CLICK_KEYS[nm]) return nm; }
-  return null;
+  // small controls sit in their panels: otherwise take the nearest one within a few pixels of the click
+  let best = null, bd = Math.max(18, r.height * 0.035);
+  for (const [nm, o] of Object.entries(st.parts)) {
+    if (!CLICK_KEYS[nm]) continue;
+    const q = o.getWorldPosition(new THREE.Vector3()).project(camera);
+    const d = Math.hypot((q.x + 1) / 2 * r.width - (e.clientX - r.left), (1 - q.y) / 2 * r.height - (e.clientY - r.top));
+    if (q.z < 1 && d < bd) { bd = d; best = nm; }
+  }
+  return best;
 }
 canvas.addEventListener('mousedown', (e) => {
   if (player.mode === 'walk' && document.pointerLockElement !== canvas) lockPointer();
@@ -651,6 +659,8 @@ canvas.addEventListener('mousedown', (e) => {
   if (player.mode === 'bridge' && e.button === 2) ext.look.zoom = true;
 });
 canvas.addEventListener('mouseup', () => { ext.look.zoom = false; });
+// a pointer lock asked for while walking can arrive after you've stepped up to a station: let the mouse go again
+document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement && player.mode !== 'walk') document.exitPointerLock(); });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // ------------------------------------------------------------------ TAB handbook: how the boat works
@@ -1217,5 +1227,5 @@ function applyTest(name) {
 
 document.querySelectorAll('#roles button').forEach((b) => b.addEventListener('click', () => start(b.dataset.role)));
 if (PARAMS.get('role')) start(PARAMS.get('role'));
-window.__game = { sim, player, inn, ext, camera, enterStation, leaveStation, interact, keys, pumpStroke, loader, poseAvatar, tick, drop, eat,
+window.__game = { sim, player, inn, ext, camera, enterStation, leaveStation, interact, keys, pumpStroke, loader, poseAvatar, tick, drop, eat, controlUnder, stationKey,
   periscopeMark, periscopeClear, periscopeTag, nearest, griddle, get net() { return net; } };
