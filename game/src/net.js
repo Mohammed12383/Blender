@@ -5,6 +5,55 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 const ROLE_FILE = { navigator: 'Navigator', weapons_officer: 'Gunner', torpedo_loader: 'Loader', cook: 'Cook' };
 
+// ---- procedural poses for crewmates: arms down with a walk cycle, a breaststroke when swimming
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
+const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
+function aim(bone, child, dirWorld) {
+  // turn `bone` so the segment from it to `child` points along dirWorld (works whatever the bone's local axes)
+  bone.getWorldPosition(_a); child.getWorldPosition(_b);
+  _q.setFromUnitVectors(_b.sub(_a).normalize(), _c.copy(dirWorld).normalize());
+  bone.getWorldQuaternion(_q2).premultiply(_q);
+  bone.parent.getWorldQuaternion(_q3);
+  bone.quaternion.copy(_q3.invert().multiply(_q2));
+  bone.updateMatrixWorld(true);
+}
+const LIMBS = [['UpperArmL', 'LowerArmL', 'HandL'], ['UpperArmR', 'LowerArmR', 'HandR'], ['UpperLegL', 'LowerLegL', 'FootL'], ['UpperLegR', 'LowerLegR', 'FootR']];
+export function poseAvatar(a, { swim = false, moving = false, t = 0 } = {}) {
+  if (!a.userData.limbs) {
+    a.userData.limbs = LIMBS.map((names) => names.map((n) => a.getObjectByName(n)));
+    a.userData.rest = a.userData.limbs.flat().filter(Boolean).map((b) => [b, b.quaternion.clone()]);
+  }
+  for (const [b, q] of a.userData.rest) b.quaternion.copy(q);
+  a.updateMatrixWorld(true);
+  const W = (x, y, z) => new THREE.Vector3(x, y, z).applyQuaternion(a.quaternion);   // avatar-local direction -> world
+  const [armL, armR, legL, legR] = a.userData.limbs;
+  const limb = (L, up, lo) => { if (L[0] && L[1] && L[2]) { aim(L[0], L[1], up); aim(L[1], L[2], lo); } };
+  // avatar-local axes: +Z faces forward, +Y up, +X is the character's left
+  if (swim) {
+    // breaststroke: reach ahead together, sweep out and round, tuck in, glide; frog kick
+    const ph = (t * 0.9) % 1, k = Math.sin(ph * Math.PI * 2);
+    const out = Math.max(0, Math.sin(ph * Math.PI));            // 0 reach .. 1 wide sweep
+    for (const [L, sx] of [[armL, 1], [armR, -1]]) {
+      const up = W(sx * (0.15 + out * 0.9), 1.0 - out * 0.7, 0.35 + out * 0.2);
+      const lo = W(sx * (0.05 + out * 0.4), 1.0 - out * 1.1, 0.5 + out * 0.6);
+      limb(L, up, lo);
+    }
+    for (const [L, sx] of [[legL, 1], [legR, -1]]) {
+      const bend = Math.max(0, -k);
+      limb(L, W(sx * (0.12 + bend * 0.35), -1, -0.15 - bend * 0.5), W(sx * 0.08, -1 + bend * 0.9, -0.2 - bend * 1.2));
+    }
+  } else {
+    const sw = moving ? Math.sin(t * 7.5) : 0;
+    for (const [L, sx, ph] of [[armL, 1, 1], [armR, -1, -1]]) {
+      limb(L, W(sx * 0.18, -1, sw * ph * 0.45), W(sx * 0.1, -1, 0.25 + Math.max(0, sw * ph) * 0.4));
+    }
+    for (const [L, sx, ph] of [[legL, 1, -1], [legR, -1, 1]]) {
+      const s2 = sw * ph;
+      limb(L, W(sx * 0.06, -1, s2 * 0.5), W(sx * 0.04, -1, s2 * 0.2 - Math.max(0, -s2) * 0.6));
+    }
+  }
+}
+
 export class Net {
   constructor(url, name, role, sim, inn, loader) {
     Object.assign(this, { url, name, role, sim, inn, loader });
@@ -99,14 +148,21 @@ export class Net {
         contacts: [...sim.contacts], leaks: sim.leaks, fires: sim.fires, power: sim.power, events: this.outEvents || [] });
       this.outEvents = [];
     }
+  }
+  // every frame: glide the crewmates towards their last reported spot and animate their bodies
+  animate(dt) {
+    const t = performance.now() / 1000;
     for (const p of this.peers.values()) {
-      this.avatar(p).then((a) => {
-        if (!a || a === 'loading') return;
-        // swimmers lie flat in the water and bob; everyone else stands on their deck
-        const t = performance.now() / 1000;
-        a.position.set(p.x ?? 0, (p.y ?? 0) + (p.swim ? 1.15 + Math.sin(t * 2.4 + p.id) * 0.05 : 0), p.z ?? 0);
-        a.rotation.set(p.swim ? -1.25 : 0, (p.yaw ?? 0) + Math.PI, p.swim ? Math.sin(t * 2.4) * 0.12 : 0, 'YXZ');
-      });
+      const a = this.avatars[p.id];
+      if (!a) { this.avatar(p); continue; }
+      if (a === 'loading') continue;
+      const target = new THREE.Vector3(p.x ?? 0, (p.y ?? 0) + (p.swim ? 1.15 + Math.sin(t * 2.4 + p.id) * 0.05 : 0), p.z ?? 0);
+      if (!a.userData.placed) { a.userData.placed = true; a.position.copy(target); }
+      const moved = a.position.distanceTo(target);
+      a.position.lerp(target, Math.min(1, dt * 10));
+      a.userData.speed = THREE.MathUtils.lerp(a.userData.speed || 0, moved / Math.max(dt, 1e-3), Math.min(1, dt * 4));
+      a.rotation.set(p.swim ? -1.25 : 0, (p.yaw ?? 0) + Math.PI, p.swim ? Math.sin(t * 2.4) * 0.12 : 0, 'YXZ');
+      poseAvatar(a, { swim: !!p.swim, moving: a.userData.speed > 0.3, t });
     }
   }
 }

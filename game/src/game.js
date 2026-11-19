@@ -5,7 +5,7 @@ import { Sim, TELEGRAPH_NAMES, ROOMS, R as RI, PERISCOPE_DEPTH, TEST_DEPTH, SNOR
 import { Exterior } from './exterior.js';
 import { Interior, dial } from './interior.js';
 import { Sound } from './sound.js';
-import { Net } from './net.js';
+import { Net, poseAvatar } from './net.js';
 import { DROP } from './exterior.js';
 const DROP_TEX = () => DROP;
 
@@ -581,7 +581,7 @@ function loop(now) {
   camera.aspect = w / h; camera.updateProjectionMatrix();
 
   if (!net || net.isHost) sim.update(dt);
-  if (net) net.update(dt, player);
+  if (net) { net.update(dt, player); net.animate(dt); }
   continuousInput(dt);
   updatePlayer(dt);
   handleEvents();
@@ -980,4 +980,4 @@ function applyTest(name) {
 
 document.querySelectorAll('#roles button').forEach((b) => b.addEventListener('click', () => start(b.dataset.role)));
 if (PARAMS.get('role')) start(PARAMS.get('role'));
-window.__game = { sim, player, inn, ext, camera, enterStation, leaveStation, interact, keys, pumpStroke, get net() { return net; } };
+window.__game = { sim, player, inn, ext, camera, enterStation, leaveStation, interact, keys, pumpStroke, loader, poseAvatar, get net() { return net; } };
