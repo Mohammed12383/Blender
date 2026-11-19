@@ -68,6 +68,7 @@
     }
     if (holdDepth !== null) { sim.sub.depth = holdDepth; sim.sub.vy = 0; }
     sim.sub.hull = Math.max(sim.sub.hull, 90);
+    player.health = Math.max(player.health, 62);   // smoke and flames sting, but no red hurt overlay in the tour
   }
 
   // ---- the script: a list of shots. Each has a duration (s), optional start(), and every-frame update(t).
@@ -94,7 +95,7 @@
     });
 
   // 3. ballast and dive planes
-  shot(8.5, () => { leave(); g.enterStation('ballast'); caption('BALLAST & DIVE PLANES', '<kbd>F</kbd> flood tanks (dive) · <kbd>B</kbd> blow (surface) · <kbd>H</kbd> hold · <kbd>W</kbd> <kbd>S</kbd> planes'); },
+  shot(8.5, () => { leave(); g.enterStation('ballast'); caption('BALLAST & DIVE PLANES', '<kbd>F</kbd> flood tanks (dive) · <kbd>B</kbd> blow · <kbd>H</kbd> hold · <kbd>W</kbd> <kbd>S</kbd> planes · the DIVE PROFILE shows the sea floor ahead'); },
     (t, st) => {
       at(t, 1.8, () => press('f'), st); at(t, 3.6, () => down('s'), st); at(t, 4.6, () => up('s'), st);
       at(t, 5.6, () => press('h'), st); at(t, 6.4, () => down('w'), st); at(t, 7.2, () => { up('w'); press('x'); }, st);
@@ -133,17 +134,60 @@
   shot(6.0, () => { leave(); g.enterStation('sonar'); caption('SONAR', '<kbd>P</kbd> active ping (they hear you!) · <kbd>N</kbd> lock the next contact'); },
     (t, st) => { at(t, 1.5, () => press('p'), st); at(t, 3.5, () => press('n'), st); at(t, 4.5, () => press('n'), st); });
 
-  // 6. chart table
-  shot(3.0, () => { leave(); g.enterStation('chart'); caption('CHART TABLE', 'Every contact found by periscope or sonar'); }, () => {});
+  // 6. chart table: plan a route
+  shot(11.0, () => {
+    leave(); g.enterStation('chart'); g.inn.chartZoom = 1; g.inn.chartCursor.x = 0; g.inn.chartCursor.z = 0;
+    caption('ROUTE PLANNING', 'Chart table: move the cursor with the CURSOR stick <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> · <kbd>SPACE</kbd> ADD WPT');
+  }, (t, st) => {
+    const c = g.inn.chartCursor;
+    at(t, 1.0, () => down('d'), st); at(t, 2.2, () => { up('d'); down('w'); }, st); at(t, 2.8, () => up('w'), st);
+    at(t, 3.2, () => press(' '), st);
+    at(t, 3.8, () => down('d'), st); at(t, 4.8, () => { up('d'); down('s'); }, st); at(t, 5.8, () => up('s'), st);
+    at(t, 6.2, () => press(' '), st);
+    at(t, 6.8, () => down('d'), st); at(t, 7.6, () => up('d'), st);
+    at(t, 7.9, () => press(' '), st);
+    at(t, 8.4, () => caption('ROUTE PLANNING', '<kbd>BACKSPACE</kbd> DEL WPT removes the last one · <kbd>Z</kbd> <kbd>X</kbd> zoom in and out'), st);
+    at(t, 8.8, () => press('backspace'), st); at(t, 9.3, () => press(' '), st);
+    at(t, 9.6, () => down('z'), st); at(t, 10.3, () => up('z'), st);
+  });
+  // 6b. helm: follow the route on the autopilot
+  shot(7.0, () => { leave(); g.enterStation('helm'); caption('AUTOPILOT', 'Helm: <kbd>T</kbd> steers along the chart route · the scope shows the next waypoint'); },
+    (t, st) => { at(t, 1.2, () => press('t'), st); at(t, 2.4, () => press('w'), st); at(t, 3.2, () => press('w'), st); });
+  // 6c. ship status: every system on one console, and the general alarm
+  shot(13.0, () => {
+    leave();
+    // something to report: a leak and a little water in the battery room, a small fire in the galley
+    const l = { id: sim.nextId++, room: 7, x: 12.0, y: -1.6, side: 1, z: -1.9, severity: 0.8, fixed: false };
+    sim.leaks.push(l); sim.events.push({ type: 'leak', leak: l }); sim.water[7] = 0.35;
+    sim.addFire(3); const f = sim.fires[sim.fires.length - 1]; f.intensity = 0.4;
+    g.enterStation('status');
+    caption('SHIP STATUS', 'Every system on one console: <kbd>1</kbd>–<kbd>8</kbd> pages · a key flashes red when that system needs help');
+  }, (t, st) => {
+    ['1', '2', '3', '4', '5', '6', '7', '8'].forEach((k, i) => at(t, 1.0 + i * 1.1, () => press(k), st));
+    at(t, 9.9, () => caption('GENERAL ALARM', 'Flip the guard and press: klaxon and beacons for the whole crew'), st);
+    at(t, 10.4, () => press('g'), st);
+    at(t, 12.6, () => {
+      press('g');
+      sim.leaks.forEach((l) => { if (!l.fixed) sim.fixLeak(l.id); }); sim.water[7] = 0; sim.water[6] = 0;
+      sim.fires.forEach((f) => { f.out = true; }); sim.smoke.fill(0);
+    }, st);
+    sim.water[7] = Math.min(sim.water[7], 0.35);
+  });
 
   // 7. fire control and a torpedo run
-  shot(10.0, () => {
-    leave(); g.enterStation('weapons');
-    if (frig) { sim.weapons.lock = frig.id; const s = sim.sub; frig.x = s.x + Math.cos(s.heading + 0.1) * 170; frig.z = s.z - Math.sin(s.heading + 0.1) * 170; frig.speed = 0; }
-    caption('FIRE CONTROL', '<kbd>1</kbd>–<kbd>4</kbd> tube · <kbd>F</kbd> flood · <kbd>O</kbd> outer door · <kbd>K</kbd> arm · <kbd>G</kbd> guard · <kbd>SPACE</kbd> FIRE');
+  shot(14.0, () => {
+    leave(); sim.setAutopilot(false); sim.setTelegraph(1); sim.weapons.lock = null; sim.setAim(0); g.enterStation('weapons');
+    caption('FIRE CONTROL', 'The AIM stick <kbd>A</kbd> <kbd>D</kbd> sets the torpedo course when nothing is locked · <kbd>N</kbd> DECOY');
   }, (t, st) => {
-    at(t, 1.2, () => press('1'), st); at(t, 2.2, () => press('f'), st); at(t, 3.4, () => press('o'), st);
-    at(t, 4.6, () => press('k'), st); at(t, 5.8, () => press('g'), st); at(t, 7.2, () => press(' '), st);
+    at(t, 1.0, () => down('a'), st); at(t, 2.2, () => { up('a'); down('d'); }, st); at(t, 3.6, () => up('d'), st);
+    at(t, 4.0, () => press('n'), st);
+    at(t, 4.6, () => {
+      if (frig) { sim.weapons.lock = frig.id; const s = sim.sub; frig.x = s.x + Math.cos(s.heading + 0.1) * 170; frig.z = s.z - Math.sin(s.heading + 0.1) * 170; frig.speed = 0; }
+      caption('FIRE CONTROL', 'Locked from sonar · <kbd>1</kbd>–<kbd>4</kbd> tube · <kbd>F</kbd> flood · <kbd>O</kbd> door · <kbd>K</kbd> arm · <kbd>G</kbd> guard · <kbd>SPACE</kbd> FIRE');
+    }, st);
+    at(t, 5.4, () => press('1'), st); at(t, 6.4, () => press('f'), st); at(t, 7.6, () => press('o'), st);
+    at(t, 8.8, () => press('k'), st); at(t, 10.0, () => press('g'), st); at(t, 11.4, () => press(' '), st);
+    if (t > 4.6 && frig) { const s = sim.sub; frig.x = s.x + Math.cos(s.heading + 0.1) * 170; frig.z = s.z - Math.sin(s.heading + 0.1) * 170; }
   });
   shot(9.0, () => { player.mode = 'chase'; g.ext.orbit.yaw = 0.35; g.ext.orbit.pitch = 0.18; g.ext.orbit.dist = 70; caption('TORPEDO AWAY', 'The external camera follows the run'); },
     (t) => { g.ext.orbit.yaw = 0.35 + t * 0.06; if (frig && frig.alive) { const s = sim.sub; frig.x = s.x + Math.cos(s.heading + 0.1) * 170; } });
@@ -156,6 +200,9 @@
       else walkTo(5.4, 0.2, 1.2);
     });
 
+  // 8b. the tool board behind the workbench
+  shot(5.5, () => { g.keys.clear(); place(5.95, -2.9, 0.75, Math.PI + 0.25, 0.02); caption('TOOL BOARD', 'Every tool hangs on its painted outline: take the wrench or the extinguisher here'); },
+    (t) => { player.yaw = Math.PI + 0.25 - t * 0.09; });
   // 9. reload a tube
   shot(14.0, () => {
     g.keys.clear(); caption('RELOAD', 'Take a torpedo from the rack, open the breech, load, close');
@@ -287,6 +334,9 @@
     caption('BRIDGE', 'Surfaced: climb the ladder and look around');
   }, (t) => { g.ext.look.yaw = -0.6 + t * 0.12; });
 
+  // the crew handbook
+  shot(6.0, () => { leave(); caption('CREW HANDBOOK', '<kbd>TAB</kbd> explains every station and system on the boat'); press('tab'); },
+    (t, st) => { const hb = document.getElementById('handbook'); if (hb) hb.scrollTop = Math.max(0, (t - 2) * 120); at(t, 5.8, () => press('tab'), st); });
   // end card
   shot(3.0, () => { leave(); showTitle('DEEPWATER CREW', 'Run every station together · sink the convoy · keep the boat alive'); caption(''); }, () => {});
 
