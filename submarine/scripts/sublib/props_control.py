@@ -282,36 +282,44 @@ def periscope(name="Periscope", ceiling=2.9):
         p.box((0.004, 0.004, 0.024), (0, -0.0605, 0.012), "PaintWhite", bevel=0, parent=kn, name="index")
     # ---- training handles: an angled bracket brings each knurled grip forward to where your hands are
     hz = 1.42                                            # chest height: where your hands naturally rest
-    gy = -0.59                                           # brackets swing the grips out towards you (within arm's reach)
+    gy = -0.56                                           # flat brackets carry the grips out towards you
     for side in (-1, 1):
-        root = (side * (W / 2 + 0.025), gy)
+        root = (side * (W / 2 + 0.03), gy)
         h = p.pivot("HandleL" if side < 0 else "HandleR", (root[0], root[1], hz), parent=head,
                     interact="periscope_handle", rotate_axis="X", min_deg=-90, max_deg=0, note="fold down to stow")
-        ax, ay = side * (W / 2 - 0.03), -0.17            # where the bracket leaves the box side
-        dx, dy = root[0] - ax, root[1] - ay
-        ln, ang = math.hypot(dx, dy), math.degrees(math.atan2(dy, dx))
-        p.box((ln + 0.06, 0.05, 0.13), ((ax + root[0]) / 2, (ay + root[1]) / 2, hz), "PaintTeal", rot=(0, 0, ang), bevel=0.02,
+        ax, ay = side * (W / 2 + 0.012), -0.16            # where the bracket is bolted to the box side
+        # flat bracket: a thick plate running forward along the box side, bolted on with two hex bolts
+        ln = abs(root[1] - ay)
+        p.box((0.028, ln + 0.05, 0.12), (ax + side * 0.004, (ay + root[1]) / 2, hz), "PaintTeal", bevel=0.012,
               parent=head, name="bracket")
-        p.cyl(0.066, 0.05, (root[0] - side * 0.01, root[1], hz), "PaintTeal", axis="Y", segs=32, bevel=0.012, parent=head)
-        p.cyl(0.032, 0.012, (root[0] - side * 0.01, root[1] - 0.031, hz), "Steel", axis="Y", segs=24, bevel=0.003, parent=head, name="bigscrew")
-        p.box((0.045, 0.004, 0.009), (root[0] - side * 0.01, root[1] - 0.038, hz), "BlackPlastic", rot=(0, 90, 0), bevel=0, parent=head)
-        p.cyl(0.022, 0.05, (side * 0.06, 0, 0), "Chrome", axis="X", segs=16, parent=h, name="shaft")
-        p.cyl(0.05, 0.025, (side * 0.09, 0, 0), "DarkSteel", axis="X", segs=32, bevel=0.006, parent=h, name="collar")
-        prof = [(0.0, 0.0), (0.05, 0.0)]
-        for k in range(16):
-            prof += [(0.053, 0.006 + k * 0.016), (0.048, 0.014 + k * 0.016)]
-        prof += [(0.053, 0.262), (0.045, 0.275), (0.0, 0.275)]
-        p.add(bm_lathe(prof, 28, "X"), "Rubber", (side * 0.103 if side > 0 else -0.103 - 0.275, 0, 0), parent=h, smooth=40, name="grip")
+        for by in (ay - 0.035, ay - 0.1):
+            p.cyl(0.013, 0.012, (ax + side * 0.024, by, hz), "DarkSteel", axis="X", segs=6, bevel=0.002, parent=head, name="bolt")
+        # hub at the front end: the fold pivot, with a big slotted screw on its face
+        p.cyl(0.05, 0.05, (root[0] - side * 0.006, root[1], hz), "PaintTeal", axis="X", segs=32, bevel=0.01, parent=head, name="hub")
+        p.cyl(0.026, 0.01, (root[0] - side * 0.006, root[1] - 0.028, hz), "Steel", axis="Y", segs=24, bevel=0.003,
+              parent=head, name="bigscrew")
+        p.box((0.036, 0.004, 0.007), (root[0] - side * 0.006, root[1] - 0.034, hz), "BlackPlastic", rot=(0, 30, 0), bevel=0,
+              parent=head)
+        # shaft, collar and knurled rubber grip (turn with the handle when it folds)
+        p.cyl(0.018, 0.034, (side * 0.036, 0, 0), "Chrome", axis="X", segs=16, parent=h, name="shaft")
+        p.cyl(0.04, 0.016, (side * 0.055, 0, 0), "DarkSteel", axis="X", segs=32, bevel=0.005, parent=h, name="collar")
+        L = 0.15
+        prof = [(0.0, 0.0), (0.034, 0.0)]
+        for k in range(11):
+            prof += [(0.036, 0.008 + k * 0.0125), (0.032, 0.0142 + k * 0.0125)]
+        prof += [(0.036, L - 0.006), (0.03, L), (0.0, L)]
+        p.add(bm_lathe(prof, 28, "X"), "Rubber", (side * 0.062 if side > 0 else -0.062 - L, 0, 0), parent=h, smooth=40, name="grip")
     # ---- top: label and cables into the column
     p.plate(0.36, 0.06, (0, yf - 0.004, 1.9), "label_periscope", parent=head, depth=0.008)
     for k, (x, m) in enumerate([(-0.2, "BlackPlastic"), (0.16, "PaintRed"), (0.22, "BlackPlastic")]):
         p.tube([(x, -0.12, z1), (x, -0.12, z1 + 0.1), (x * 0.4, -0.02, z1 + 0.22), (x * 0.3, 0.0, z1 + 0.4)], 0.012, m, segs=8,
                round_r=0.06, parent=head)
     # ---- camera, hands, anchor
-    p.use_camera((0, -0.93, 1.63), (0, -0.2, 1.44), lens=22, parent=head)
-    p.hand("L", (-0.45, gy, hz), "grip", parent=head, control="HandleL")
-    p.hand("R", (0.45, gy, hz), "grip", parent=head, control="HandleR")
-    p.anchor("operate", (0, -0.95, 0), note="anchor rotates with Head in game")
+    p.use_camera((0, -1.0, 1.63), (0, -0.2, 1.42), lens=20, parent=head)
+    gx = W / 2 + 0.03 + 0.062 + 0.045                    # middle of the grip, where the palm closes
+    p.hand("L", (-gx, gy, hz), "grip", parent=head, control="HandleL")
+    p.hand("R", (gx, gy, hz), "grip", parent=head, control="HandleR")
+    p.anchor("operate", (0, -1.02, 0), note="anchor rotates with Head in game")
     return p.finish()
 
 

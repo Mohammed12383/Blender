@@ -360,7 +360,7 @@ function stationKey(k, down) {
     if (k === 'k') w.armed = !w.armed;
     if (k === 'g') w.guardOpen = !w.guardOpen;
     if (k === 'n') sim.countermeasure();
-    if (k === ' ') { stationInput.press = true; setTimeout(() => { stationInput.press = false; }, 200); sim.fire(); }
+    if (k === ' ') { stationInput.press = true; later(200, () => { stationInput.press = false; }); sim.fire(); }
     sound.click();
   } else if (key === 'griddle') {
     if (k === 'p') { griddle.power = !griddle.power; sim.message(griddle.power ? 'Griddle on.' : 'Griddle off.'); }
@@ -409,8 +409,8 @@ function pumpStroke(dir) {
   if (now - (L.last || 0) < 170) return;          // the handle has to travel: no machine-gun clicking
   L.last = now;
   L.target = want;
-  stationInput.press = true; setTimeout(() => { stationInput.press = false; }, 150);
-  setTimeout(() => {
+  stationInput.press = true; later(150, () => { stationInput.press = false; });
+  later(120, () => {
     if (key === 'fuel') sim.act('fuelStroke');
     else sim.act('bilgeStroke', +key.slice(5));
     sound.pump(key === 'fuel');
@@ -602,6 +602,12 @@ function drop() {
 
 // -------------------------------------------------------------------- loop
 let last = nowMs(), monitorTimer = 0, screenTimer = 0;
+// short delays on the game clock (in capture mode setTimeout would follow the slow real clock instead)
+const timers = [];
+function later(ms, fn) { if (!CAPTURE) setTimeout(fn, ms); else timers.push({ at: nowMs() + ms, fn }); }
+function runTimers() {
+  for (let i = timers.length - 1; i >= 0; i--) if (nowMs() >= timers[i].at) { const t = timers.splice(i, 1)[0]; t.fn(); }
+}
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -612,6 +618,7 @@ function loop(now) {
 // one frame of the game (the recorder calls this directly with a fixed dt)
 function tick(dt) {
   clockMs += dt * 1000;
+  runTimers();
   const w = innerWidth, h = innerHeight;
   if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) renderer.setSize(w, h, false);
   camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -696,7 +703,7 @@ function continuousInput(dt) {
   mouseDX = mouseDY = 0; wheel = 0;
 }
 
-const STATION_FOV = {};
+const STATION_FOV = { periscope: 80 };   // a little wider at the periscope so both hands show on the grips
 function updatePlayer(dt) {
   if (player.mode !== 'station' && camera.fov !== 72) { camera.fov = 72; camera.updateProjectionMatrix(); }
   // hunger / stamina / health

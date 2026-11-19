@@ -54,7 +54,7 @@ When you use a station the camera moves in close and you see your own hands on t
 |---|---|
 | Helm | `W`/`S` engine telegraph (Full Astern … Flank) · `A`/`D` rudder · `X` centre · `C` external 3D view |
 | Ballast & planes | `F` flood (dive) · `B` blow (surface) · `H` hold · `W`/`S` planes rise/dive · `X` level |
-| Periscope | mouse or `A`/`D` to turn · `W`/`S` tilt · wheel or `Z` zoom · click or `Space` to mark a target · `R` raise/lower (only above 14 m) |
+| Periscope | hold the mouse button and drag, or `A`/`D`, to train the head (you turn with it) · `W`/`S` or the TILT knob · wheel or `Z`/`X` for the ZOOM knob · `1`–`8` or `Q`/`E` move the tag slider · `Space` MARK the ship in the crosshair with that tag · `C` CLEAR the tag · `V` or right-click to put your eye to the eyepiece · `R` raise/lower (only above 14 m) |
 | Sonar | `P` active ping (shows everything, but they hear you) · `N` lock the next contact |
 | Fire control | `1`–`4` tube · `F` flood · `O` outer door · `K` arm key · `G` guard · `Space` FIRE · `N` noisemaker decoy |
 | Tube breech | `E` open/close the breech · carry a torpedo here to load |
@@ -69,7 +69,9 @@ When you use a station the camera moves in close and you see your own hands on t
 
 1. **Find them.** Dive to periscope depth (14 m or shallower), raise the periscope and look around,
    or listen on sonar. Contacts appear on the chart and nav screens.
-2. **Lock on.** Mark a ship in the periscope, or cycle sonar contacts with `N`. Fire control shows the bearing and range.
+2. **Lock on.** Turn the periscope until a ship is in the crosshair: the TARGET IDENTIFICATION screen under the
+   eyepiece shows its class, outline, range and bearing. Pick a tag number on the slider and press MARK; a numbered
+   tag floats over that ship for the whole crew. Or cycle sonar contacts with `N`. Fire control shows the bearing and range.
 3. **Fire.** Choose a loaded tube, flood it, open the outer door, turn the arm key, lift the guard and press FIRE.
    Torpedoes steer towards the locked target.
 4. **Reload.** The loader carries a spare torpedo from the racks to an open breech. Six spares, and you can see the racks empty.
@@ -77,7 +79,9 @@ When you use a station the camera moves in close and you see your own hands on t
    make noise. They drop depth charges, and shell you if you surface. Enemy subs fire torpedoes,
    so turn hard and launch a noisemaker. Below 60 m a **giant squid** can grab the hull: use the HULL SHOCK switch or surface to shake it off.
    **Sharks** ram the hull in the shallows.
-6. **Repair.** Every hit tears leaks in the hull. Water sprays in, harder the deeper you are. Grab a wrench and
+6. **Repair.** Every hit tears leaks in the hull. Water jets in at the speed the sea pressure gives it, so the
+   deeper you are the harder and further it shoots; the jet breaks into droplets, runs down the wall and splashes
+   where it lands, and once the hole is under water it bubbles instead. Grab a wrench and
    hold `E` on a leak until it's sealed.
 7. **Pump.** Leave a leak too long and the water rises. It runs through open doors, pours down the stairwell to
    the lower deck and fills the engine pits. Once it is chest deep you have to swim. The electric pumps only
