@@ -245,4 +245,35 @@ test('damage tears leaks in compartments along the hull, including the lower dec
     assert.ok(Math.abs(l.z) < r.halfW, 'on the hull plating');
   }
 });
+test('autopilot steers along the chart-table route and drops each waypoint as it is reached', () => {
+  const sim = quiet();
+  sim.addWaypoint(400, -300); sim.addWaypoint(800, -300);
+  sim.setAutopilot(true); sim.setTelegraph(3);
+  const closest = [1e9, 1e9];
+  for (let t = 0; t < 260; t += 0.05) {
+    sim.update(0.05);
+    closest[0] = Math.min(closest[0], Math.hypot(sim.sub.x - 400, sim.sub.z + 300));
+    closest[1] = Math.min(closest[1], Math.hypot(sim.sub.x - 800, sim.sub.z + 300));
+  }
+  assert.equal(sim.route.length, 0, `waypoints left ${sim.route.length}`);
+  assert.equal(sim.autopilot, false);
+  assert.ok(closest[0] < 60 && closest[1] < 60, `closest passes ${closest.map((v) => v.toFixed(0))}`);
+});
+
+test('without a lock a torpedo runs along the AIM stick course', () => {
+  const sim = quiet();
+  const w = sim.weapons, t = sim.tubes[0];
+  Object.assign(t, { loaded: true, flooded: true, outerOpen: true });
+  w.armed = true; w.guardOpen = true; w.lock = null;
+  sim.setAim(0.6); sim.fire();
+  const tp = sim.torpedoes[sim.torpedoes.length - 1];
+  assert.ok(Math.abs(tp.heading - (sim.sub.heading + 0.6)) < 1e-6, `heading ${tp.heading}`);
+});
+
+test('noise level rises with speed and running diesels', () => {
+  const sim = quiet();
+  step(sim, 2); const still = sim.noiseLevel;
+  sim.setTelegraph(4); step(sim, 30);
+  assert.ok(sim.noiseLevel > still + 3, `${still} -> ${sim.noiseLevel}`);
+});
 console.log(`${pass} tests passed`);

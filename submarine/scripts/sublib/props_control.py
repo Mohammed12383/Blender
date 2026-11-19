@@ -57,13 +57,30 @@ def nav_table(name="NavTable"):
     for k, (x, y, mm) in enumerate([(0.32, 0.1, "PaintRed"), (0.48, 0.3, "PaintRed"), (-0.1, 0.18, "PaintNavy"), (0.6, -0.35, "PaintMustard")]):
         mk = p.pivot(f"Marker{k + 1}", (x, y, H - 0.03), interact="map_marker")
         p.add(bm_lathe([(0, 0), (0.025, 0), (0.025, 0.01), (0.008, 0.02), (0.008, 0.05), (0.014, 0.06), (0, 0.065)], 16), mm, parent=mk)
+    # route-planning pod hung on the front edge: cursor stick, ADD / DEL waypoint keys, zoom knob
+    pod = Vector((0.5, -W / 2 - 0.1, H - 0.06))
+    p.box((0.46, 0.2, 0.08), pod + Vector((0, 0.0, -0.02)), "PaintGraphite", rot=(-14, 0, 0), bevel=0.012)
+    p.box((0.4, 0.16, 0.01), pod + Vector((0, -0.004, 0.022)), "PaintSeafoam", rot=(-14, 0, 0), bevel=0.003)
+    for sx in (-1, 1):
+        p.box((0.03, 0.12, 0.05), (pod.x + sx * 0.17, -W / 2 - 0.02, H - 0.09), "PaintGraphite", bevel=0.006)
+    cstick = p.pivot("CursorStick", pod + Vector((-0.11, 0, 0.03)), interact="joystick", rotate_axes="XY", max_deg=20)
+    p.add(bm_lathe([(0.0, 0.0), (0.035, 0.0), (0.03, 0.014), (0.012, 0.03), (0.0, 0.034)], 18), "Rubber", parent=cstick)
+    p.cyl(0.007, 0.06, (0, 0, 0.06), "Chrome", segs=10, parent=cstick)
+    p.sphere(0.022, (0, 0, 0.1), "BlackPlastic", parent=cstick, segs=16, rings=8)
+    for k, (lbl, mm) in enumerate([("add_wpt", "LampGreen"), ("del_wpt", "PaintRed")]):
+        bx = pod.x + 0.02 + k * 0.09
+        push_button(p, (bx, pod.y + 0.01, pod.z + 0.03), rot=(-90 + 14, 0, 0), m=mm, r=0.019,
+                    name="AddWaypoint" if k == 0 else "DelWaypoint", interact="waypoint")
+        p.decal(0.08, 0.026, (bx, pod.y - 0.055, pod.z + 0.017), f"label_{lbl}", rot=(-76, 0, 0))
+    knob(p, (pod.x + 0.17, pod.y + 0.01, pod.z + 0.03), rot=(-76, 0, 0), r=0.024, name="ChartZoom", interact="dial", m="Bakelite")
+    p.decal(0.36, 0.05, (pod.x, pod.y + 0.075, pod.z + 0.055), "label_route", rot=(-76, 0, 0))
     # end stand with NAVIGATION plate
     p.box((0.05, 0.4, 0.3), (L / 2 + 0.04, 0, H + 0.08), "PaintGraphite", rot=(0, -12, 0), bevel=0.008)
     p.plate(0.36, 0.068, (L / 2 + 0.07, 0, H + 0.14), "label_navigation", rot=(0, 0, 90))
     p.use_camera((0, -W / 2 - 0.42, 1.68), (0, 0.02, H - 0.02), lens=24)
     p.use_camera((0, W / 2 + 0.42, 1.68), (0, -0.02, H - 0.02), lens=24, name="CAM_use_back")
     p.hand("L", (-0.35, -W / 2 + 0.04, H + 0.02), "palm")
-    p.hand("R", (0.32, -W / 2 + 0.05, H + 0.02), "palm")
+    p.hand("R", (0.39, -W / 2 - 0.1, H + 0.04), "grip", control="CursorStick")
     p.anchor("use_front", (0, -W / 2 - 0.5, 0))
     p.anchor("use_back", (0, W / 2 + 0.5, 0), (0, 0, 180))
     return p.finish()
@@ -138,6 +155,17 @@ def fire_control(name="FireControl"):
         p.box((0.006, 0.16, 0.05), (sx * 0.077, -0.1, 0.025), "LampRed", parent=guard, bevel=0.002)
     p.box((0.16, 0.006, 0.05), (0, -0.177, 0.025), "LampRed", parent=guard, bevel=0.002)
     p.decal(0.12, 0.04, (0.2, -0.24, desk_z + 0.001), "label_fire", rot=(-90, 0, 0))
+    # AIM stick: trains the torpedo course on the target scope when nothing is locked
+    p.cyl(0.06, 0.02, (-0.09, -0.12, desk_z + 0.01), "DarkSteel", segs=24, bevel=0.004)
+    stick = p.pivot("AimStick", (-0.09, -0.12, desk_z + 0.02), interact="joystick", rotate_axes="XY", max_deg=20)
+    p.add(bm_lathe([(0.0, 0.0), (0.045, 0.0), (0.04, 0.018), (0.018, 0.045), (0.0, 0.05)], 20), "Rubber", parent=stick)
+    p.cyl(0.008, 0.09, (0, 0, 0.09), "Chrome", segs=12, parent=stick)
+    p.add(bm_lathe([(0, 0.13), (0.02, 0.14), (0.024, 0.18), (0.02, 0.21), (0.0, 0.22)], 20), "BlackPlastic", parent=stick)
+    p.decal(0.1, 0.034, (-0.09, -0.24, desk_z + 0.001), "label_aim", rot=(-90, 0, 0))
+    # DECOY (noisemaker) launch button
+    p.cyl(0.042, 0.012, (0.43, -0.12, desk_z + 0.006), "DarkSteel", segs=24, bevel=0.003)
+    push_button(p, (0.43, -0.12, desk_z + 0.012), rot=(-90, 0, 0), m="PaintNavy", r=0.032, name="DecoyButton", interact="decoy")
+    p.decal(0.11, 0.036, (0.43, -0.24, desk_z + 0.001), "label_decoy", rot=(-90, 0, 0))
     # telephone handset on a hook
     p.box((0.12, 0.06, 0.2), (W / 2 + 0.03, 0.05, 1.25), "Bakelite", bevel=0.015)
     phone = p.pivot("Handset", (W / 2 + 0.075, 0.05, 1.25), interact="pickup")
@@ -151,7 +179,7 @@ def fire_control(name="FireControl"):
         grab_rail(p, (side * (W / 2 + 0.01), -0.25, 0.85), (side * (W / 2 + 0.01), 0.2, 0.85), standoff=0.05, axis_out=(side, 0, 0))
     p.use_camera((0, -0.75, 1.62), (0, -0.05, 1.12), lens=24)
     p.hand("R", (0.2, -0.13, 1.08), "press", control="FireButton")
-    p.hand("L", (-0.38, -0.13, 1.05), "pinch", control="ArmKey")
+    p.hand("L", (-0.09, -0.13, 1.2), "grip", control="AimStick")
     p.anchor("operate", (0, -D / 2 - 0.45, 0))
     return p.finish()
 
@@ -323,6 +351,70 @@ def periscope(name="Periscope", ceiling=2.9):
     return p.finish()
 
 
+STATUS_PAGES = ["noise", "air", "engines", "power", "leaks", "flood", "fire", "crew"]
+
+
+def ship_status(name="ShipStatus"):
+    """Standing diagnostics console: system-page screen, eight page keys, guarded GENERAL ALARM, side handles.
+
+    Faces -Y. The game draws the selected page (noise, air, engines, power, leaks, flooding, fire, crew) on
+    screen_status; Page1..Page8 and AlarmButton push in along +Y.
+    """
+    p = Prop(name, category="station", station="status")
+    W = 1.0
+    # lower cabinet with a desk top, upper instrument tower set back
+    p.box((W - 0.08, 0.44, 0.1), (0, -0.02, 0.05), "PaintGraphite", bevel=0.01)
+    p.box((W, 0.48, 0.86), (0, -0.02, 0.1 + 0.43), "PaintCream", bevel=0.02, segs=3)
+    p.box((W + 0.04, 0.54, 0.05), (0, -0.04, 0.985), "PaintGraphite", bevel=0.01)
+    louver(p, (0, -0.262, 0.42), w=0.7, h=0.22, n=5)
+    yf = -0.03                                       # tower front face
+    p.box((W, 0.3, 0.98), (0, yf + 0.15, 1.01 + 0.49), "PaintCream", bevel=0.02, segs=3)
+    p.box((W + 0.02, 0.32, 0.04), (0, yf + 0.15, 2.0), "PaintGraphite", bevel=0.008)
+    # inset face panel (darker) holding screen + keys
+    p.box((W - 0.16, 0.012, 0.86), (0, yf - 0.006, 1.47), "PaintSeafoam", bevel=0.006)
+    yp = yf - 0.012
+    p.screen(0.56, 0.36, (0, yp, 1.64), "screen_status", bezel=0.035, depth=0.03)
+    for sx in (-1, 1):                              # screen bezel screws
+        for sz in (-1, 1):
+            _slot_screw(p, (sx * 0.31, yp - 0.016, 1.64 + sz * 0.2), r=0.008, rot=sx * sz * 30)
+    # eight page keys: two rows of four, labelled, back-lit
+    for k, pg in enumerate(STATUS_PAGES):
+        x, z = -0.255 + (k % 4) * 0.12, 1.33 - (k // 4) * 0.085
+        p.box((0.112, 0.02, 0.076), (x, yp + 0.0, z), "BlackPlastic", bevel=0.004)          # key well
+        key = p.pivot(f"Page{k + 1}", (x, yp - 0.012, z), interact="page_button", translate_axis="Y", min=0, max=0.008,
+                      page=pg)
+        p.box((0.1, 0.022, 0.064), (0, 0, 0), "PaintCream", parent=key, bevel=0.006)
+        p.decal(0.086, 0.027, (0, -0.0115, 0), f"label_pg_{pg}", parent=key)
+    # general alarm: big red mushroom under a hinged guard on a hazard plate
+    ax, az = 0.33, 1.3
+    p.box((0.16, 0.012, 0.2), (ax, yp - 0.002, az), "Hazard", bevel=0.004)
+    alarm = p.pivot("AlarmButton", (ax, yp - 0.01, az), interact="alarm", translate_axis="Y", min=0, max=0.012)
+    p.cyl(0.032, 0.03, (0, -0.012, 0), "DarkSteel", axis="Y", segs=24, parent=alarm)
+    p.add(bm_lathe([(0, 0), (0.05, 0), (0.052, -0.01), (0.045, -0.026), (0, -0.032)], 28, "Y"), "PaintRed",
+          (0, -0.026, 0), parent=alarm, smooth=40)
+    guard = p.pivot("AlarmGuard", (ax, yp - 0.02, az + 0.075), interact="guard", rotate_axis="X", min_deg=-110, max_deg=0)
+    p.box((0.13, 0.006, 0.15), (0, -0.05, -0.075), "LampRed", parent=guard, bevel=0.002)            # flip-up cover
+    for sx in (-1, 1):
+        p.box((0.006, 0.05, 0.15), (sx * 0.062, -0.025, -0.075), "LampRed", parent=guard, bevel=0.002)
+    p.decal(0.15, 0.03, (ax, yp - 0.009, az - 0.125), "label_general_alarm")
+    # status lamps and a few toggles on the desk
+    for k in range(6):
+        indicator(p, (-0.36 + k * 0.08, yp - 0.006, 1.86), m=["LampGreen", "LampGreen", "LampAmber", "LampGreen", "LampRed", "LampGreen"][k], r=0.012)
+    for k in range(4):
+        toggle(p, (-0.3 + k * 0.1, -0.2, 1.01), rot=(-90, 0, 0), name=f"DeskToggle{k + 1}", up=k % 2 == 0)
+    p.plate(0.5, 0.08, (0, yp - 0.004, 1.94 - 0.03), "label_ship_status")
+    # side handles to hold on to when the boat rolls (vertical, on the tower front edges)
+    for side in (-1, 1):
+        grab_rail(p, (side * (W / 2 - 0.035), yf - 0.01, 1.2), (side * (W / 2 - 0.035), yf - 0.01, 1.78), standoff=0.06,
+                  axis_out=(0, -1, 0), r=0.017)
+        louver(p, (side * (W / 2 + 0.002), 0.05, 1.5), rot=(0, 0, side * -90), w=0.2, h=0.4, n=7)
+    p.use_camera((0, -0.82, 1.64), (0, -0.05, 1.47), lens=24)
+    p.hand("L", (-(W / 2 - 0.035), yf - 0.075, 1.45), "grip", control="HandleL")
+    p.hand("R", (0.0, yp - 0.03, 1.29), "press", control="Page2")
+    p.anchor("operate", (0, -0.75, 0))
+    return p.finish()
+
+
 def sonar_station(name="SonarStation"):
     """Wall desk with the green sonar CRT, knobs, headphones on a hook."""
     p = Prop(name, category="station", station="sonar")
@@ -375,7 +467,7 @@ def ballast_panel(name="BallastPanel"):
     for k in range(12):
         indicator(p, (-0.22 + (k % 6) * 0.088, f - 0.016, z0 + 0.73 - (k // 6) * 0.06),
                   m="LampGreen" if k not in (3, 8) else "LampRed", r=0.012)
-    p.screen(0.28, 0.21, (-0.5, f - 0.002, z0 + 0.72), "screen_ballast", bezel=0.025, depth=0.03)
+    p.screen(0.38, 0.28, (-0.485, f - 0.002, z0 + 0.8), "screen_ballast", bezel=0.025, depth=0.03)     # dive profile
     for k in range(3):
         indicator(p, (0.42 + k * 0.08, f, z0 + 0.72), m=["LampGreen", "LampAmber", "LampRed"][k], r=0.016)
     for k, lbl in enumerate(["blow", "vent", "flood"]):

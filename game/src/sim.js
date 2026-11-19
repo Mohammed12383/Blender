@@ -67,8 +67,12 @@ export class Sim {
       noise: 0, lost: false, lostReason: '', countermeasures: 4, shockCooldown: 0, sonarPingCooldown: 0,
     };
     this.tubes = [1, 2, 3, 4].map((n) => ({ n, loaded: n <= 2, flooded: false, outerOpen: false, breechOpen: false }));
-    this.weapons = { selected: 1, armed: false, guardOpen: false, lock: null, gyro: 0 };
+    this.weapons = { selected: 1, armed: false, guardOpen: false, lock: null, gyro: 0, aim: 0 };   // aim: course offset from our heading (AIM stick)
     this.tags = {};            // periscope contact tags: number (1..8) -> entity id
+    this.route = [];           // chart-table waypoints [{x, z}] in order
+    this.autopilot = false;    // helm steers along the route
+    this.alarm = false;        // general alarm (ship status console)
+    this.noiseLevel = 0;       // how loud we are right now (0 silent .. ~20 very loud)
     this.torpedoStock = 6;     // spares in the racks
     this.water = ROOMS.map(() => 0);   // flood depth per room above its lowest point (m)
     this.smoke = ROOMS.map(() => 0);   // smoke density per room 0..1
@@ -129,6 +133,23 @@ export class Sim {
   setTelegraph(v) { this.sub.telegraph = Math.max(-2, Math.min(4, v)); }
   setRudder(v) { this.sub.rudder = Math.max(-1, Math.min(1, v)); }
   setPlanes(v) { this.sub.planes = Math.max(-1, Math.min(1, v)); }
+  setAim(a) { this.weapons.aim = Math.max(-Math.PI * 0.75, Math.min(Math.PI * 0.75, a)); }
+  // route planning (chart table)
+  addWaypoint(x, z) {
+    if (this.route.length >= 9) return this.message('The route is full (9 waypoints).', 'warn');
+    this.route.push({ x, z }); this.message(`Waypoint ${this.route.length} added.`);
+  }
+  delWaypoint() { if (this.route.pop()) this.message(this.route.length ? `Waypoint ${this.route.length + 1} removed.` : 'Route cleared.'); if (!this.route.length) this.autopilot = false; }
+  setAutopilot(on) {
+    if (on && !this.route.length) return this.message('No route: plot waypoints at the chart table first.', 'warn');
+    this.autopilot = on; this.message(on ? 'Autopilot: steering along the route.' : 'Autopilot off - hand steering.');
+  }
+  waypointInfo() {
+    const w = this.route[0], s = this.sub; if (!w) return null;
+    const brg = Math.atan2(-(w.z - s.z), w.x - s.x);
+    return { n: 1, brg, rng: Math.hypot(w.x - s.x, w.z - s.z), off: wrap(brg - s.heading) };
+  }
+  setAlarm(on) { this.alarm = on; this.events.push({ type: 'alarm', on }); if (on) this.message('GENERAL ALARM! All hands to stations!', 'danger'); }
   setValve(v) { this.sub.valve = v; }
   togglePeriscope() {
     const s = this.sub;
@@ -209,7 +230,7 @@ export class Sim {
     if (!t.loaded) return this.message(`Tube ${t.n} is empty - the loader must reload it.`, 'warn');
     if (!t.flooded || !t.outerOpen) return this.message(`Tube ${t.n}: flood it and open the outer door.`, 'warn');
     t.loaded = false;
-    let heading = s.periscopeUp ? s.heading + s.periscopeBearing : s.heading;   // manual aim: along the periscope
+    let heading = s.heading + (w.aim || 0);           // manual aim: the course set with the AIM stick
     const target = this.entities.find((e) => e.id === w.lock && e.alive);
     if (target) heading = Math.atan2(-(target.z - s.z), target.x - s.x);
     const bowX = s.x + Math.cos(s.heading) * 25, bowZ = s.z - Math.sin(s.heading) * 25;
@@ -464,6 +485,16 @@ export class Sim {
     if (s.battery <= 0 && !surfaced && s.telegraph > 1) { s.telegraph = 1; this.message('Battery flat! Only SLOW AHEAD until we surface to recharge.', 'warn'); }
     if (s.oxygen < 15 && !this._o2warn) { this._o2warn = true; this.message('Oxygen is running low - surface soon!', 'danger'); }
     if (s.oxygen > 30) this._o2warn = false;
+    // autopilot: rudder towards the next waypoint; drop it once we pass within 60 m
+    if (this.autopilot && this.route.length) {
+      const wi = this.waypointInfo();
+      s.rudder = Math.max(-1, Math.min(1, wi.off * 2.5));
+      if (wi.rng < 60) {
+        this.route.shift();
+        this.message(this.route.length ? `Waypoint reached - steering for the next (${this.route.length} left).` : 'Final waypoint reached. Autopilot off.');
+        if (!this.route.length) { this.autopilot = false; s.rudder = 0; }
+      }
+    }
     // propulsion and steering
     const target = TELEGRAPH[s.telegraph];
     s.speed += Math.sign(target - s.speed) * Math.min(Math.abs(target - s.speed), dt * 0.6);
@@ -503,6 +534,7 @@ export class Sim {
     s.noise = Math.max(0, s.noise - dt * 0.8);
     const noise = Math.abs(s.speed) * 0.6 + s.noise + (s.periscopeUp ? 2 : 0) + (s.valve === 'blow' ? 2 : 0) + (s.depth < 3 ? 4 : 0)
       + this.engines.filter((e) => e.running).length * 2.5;
+    this.noiseLevel = noise;
     s.sonarPingCooldown = Math.max(0, s.sonarPingCooldown - dt);
     s.shockCooldown = Math.max(0, s.shockCooldown - dt);
 

@@ -245,19 +245,36 @@ def workbench(name="Workbench"):
             p.box((0.06, 0.06, H - 0.05), (sx * (W / 2 - 0.05), -D / 2 + sy * (D / 2 - 0.05), (H - 0.05) / 2), "PaintGraphite", bevel=0.006)
     p.box((W, D, 0.05), (0, -D / 2, H - 0.025), "Wood", bevel=0.008)
     p.box((W - 0.1, D - 0.1, 0.03), (0, -D / 2, 0.15), "PaintGraphite", bevel=0.005)
-    p.box((W, 0.03, 0.8), (0, -0.015, H + 0.4), "PaintGray", bevel=0.006)  # pegboard
-    for k in range(10):
-        for j in range(5):
-            p.cyl(0.006, 0.004, (-0.7 + k * 0.155, -0.031, H + 0.15 + j * 0.14), "BlackPlastic", axis="Y", segs=6, name="peg")
+    # tool shadow board: perforated hardboard with painted outlines, each tool hangs on its own outline
+    p.box((W + 0.04, 0.03, 0.84), (0, -0.015, H + 0.4), "PaintGraphite", bevel=0.006)
+    p.decal(W, 0.8, (0, -0.0315, H + 0.4), "sign_tool_board")
+    p.plate(0.36, 0.07, (0, -0.036, H + 0.86), "label_tools")
+    B = lambda px, pz: (-W / 2 + px / 1000, -0.04, H + 0.8 - pz / 1000)       # board pixel -> prop coords
+    for px, pz in [(330, 150), (330, 400), (715, 115), (860, 125), (930, 125), (1000, 125), (1130, 140), (1315, 125)]:
+        p.cyl(0.005, 0.03, (B(px, pz)[0], -0.045, B(px, pz)[2]), "Chrome", axis="Y", segs=8, name="hook")
+    # second (smaller) wrench, hammer, three screwdrivers, pliers and a torch on their outlines
+    x, _, z = B(330, 470)
+    p.box((0.3, 0.012, 0.028), (x, -0.05, z), "Chrome", bevel=0.004)
+    for e in (-1, 1):
+        p.add(bm_torus(0.028, 0.01, 16, 6, "Y"), "Chrome", (x + e * 0.15, -0.05, z), smooth=180)
+    x, _, z = B(715, 330)
+    p.box((0.026, 0.02, 0.36), (x, -0.05, z), "Wood", bevel=0.006)
+    p.box((0.11, 0.035, 0.05), (x, -0.05, z + 0.19), "DarkSteel", bevel=0.008)
+    for k, (L, mm) in enumerate([(0.3, "PaintRed"), (0.26, "PaintMustard"), (0.22, "PaintNavy")]):
+        x, _, z = B(860 + k * 70, 200)
+        p.cyl(0.02, 0.12, (x, -0.05, z), mm, segs=12, bevel=0.006)
+        p.cyl(0.005, L - 0.12, (x, -0.05, z - 0.06 - (L - 0.12) / 2), "Chrome", segs=8)
+    x, _, z = B(1130, 300)
+    for a in (-8, 8):
+        p.box((0.018, 0.012, 0.26), (x + a * 0.002, -0.05, z), "PaintRed", rot=(0, a, 0), bevel=0.004)
+    x, _, z = B(1315, 285)
+    p.cyl(0.032, 0.27, (x, -0.06, z), "PaintNavy", segs=16, bevel=0.006)
+    p.cyl(0.045, 0.06, (x, -0.06, z + 0.14), "Chrome", segs=16, bevel=0.006)
+    p.anchor("wrench_hook", B(330, 260), note="the game hangs a pick-up wrench here")
     # vise
     p.box((0.18, 0.2, 0.06), (0.55, -0.45, H + 0.03), "PaintNavy", bevel=0.008)
     p.box((0.18, 0.04, 0.12), (0.55, -0.37, H + 0.12), "PaintNavy", bevel=0.008)
     jaw = p.pivot("ViseJaw", (0.55, -0.53, H + 0.12), interact="crank", translate_axis="Y", min=-0.1, max=0)
     p.box((0.18, 0.04, 0.12), (0, 0, 0), "PaintNavy", parent=jaw, bevel=0.008)
     p.cyl(0.012, 0.25, (0, -0.06, 0), "Chrome", axis="X", segs=10, parent=jaw)
-    # hanging wrench + hammer silhouettes on pegboard
-    p.box((0.03, 0.01, 0.3), (-0.5, -0.04, H + 0.4), "Chrome", bevel=0.004)
-    p.add(bm_torus(0.035, 0.012, 16, 6, "Y"), "Chrome", (-0.5, -0.04, H + 0.57), smooth=180)
-    p.box((0.025, 0.012, 0.3), (-0.2, -0.04, H + 0.4), "Wood", bevel=0.004)
-    p.box((0.12, 0.03, 0.04), (-0.2, -0.04, H + 0.56), "DarkSteel", bevel=0.006)
     return p.finish()

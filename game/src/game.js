@@ -6,6 +6,7 @@ import { Exterior } from './exterior.js';
 import { Interior, dial } from './interior.js';
 import { Sound } from './sound.js';
 import { Net, poseAvatar } from './net.js';
+import { STATUS_PAGES } from './consoles.js';
 import { DROP } from './exterior.js';
 const DROP_TEX = () => DROP;
 
@@ -210,7 +211,7 @@ function updateHands(dt) {
       if (poses[side] === 'bar') targets[side].y += 0.045;      // sideways bars (periscope handles): the wrist sits over the top
       if (stationInput.press && side === 'R') targets[side].add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.03));
     }
-    if (player.station === 'periscope' && periHand.part && nowMs() < periHand.until) {
+    if (periHand.part && nowMs() < periHand.until) {
       targets.R = periHand.part.getWorldPosition(new THREE.Vector3()).add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(-0.06));
       poses.R = periHand.pose;
     }
@@ -308,12 +309,13 @@ function updateHands(dt) {
 
 // --------------------------------------------------------------- stations
 const HELP = {
-  helm: ['HELM', 'W / S   engine telegraph (ahead / astern)\nA / D   rudder (hold)    X centre rudder\nC       captain\'s external 3D view\nEsc     leave'],
-  chart: ['CHART TABLE', 'The chart shows every contact found by\nperiscope or sonar. Red = warships, green = merchants,\npurple = creatures.\nC external view    Esc leave'],
+  helm: ['HELM', 'W / S   engine telegraph (ahead / astern)\nA / D   rudder (hold)    X centre rudder\nT       autopilot along the chart route\nC       captain\'s external 3D view\nEsc     leave'],
+  chart: ['CHART TABLE - ROUTE PLANNING', 'W A S D  move the cursor (CURSOR stick)\nSpace   ADD WPT at the cursor    Backspace  DEL WPT\nZ / X or wheel  zoom      R  cursor back to the boat\nContacts: red = warships, green = merchants, purple = creatures.\nThe helm screen shows the course to the next waypoint;\nthe helmsman presses T for the autopilot.\nC external view    Esc leave'],
+  status: ['SHIP STATUS', '1-8 or Q / E  page: NOISE  AIR  ENGINES  POWER\n                    LEAKS  FLOOD  FIRE  CREW\nA page key blinks red when that system needs help.\nG  GENERAL ALARM (flip the guard, press)\nEsc leave'],
   ballast: ['BALLAST & DIVE PLANES', 'F  FLOOD tanks (dive)     B  BLOW tanks (surface)\nH  HOLD (close valves)\nW / S  planes rise / dive (hold)    X level planes\nPeriscope depth is ' + PERISCOPE_DEPTH + ' m. Hull limit ' + TEST_DEPTH + ' m.\nEsc leave'],
   periscope: ['PERISCOPE', 'A / D or mouse  train left & right (you turn with it)\nW / S  tilt (TILT knob)    Wheel / Z X  zoom (ZOOM knob)\n1-8 or Q / E  move the tag slider\nSpace / Click  MARK the contact in the crosshair\nC  CLEAR that tag    V or right-click  eye to the eyepiece\nR  raise / lower      Esc  leave'],
   sonar: ['SONAR', 'P  active PING (reveals everything, but they hear you)\nN  lock next contact for fire control\nEsc leave'],
-  weapons: ['FIRE CONTROL', '1-4  select tube     F  flood / drain tube\nO    open / close outer door\nK    ARM key          G  lift guard\nSPACE  FIRE           N  launch noisemaker (decoy)\nEsc leave'],
+  weapons: ['FIRE CONTROL', '1-4  select tube     F  flood / drain tube\nO    open / close outer door\nK    ARM key          G  lift guard\nA / D  AIM stick: torpedo course when nothing is locked\nSPACE  FIRE           N  DECOY (noisemaker)\nEsc leave'],
   griddle: ['GRIDDLE', 'P  power on / off\nE  put raw food on / take cooked food off\nCook ~8 s. Leave it too long and it burns!\nEsc leave'],
 };
 for (let n = 1; n <= 4; n++) HELP[`tube${n}`] = [`TUBE ${n} BREECH`, 'E  open / close the breech door\nCarry a torpedo here with the door open to load\nEsc leave'];
@@ -331,6 +333,7 @@ function enterStation(key) {
   $('station').classList.remove('hidden');
   $('stationtitle').textContent = HELP[key][0];
   $('stationhelp').textContent = HELP[key][1];
+  $('station').classList.remove('collapsed'); player.helpUntil = nowMs() + 9000;
   $('crosshair').classList.add('hidden');
   if (document.pointerLockElement) document.exitPointerLock();
   if (key === 'periscope' && !sim.sub.periscopeUp) sim.togglePeriscope();
@@ -351,11 +354,13 @@ function leaveStation() {
 function stationKey(k, down) {
   const s = sim.sub, key = player.station;
   if (!down) return;
+  if (k === 'i') { const c = $('station').classList.toggle('collapsed'); player.helpUntil = c ? 0 : Infinity; return; }
   if (k === 'c' && (key === 'helm' || key === 'chart')) { player.mode = 'chase'; return; }
   if (key === 'helm') {
     if (k === 'w') { sim.setTelegraph(s.telegraph + 1); sound.bell(); }
     if (k === 's') { sim.setTelegraph(s.telegraph - 1); sound.bell(); }
-    if (k === 'x') sim.setRudder(0);
+    if (k === 'x') { sim.setRudder(0); if (sim.autopilot) sim.act('setAutopilot', false); }
+    if (k === 't') sim.act('setAutopilot', !sim.autopilot);
     sound.click();
   } else if (key === 'ballast') {
     if (k === 'f') { if (s.valve !== 'flood') sound.klaxon(); sim.setValve('flood'); }
@@ -384,9 +389,25 @@ function stationKey(k, down) {
     if (k === 'o') sim.openOuter(w.selected);
     if (k === 'k') w.armed = !w.armed;
     if (k === 'g') w.guardOpen = !w.guardOpen;
-    if (k === 'n') sim.countermeasure();
+    if (k === 'n') { sim.countermeasure(); inn.pressed = { ...inn.pressed, decoy: inn.time + 0.25 }; reach('DecoyButton'); }
     if (k === ' ') { stationInput.press = true; later(200, () => { stationInput.press = false; }); sim.fire(); }
     sound.click();
+  } else if (key === 'status') {
+    const i = STATUS_PAGES.indexOf(inn.statusPage);
+    let n = -1;
+    if (k.length === 1 && '12345678'.includes(k)) n = +k - 1;
+    if (k === 'q') n = (i + 7) % 8;
+    if (k === 'e') n = (i + 1) % 8;
+    if (n >= 0) { inn.statusPage = STATUS_PAGES[n]; inn.pressed = { ...inn.pressed, [`page${n}`]: inn.time + 0.2 }; reach(`Page${n + 1}`); sound.click(); }
+    if (k === 'g') {
+      sim.act('setAlarm', !sim.alarm); inn.pressed = { ...inn.pressed, alarm: inn.time + 0.25 }; reach('AlarmButton', 'palm', 700);
+      if (sim.alarm) sound.klaxon(); else sound.click();
+    }
+  } else if (key === 'chart') {
+    const c = inn.chartCursor;
+    if (k === ' ') { sim.act('addWaypoint', s.x + c.x, s.z + c.z); inn.pressed = { ...inn.pressed, addwpt: inn.time + 0.2 }; reach('AddWaypoint'); sound.click(); }
+    if (k === 'backspace' || k === 'delete') { sim.act('delWaypoint'); inn.pressed = { ...inn.pressed, delwpt: inn.time + 0.2 }; reach('DelWaypoint'); sound.click(); }
+    if (k === 'r') { c.x = 0; c.z = 0; }
   } else if (key === 'griddle') {
     if (k === 'p') { griddle.power = !griddle.power; sim.message(griddle.power ? 'Griddle on.' : 'Griddle off.'); }
     if (k === 'e') griddleUse();
@@ -409,7 +430,9 @@ function stationKey(k, down) {
 
 // periscope controls: tag slider, MARK and CLEAR buttons (the right hand reaches for them)
 const periHand = { part: null, until: 0 };
-function periscopeReach(name, pose = 'press') { periHand.part = inn.stations.periscope?.parts?.[name] || null; periHand.pose = pose; periHand.until = nowMs() + 450; }
+// the right hand goes to a control on the current station for a moment (button presses, slider moves)
+function reach(name, pose = 'press', ms = 450) { periHand.part = inn.stations[player.station]?.parts?.[name] || null; periHand.pose = pose; periHand.until = nowMs() + ms; }
+const periscopeReach = reach;
 function periscopeTag(n) {
   inn.periTag = Math.max(1, Math.min(8, n)); periscopeReach('TagSlider', 'pinch'); sound.click();
 }
@@ -574,6 +597,8 @@ addEventListener('keydown', (e) => {
   if (k === 'tab') e.preventDefault();
   if (keys.has(k)) return;
   keys.add(k);
+  if (k === 'tab') { toggleHandbook(); return; }
+  if (!$('handbook').classList.contains('hidden') && k === 'escape') { toggleHandbook(false); return; }
   if (k === 'm') sound.toggle();
   if (player.mode === 'down') return;
   if (k === 'escape' || (player.mode === 'lie' && k === 'e')) { leaveStation(); return; }
@@ -595,11 +620,30 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); keys.delete(k); if (k === 'e') { player.repairing = null; player.hold = 0; player.spraying = null; player.task = null; } });
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement === canvas || player.mode === 'scope' || player.mode === 'bridge' || player.mode === 'chase'
-    || (player.mode === 'station' && player.station === 'periscope' && e.buttons & 1)) { mouseDX += e.movementX; mouseDY += e.movementY; }
+    || (player.mode === 'station' && ['periscope', 'chart', 'weapons'].includes(player.station) && e.buttons & 1)) { mouseDX += e.movementX; mouseDY += e.movementY; }
 });
 addEventListener('wheel', (e) => { wheel += Math.sign(e.deltaY); });
+// clicking a control on a station panel works like its key (page keys, alarm, waypoint keys, FIRE, ARM, tube switches...)
+const CLICK_KEYS = { AlarmButton: 'g', AlarmGuard: 'g', AddWaypoint: ' ', DelWaypoint: 'backspace', FireButton: ' ', ArmKey: 'k',
+  FireGuard: 'g', DecoyButton: 'n', MarkButton: ' ', ClearButton: 'c', Start1: '1', Start2: '2' };
+for (let n = 1; n <= 8; n++) CLICK_KEYS[`Page${n}`] = String(n);
+for (let n = 1; n <= 4; n++) CLICK_KEYS[`TubeSelect${n}`] = String(n);
+const raycaster = new THREE.Raycaster();
+function controlUnder(e) {
+  const st = inn.stations[player.station]; if (!st || player.transition < 1) return null;
+  st.partNames ||= new Map(Object.entries(st.parts).map(([k, v]) => [v, k]));
+  const r = canvas.getBoundingClientRect();
+  raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+  const hit = raycaster.intersectObject(st.root, true)[0];
+  for (let o = hit?.object; o && o !== st.root; o = o.parent) { const nm = st.partNames.get(o); if (nm && CLICK_KEYS[nm]) return nm; }
+  return null;
+}
 canvas.addEventListener('mousedown', (e) => {
   if (player.mode === 'walk' && document.pointerLockElement !== canvas) lockPointer();
+  if (player.mode === 'station' && e.button === 0) {
+    const nm = controlUnder(e);
+    if (nm) { stationKey(CLICK_KEYS[nm], true); return; }
+  }
   if (player.mode === 'station' && e.button === 0 && (player.station === 'fuel' || player.station?.startsWith('bilge'))) pumpStroke(0);
   if (player.mode === 'station' && e.button === 0 && player.station === 'switchboard') { sim.act('mainBreaker'); sound.clunk(); }
   if ((player.mode === 'scope' || (player.mode === 'station' && player.station === 'periscope')) && e.button === 0) periscopeMark();
@@ -608,6 +652,49 @@ canvas.addEventListener('mousedown', (e) => {
 });
 canvas.addEventListener('mouseup', () => { ext.look.zoom = false; });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ------------------------------------------------------------------ TAB handbook: how the boat works
+const HANDBOOK = `<h1>CREW HANDBOOK</h1>
+<p class="lead">Everything on the boat is a real control. Walk up to a station and press <kbd>E</kbd>; your hands go to its controls.
+Use the keys shown in the corner, or click the buttons on the panel. Any crew member can run any station. <kbd>TAB</kbd> closes this book.</p>
+<section><h2>HOW A PATROL GOES</h2><ol>
+<li><b>Dive</b> at the BALLAST panel to periscope depth (${PERISCOPE_DEPTH} m).</li>
+<li><b>Find</b> ships with the PERISCOPE (MARK them with a tag number) or listen on SONAR.</li>
+<li><b>Plan</b> a route at the CHART TABLE; the helmsman follows it or turns on the autopilot.</li>
+<li><b>Attack</b> at FIRE CONTROL: choose a tube, flood it, open the outer door, turn the ARM key, lift the guard, FIRE.</li>
+<li><b>Reload</b> in the torpedo room: carry a torpedo from the racks to an open breech.</li>
+<li><b>Survive</b>: stay quiet (SHIP STATUS - NOISE), fix leaks, pump water, fight fires, keep the power and air up.</li></ol></section>
+<section><h2>HELM (navigation console)</h2><p>Engine telegraph <kbd>W</kbd>/<kbd>S</kbd>, rudder <kbd>A</kbd>/<kbd>D</kbd>, centre <kbd>X</kbd>.
+<kbd>T</kbd> autopilot steers along the chart route. The round scope shows contacts, the route and the course to the next waypoint.</p></section>
+<section><h2>BALLAST &amp; TRIM</h2><p><kbd>F</kbd> flood the tanks to dive, <kbd>B</kbd> blow them to surface, <kbd>H</kbd> hold.
+Dive planes <kbd>W</kbd>/<kbd>S</kbd>. The DIVE PROFILE screen shows the sea floor ahead, the periscope depth and the hull limit (${TEST_DEPTH} m).</p></section>
+<section><h2>PERISCOPE</h2><p>Only at ${PERISCOPE_DEPTH} m or shallower. Train it with the handles (<kbd>A</kbd>/<kbd>D</kbd> or drag), ZOOM and TILT knobs,
+pick a tag 1-8 on the slider and press MARK on the ship in the crosshair. The TARGET IDENTIFICATION screen names it.</p></section>
+<section><h2>SONAR</h2><p><kbd>P</kbd> sends an active ping: it shows everything around you, but every enemy hears it. <kbd>N</kbd> hands the next contact to fire control.</p></section>
+<section><h2>FIRE CONTROL</h2><p>Tube switches 1-4, <kbd>F</kbd> flood, <kbd>O</kbd> outer door, <kbd>K</kbd> ARM key, <kbd>G</kbd> guard, <kbd>Space</kbd> FIRE.
+With a lock the torpedo homes in; without one it runs along the course set with the AIM stick (<kbd>A</kbd>/<kbd>D</kbd>).
+DECOY (<kbd>N</kbd>) throws a noisemaker to spoil an enemy torpedo.</p></section>
+<section><h2>CHART TABLE - ROUTE PLANNING</h2><p>Move the cursor with the CURSOR stick (<kbd>WASD</kbd> or drag), ADD WPT (<kbd>Space</kbd>) drops a waypoint,
+DEL WPT (<kbd>Backspace</kbd>) removes the last. Zoom <kbd>Z</kbd>/<kbd>X</kbd>.</p></section>
+<section><h2>SHIP STATUS</h2><p>Eight pages: NOISE, AIR, ENGINES, POWER, LEAKS, FLOOD, FIRE, CREW (<kbd>1</kbd>-<kbd>8</kbd>). A page key flashes red when that
+system needs help. The guarded GENERAL ALARM (<kbd>G</kbd>) sounds the klaxon and lights the beacons for the whole crew.</p></section>
+<section><h2>NOISE &amp; STEALTH</h2><p>Speed, running diesels, a raised periscope, blowing tanks, being on the surface, pings and launches all make noise.
+The louder you are, the further away a frigate hears you. Go slow and deep to slip away.</p></section>
+<section><h2>AIR, BATTERY &amp; DIESELS</h2><p>Submerged, the oxygen slowly runs down and the motors drain the battery. Surface, or snorkel at ${SNORKEL_DEPTH} m
+with a diesel running, to refresh the air and charge. Diesels need fuel in the DAY TANK (fuel transfer pump, jerrycans), oil, and their
+coolant valves open.</p></section>
+<section><h2>POWER</h2><p>Big hits trip the breakers. At the MAIN SWITCHBOARD (battery room) close the tripped breakers, then the MAIN BREAKER.</p></section>
+<section><h2>LEAKS &amp; FLOODING</h2><p>Hits tear the hull. The deeper you are, the harder the sea jets in. Take a wrench from a tool board and hold <kbd>E</kbd> on the leak.
+Water spreads through open doors and down the stairs; work the hand BILGE PUMPS (click up and down). Chest deep, you swim.</p></section>
+<section><h2>FIRE &amp; SMOKE</h2><p>Take an extinguisher off the wall and hold <kbd>E</kbd> at the flames. Then switch on that room's SMOKE EXTRACT fans (they need power).</p></section>
+<section><h2>CREW CARE</h2><p>Hunger and stamina drain. Cook at the galley griddle and eat (<kbd>F</kbd>). Hurt? Lie on the med bed or use a first-aid kit.</p></section>`;
+function toggleHandbook(show = $('handbook').classList.contains('hidden')) {
+  const hb = $('handbook');
+  if (!hb.innerHTML) hb.innerHTML = HANDBOOK;
+  hb.classList.toggle('hidden', !show);
+  if (show && document.pointerLockElement) document.exitPointerLock();
+  if (!show && player.mode === 'walk') lockPointer();
+}
 
 function drop() {
   if (!player.carry) return;
@@ -640,6 +727,27 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
+// what the SHIP STATUS console shows: which pages need attention, and where the crew are
+function updateStatusInfo() {
+  const s = sim.sub;
+  const hostileHunting = sim.entities.some((e) => e.alive && e.state === 'hunt' && (e.kind === 'frigate' || e.kind === 'enemySub'));
+  inn.statusInfo.alerts = {
+    noise: sim.noiseLevel > 11 || hostileHunting,
+    air: s.oxygen < 30 || sim.smoke.some((v) => v > 0.35),
+    engines: sim.engines.some((e) => e.fault || e.temp > 100 || !e.coolant) || sim.fuel.day < 8,
+    power: !sim.power,
+    leaks: sim.leaks.some((l) => !l.fixed),
+    flood: sim.floodFraction() > 0.02,
+    fire: sim.fires.some((f) => !f.out),
+    crew: player.health < 30 || player.hunger < 15,
+  };
+  const where = (st, x, y) => (st ? (HELP[st]?.[0] || st.toUpperCase()) : ROOMS[sim.roomAt(x, y)]?.label || 'ON DECK');
+  const crew = [{ name: `YOU - ${$('pname')?.value || 'Sailor'}`, role: player.role.replace('_', ' ').toUpperCase(), where: where(player.station, player.pos.x, player.pos.y),
+    health: player.health, hunger: player.hunger }];
+  if (net) for (const p of net.peers.values()) crew.push({ name: p.name || 'Sailor', role: (p.role || '').replace('_', ' ').toUpperCase(), where: where(p.station, p.x || 0, p.y || 0) });
+  inn.statusInfo.crew = crew.slice(0, 4);
+}
+
 // one frame of the game (the recorder calls this directly with a fixed dt)
 function tick(dt) {
   clockMs += dt * 1000;
@@ -661,7 +769,7 @@ function tick(dt) {
   sound.update(sim, player, dt);
 
   screenTimer -= dt;
-  if (screenTimer <= 0) { screenTimer = 0.1; inn.drawScreens(sim); }
+  if (screenTimer <= 0) { screenTimer = 0.1; updateStatusInfo(); inn.drawScreens(sim); }
   monitorTimer -= dt;
   const m = player.mode;
   if (window.__noRender) { updateHud(); return; }      // recorder dry runs: simulate only
@@ -702,6 +810,22 @@ function continuousInput(dt) {
     if (keys.has('d')) sim.setRudder(s.rudder - dt * 1.2);
     const js = inn.stations.helm?.parts?.Joystick;
     if (js) { js.userData.rest ||= js.quaternion.clone(); js.quaternion.copy(js.userData.rest).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-s.telegraph * 0.06, 0, -s.rudder * 0.3))); }
+  }
+  if (player.mode === 'station' && player.station === 'chart') {
+    const c = inn.chartCursor, z = inn.chartZoom, v = 260 / z;
+    const mx = (keys.has('d') ? 1 : 0) - (keys.has('a') ? 1 : 0), mz = (keys.has('s') ? 1 : 0) - (keys.has('w') ? 1 : 0);
+    c.x += (mx * v * dt) + mouseDX * 2 / z; c.z += (mz * v * dt) + mouseDY * 2 / z;
+    const lx = 384 / (0.22 * z) - 30 / z, lz = 256 / (0.22 * z) - 30 / z;
+    c.x = Math.max(-lx, Math.min(lx, c.x)); c.z = Math.max(-lz, Math.min(lz, c.z));
+    inn.cursorMove = { x: mx, z: mz };
+    if (wheel) inn.chartZoom = Math.max(0.5, Math.min(4, inn.chartZoom * (wheel < 0 ? 1.25 : 0.8)));
+    if (keys.has('z')) inn.chartZoom = Math.min(4, inn.chartZoom * (1 + dt * 1.5));
+    if (keys.has('x')) inn.chartZoom = Math.max(0.5, inn.chartZoom / (1 + dt * 1.5));
+    if (mx || mz) reach('CursorStick', 'grip', 150);
+  } else inn.cursorMove = null;
+  if (player.mode === 'station' && player.station === 'weapons') {
+    const a = (keys.has('a') ? 1 : 0) - (keys.has('d') ? 1 : 0);
+    if (a || mouseDX) { sim.setAim((sim.weapons.aim || 0) + a * dt * 0.7 - mouseDX * 0.003); if (net) net.sendControls(); }
   }
   if (player.mode === 'station' && player.station === 'ballast') {
     if (keys.has('w')) sim.setPlanes(s.planes + dt * 1.0);
@@ -988,6 +1112,11 @@ function updateHud() {
     $('scopeinfo').innerHTML = `BRG ${sim.deg(s.heading + s.periscopeBearing)}° · ZOOM ${s.periscopeZoom.toFixed(1)}x<br>${lock ? `LOCKED: ${lock.kind.toUpperCase()} ${Math.hypot(lock.x - s.x, lock.z - s.z).toFixed(0)} m` : 'CLICK TO MARK A TARGET'}`;
   }
   $('crosshair').classList.toggle('hidden', player.mode !== 'walk');
+  // at a station its own screens tell the story: hide the big status panel and fold the help away after a while
+  const atStation = player.mode === 'station' || player.mode === 'scope';
+  $('status').classList.toggle('hidden', atStation);
+  $('score').classList.toggle('hidden', atStation);
+  if (atStation && player.helpUntil && nowMs() > player.helpUntil) { $('station').classList.add('collapsed'); player.helpUntil = 0; }
   if (net) {
     const st = { helm: 'HELM', chart: 'CHART', weapons: 'FIRE CONTROL', periscope: 'PERISCOPE', sonar: 'SONAR', ballast: 'BALLAST', griddle: 'GRIDDLE',
       engines: 'ENGINES', fuel: 'FUEL PUMP', switchboard: 'SWITCHBOARD', bilge5: 'BILGE PUMP', bilge6: 'BILGE PUMP', bilge7: 'BILGE PUMP' };
@@ -995,9 +1124,25 @@ function updateHud() {
     $('crew').innerHTML = ['<b>CREW</b>', `${$('pname').value} (you) · ${st[player.station] || 'walking'}`,
       ...[...net.peers.values()].map((p) => `${p.name} · ${p.role.replace('_', ' ')} · ${st[p.station] || (p.carry ? 'carrying ' + p.carry : 'walking')}`)].join('<br>');
   }
-  // labels over ships in the outside views
+  // labels over ships in the outside views; numbered name tags over crewmates inside the boat
   const labels = $('labels');
   labels.innerHTML = '';
+  if (net && !m3d()) {
+    let n = 1;
+    for (const [id, p] of net.peers) {
+      n += 1;
+      const a = net.avatars[id]; if (!a || a === 'loading' || !a.visible) continue;
+      const q = a.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 2.05, 0));
+      if (q.distanceTo(camera.position) > 14) continue;
+      q.project(camera);
+      if (q.z > 1 || Math.abs(q.x) > 1 || Math.abs(q.y) > 1) continue;
+      const d = document.createElement('div');
+      d.className = 'crewtag';
+      d.style.left = `${(q.x + 1) / 2 * 100}%`; d.style.top = `${(1 - q.y) / 2 * 100}%`;
+      d.innerHTML = `<b style="background:${['#ffcf4a', '#58c2f0', '#4cff8a', '#ff8a5a'][(n - 1) % 4]}">${n}</b>${(p.name || 'Sailor').replace(/[<>&]/g, '')}`;
+      labels.appendChild(d);
+    }
+  }
   if (m3d()) {
     for (const e of sim.entities) {
       if (!e.alive || !sim.contacts.has(e.id)) continue;

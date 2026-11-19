@@ -6,6 +6,7 @@ import { DROP } from './exterior.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Nav } from './nav.js';
 import { Particles } from './particles.js';
+import { drawStatus, drawDiveProfile, drawFireScope, drawRoute, STATUS_PAGES } from './consoles.js';
 
 const MODELS = '../submarine/models/';
 const LIGHT_POOL = 8;          // real point lights, moved to the lamps nearest the camera
@@ -135,9 +136,14 @@ export class Interior {
     this.tpl = { wrench: wrench.scene, crack: crack.scene, patch: patch.scene, torpedo: torpedo.scene };
     // wrenches: torpedo room workbench, control room, galley counter, engine room platform
     this.wrenches = [];
-    for (const p of [[6.35, -1.97, 1.95], [9.9, 0.02, -1.6], [23.95, 0.93, 2.05], [42.95, 0.03, 1.75]]) {
+    // the torpedo-room wrench hangs on its painted outline on the tool board behind the workbench
+    let hook = null;
+    this.root.traverse((o) => { if (!hook && /wrench_hook$/.test(baseName(o.name))) hook = o; });
+    const hookPos = hook ? hook.getWorldPosition(new THREE.Vector3()) : null;
+    for (const p of [hookPos ? hookPos.toArray() : [6.35, -1.97, 1.95], [9.9, 0.02, -1.6], [23.95, 0.93, 2.05], [42.95, 0.03, 1.75]]) {
       const w = wrench.scene.clone();
       w.position.set(...p); w.rotation.y = Math.random() * 6;
+      if (hookPos && p[0] === hookPos.x) { w.rotation.set(-Math.PI / 2, 0, 0); w.position.z -= 0.012; }
       this.scene.add(w);
       this.wrenches.push(w);
       this.interactables.push({ pos: w.position.clone().add(new THREE.Vector3(0, 0.05, 0)), radius: 0.6, label: 'Pick up WRENCH', kind: 'wrench', data: w });
@@ -191,6 +197,7 @@ export class Interior {
       ['engines', 'engine_control', /^EngineConsole/, 'Use ENGINE CONTROLS (start / stop diesels)'],
       ['fuel', 'fuel', /^FuelStation/, 'Use FUEL TRANSFER PUMP'],
       ['switchboard', 'switchboard', /^MainSwitchboard/, 'Use MAIN SWITCHBOARD (breakers / power)'],
+      ['status', 'status', /^ShipStatus/, 'Use SHIP STATUS (diagnostics, general alarm)'],
     ];
     for (const [key, st, re, label] of stationDefs) {
       const root = (byStation[st] || []).find((r) => re.test(r.name));
@@ -374,9 +381,28 @@ export class Interior {
       for (const m of mats.get(name) || []) { m.emissiveMap = tex; m.map = tex; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = 1.4; m.needsUpdate = true; }
       return { canvas, ctx: canvas.getContext('2d'), tex };
     };
-    for (const n of ['screen_chart', 'screen_nav_scope', 'screen_sonar', 'screen_fire_control', 'screen_ballast', 'screen_target_id', 'screen_engine']) {
+    for (const n of ['screen_chart', 'screen_nav_scope', 'screen_sonar', 'screen_target_id', 'screen_engine']) {
       this.screens[n] = make(n, n === 'screen_chart' ? 768 : 512, n === 'screen_chart' ? 512 : n === 'screen_target_id' ? 256 : 512);
     }
+    // canvases in the same proportions as their screens
+    this.screens.screen_fire_control = make('screen_fire_control', 640, 480);
+    this.screens.screen_ballast = make('screen_ballast', 544, 400);
+    this.screens.screen_status = make('screen_status', 640, 412);
+    this.statusPage = 'noise';
+    // some groups of panel indicator lamps blink (each group at its own pace); the rest stay lit.
+    // (the export merges a prop's lamps of one colour into one mesh, so a group blinks together)
+    this.blinkers = [];
+    this.root.traverse((o) => {
+      if (!o.isMesh || !o.material || !/^Lamp(Green|Red|Amber|Blue)$/.test(o.material.name) || /Fault|Start|Button|Lamp_/.test(o.name)) return;
+      for (let p = o.parent, k = 0; p && k < 3; p = p.parent, k++) if (p.userData && (p.userData.interact || p.userData.interaction)) return;
+      const h = Math.abs(Math.sin(o.getWorldPosition(new THREE.Vector3()).dot(new THREE.Vector3(12.9898, 78.233, 37.719))) * 43758.5453) % 1;
+      if (h > 0.55) return;
+      o.material = o.material.clone();
+      this.blinkers.push({ mat: o.material, base: o.material.emissiveIntensity || 1, rate: 0.8 + h * 6, phase: h * 40, duty: h < 0.2 ? 0.7 : -0.5 });
+    });
+    this.statusInfo = { alerts: {}, crew: [] };
+    this.chartCursor = { x: 0, z: 0 };     // chart-table cursor, metres from the boat
+    this.chartZoom = 1;
     // the periscope eyepiece: the live view is rendered into lensRT; the shader adds the reticle, ranging scales and vignette
     this.lensRT = new THREE.WebGLRenderTarget(768, 380, { type: THREE.HalfFloatType, generateMipmaps: true,   // HDR sky; mipmaps stop shimmer
       minFilter: THREE.LinearMipmapLinearFilter });
@@ -420,7 +446,7 @@ export class Interior {
     for (const key of ['screen_chart', 'screen_nav_scope']) {
       const sc = this.screens[key]; if (!sc) continue;
       const { ctx, canvas } = sc, W = canvas.width, H = canvas.height, round = key === 'screen_nav_scope';
-      const scale = key === 'screen_chart' ? 0.22 : 0.3;
+      const scale = key === 'screen_chart' ? 0.22 * this.chartZoom : 0.3;
       ctx.fillStyle = round ? '#1a0e02' : '#cfe3e6'; ctx.fillRect(0, 0, W, H);
       ctx.save(); ctx.translate(W / 2, H / 2);
       ctx.strokeStyle = round ? '#ffae2e55' : '#5b7d8a55'; ctx.lineWidth = 1;
@@ -440,11 +466,18 @@ export class Interior {
       const lk = sim.entities.find((q) => q.id === sim.weapons.lock && q.alive);
       if (lk) { ctx.setLineDash([8, 6]); ctx.strokeStyle = round ? '#ffe0a0' : '#c62828'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo((lk.x - s.x) * scale, (lk.z - s.z) * scale); ctx.stroke(); ctx.setLineDash([]); }
       for (const tp of sim.torpedoes) { ctx.fillStyle = tp.owner === 'player' ? '#1565c0' : '#ff1744'; ctx.fillRect((tp.x - s.x) * scale - 2, (tp.z - s.z) * scale - 2, 4, 4); }
+      drawRoute(ctx, s, sim, scale, key === 'screen_chart' ? this.chartCursor : null, round);
       ctx.rotate(-s.heading); ctx.fillStyle = round ? '#ffe0a0' : '#0d47a1';
       ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-10, -7); ctx.lineTo(-10, 7); ctx.fill();
       ctx.restore();
       ctx.fillStyle = round ? '#ffae2e' : '#102030'; ctx.font = 'bold 22px monospace';
       ctx.fillText(`HDG ${deg(s.heading)}°  SPD ${s.speed.toFixed(1)}  DEPTH ${s.depth.toFixed(0)}m`, 16, H - 18);
+      const wi = sim.waypointInfo();
+      if (wi) {
+        ctx.fillStyle = round ? '#ffe0a0' : '#b34700'; ctx.font = 'bold 20px monospace';
+        ctx.fillText(`WPT 1/${sim.route.length}  ${String(deg(wi.brg)).padStart(3, '0')}°  ${wi.rng.toFixed(0)} m${sim.autopilot ? '  AUTO' : ''}`, 16, round ? 40 : H - 46);
+      }
+      if (key === 'screen_chart') { ctx.fillStyle = '#102030'; ctx.font = 'bold 16px monospace'; ctx.fillText(`ZOOM x${this.chartZoom.toFixed(1)}`, W - 120, 28); }
       sc.tex.needsUpdate = true;
     }
     const so = this.screens.screen_sonar;
@@ -466,38 +499,11 @@ export class Interior {
       so.tex.needsUpdate = true;
     }
     const fc = this.screens.screen_fire_control;
-    if (fc) {
-      const { ctx } = fc;
-      ctx.fillStyle = '#080a08'; ctx.fillRect(0, 0, 512, 512);
-      ctx.fillStyle = '#ffb52e'; ctx.font = 'bold 30px monospace'; ctx.fillText('FIRE CONTROL', 20, 44);
-      ctx.font = '22px monospace';
-      const lock = sim.entities.find((e) => e.id === sim.weapons.lock && e.alive);
-      ctx.fillText(lock ? `TGT ${lock.kind.toUpperCase()} BRG ${deg(Math.atan2(-(lock.z - s.z), lock.x - s.x))}` : 'NO TARGET LOCK', 20, 84);
-      ctx.fillText(lock ? `RNG ${Math.hypot(lock.x - s.x, lock.z - s.z).toFixed(0)} m` : 'MARK ONE AT PERISCOPE/SONAR', 20, 114);
-      sim.tubes.forEach((t, i) => {
-        const x = 20 + i * 122, y = 150, sel = sim.weapons.selected === t.n;
-        ctx.strokeStyle = '#ffb52e'; ctx.lineWidth = sel ? 5 : 2; ctx.strokeRect(x, y, 110, 210);
-        ctx.fillStyle = '#ffb52e'; ctx.fillText(`TUBE ${t.n}`, x + 8, y + 30);
-        ctx.fillStyle = t.loaded ? '#7dff7d' : '#ff5d5d'; ctx.fillText(t.loaded ? 'LOADED' : 'EMPTY', x + 8, y + 70);
-        ctx.fillStyle = t.flooded ? '#64b5f6' : '#777'; ctx.fillText(t.flooded ? 'FLOODED' : 'DRY', x + 8, y + 110);
-        ctx.fillStyle = t.outerOpen ? '#7dff7d' : '#777'; ctx.fillText(t.outerOpen ? 'DOOR OPEN' : 'DOOR SHUT', x + 4, y + 150);
-        ctx.fillStyle = t.breechOpen ? '#ff5d5d' : '#777'; ctx.fillText(t.breechOpen ? 'BREECH!' : '', x + 8, y + 190);
-      });
-      ctx.fillStyle = sim.weapons.armed ? '#ff5d5d' : '#777'; ctx.fillText(sim.weapons.armed ? 'ARMED' : 'SAFE', 20, 410);
-      ctx.fillStyle = '#ffb52e'; ctx.fillText(`SPARES ${sim.torpedoStock}  DECOYS ${s.countermeasures}`, 20, 450);
-      fc.tex.needsUpdate = true;
-    }
+    if (fc) { drawFireScope(fc.ctx, 640, 480, sim); fc.tex.needsUpdate = true; }
     const bl = this.screens.screen_ballast;
-    if (bl) {
-      const { ctx } = bl;
-      ctx.fillStyle = '#04100a'; ctx.fillRect(0, 0, 512, 512);
-      ctx.fillStyle = '#7dffb0'; ctx.font = 'bold 30px monospace'; ctx.fillText('DIVE STATUS', 20, 44);
-      ctx.font = '24px monospace';
-      [`DEPTH  ${s.depth.toFixed(1)} m`, `RATE   ${(s.vy * 60).toFixed(0)} m/min`, `BALLAST ${(s.ballast * 100).toFixed(0)} %`,
-        `PLANES ${s.planes > 0.05 ? 'RISE' : s.planes < -0.05 ? 'DIVE' : 'LEVEL'}`, `VALVE  ${s.valve.toUpperCase()}`, `AIR    ${s.air.toFixed(0)} %`,
-        `HULL   ${s.hull.toFixed(0)} %`, `FLOOD  ${(sim.floodFraction() * 100).toFixed(0)} %`].forEach((l, i) => ctx.fillText(l, 20, 96 + i * 44));
-      bl.tex.needsUpdate = true;
-    }
+    if (bl) { drawDiveProfile(bl.ctx, 544, 400, sim); bl.tex.needsUpdate = true; }
+    const ss = this.screens.screen_status;
+    if (ss) { drawStatus(ss.ctx, 640, 412, sim, this.statusPage, this.statusInfo); ss.tex.needsUpdate = true; }
     const id = this.screens.screen_target_id;
     if (id) this.drawTargetId(sim, id);
     const en = this.screens.screen_engine;
@@ -920,7 +926,7 @@ export class Interior {
     this.rackTorpedoes.forEach((t, i) => { t.visible = i < sim.torpedoStock; });
     this.animateMachinery(sim, dt);
     // alarm: rotating red light in the compartment you are in
-    const danger = sim.leaks.some((l) => !l.fixed) || sim.sub.hull < 40 || sim.torpedoes.some((t) => t.owner !== 'player') || sim.sub.lost;
+    const danger = sim.alarm || sim.leaks.some((l) => !l.fixed) || sim.sub.hull < 40 || sim.torpedoes.some((t) => t.owner !== 'player') || sim.sub.lost;
     const ci = this.roomAt(camPos.x, camPos.y - 1.6);
     if (ci >= 0) { const r = ROOMS[ci]; this.alarm.position.set(Math.max(r.x0 + 0.5, Math.min(r.x1 - 0.5, camPos.x + 1.5)), r.deck === 'lower' ? -0.5 : 2.5, 0); }
     this.alarm.intensity = danger || !sim.power || sim.fires.some((f) => !f.out) ? (Math.sin(this.time * 6) > 0 ? 18 : 2) : 0;
@@ -1044,6 +1050,48 @@ export class Interior {
         b.position.copy(b.userData.restPos);
         if ((this.pressed?.[key] || 0) > this.time) b.position.z -= 0.007;
       }
+    }
+    // ship status console: the selected page key stays pushed in, the alarm button and its flip-up guard
+    const stc = this.stations.status;
+    if (stc) {
+      const P = stc.parts;
+      STATUS_PAGES.forEach((pg, k) => {
+        const b = P[`Page${k + 1}`]; if (!b) return;
+        b.userData.restPos ||= b.position.clone();
+        b.position.copy(b.userData.restPos);
+        if (pg === this.statusPage || (this.pressed?.[`page${k}`] || 0) > this.time) b.position.z -= pg === this.statusPage ? 0.005 : 0.008;
+      });
+      this.alarmGuard = (this.alarmGuard || 0) + (((this.pressed?.alarm || 0) > this.time - 1.2 ? 1 : 0) - (this.alarmGuard || 0)) * Math.min(1, dt * 6);
+      set(P.AlarmGuard, X_AXIS, this.alarmGuard * 1.8);
+      if (P.AlarmButton) { P.AlarmButton.userData.restPos ||= P.AlarmButton.position.clone(); P.AlarmButton.position.copy(P.AlarmButton.userData.restPos); if ((this.pressed?.alarm || 0) > this.time) P.AlarmButton.position.z -= 0.01; }
+    }
+    // fire control: AIM stick leans with the course offset; DECOY button
+    const wc = this.stations.weapons;
+    if (wc) {
+      set(wc.parts.AimStick, NZ_AXIS, -(sim.weapons.aim || 0) / 2.35 * 0.35);
+      const b = wc.parts.DecoyButton;
+      if (b) { b.userData.restPos ||= b.position.clone(); b.position.copy(b.userData.restPos); if ((this.pressed?.decoy || 0) > this.time) b.position.y -= 0.007; }
+    }
+    // chart table route pod: the cursor stick leans the way the cursor is moving, waypoint keys
+    const ct = this.stations.chart;
+    if (ct) {
+      const m = this.cursorMove || { x: 0, z: 0 };
+      const st2 = ct.parts.CursorStick;
+      if (st2) {
+        st2.userData.rest ||= st2.quaternion.clone();
+        st2.quaternion.copy(st2.userData.rest).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(m.z * 0.3, 0, -m.x * 0.3)));
+      }
+      set(ct.parts.ChartZoom, Y_AXIS, (this.chartZoom - 1) * 1.5);
+      for (const [nm, key] of [['AddWaypoint', 'addwpt'], ['DelWaypoint', 'delwpt']]) {
+        const b = ct.parts[nm]; if (!b) continue;
+        b.userData.restPos ||= b.position.clone(); b.position.copy(b.userData.restPos);
+        if ((this.pressed?.[key] || 0) > this.time) b.position.y -= 0.006;
+      }
+    }
+    // indicator lamps that blink (racks, cabinets, consoles)
+    for (const b of this.blinkers || []) {
+      const on = Math.sin(this.time * b.rate + b.phase) > b.duty;
+      b.mat.emissiveIntensity = on ? b.base : b.base * 0.08;
     }
     // switchboard: breakers up = closed, down = tripped; the main breaker follows the power
     const sb = this.stations.switchboard;

@@ -17,12 +17,13 @@
 <div id="blackout" class="hidden"><p>...</p></div>
 <div id="hud" class="hidden">
   <div id="bars">
-    <div class="bar"><span>HEALTH</span><div class="track"><div id="healthbar" class="fill red"></div></div></div>
-    <div class="bar"><span>STAMINA</span><div class="track"><div id="stamina" class="fill blue"></div></div></div>
-    <div class="bar"><span>HUNGER</span><div class="track"><div id="hunger" class="fill yellow"></div></div></div>
-    <div class="bar"><span>HULL</span><div class="track"><div id="hullbar" class="fill green"></div></div></div>
-    <div class="bar hidden" id="breathrow"><span>BREATH</span><div class="track"><div id="breathbar" class="fill cyan"></div></div></div>
+    <div class="bar"><svg viewBox="0 0 24 24" class="ico"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8.2 3.4 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.6 0 6 3.7 4.5 7.3C19.5 16.4 12 21 12 21z" fill="#ff5a4f"/></svg><div class="track seg"><div id="healthbar" class="fill red"></div></div></div>
+    <div class="bar"><svg viewBox="0 0 24 24" class="ico"><circle cx="15" cy="4" r="2.2" fill="#4fb3ff"/><path d="M9 21l3-6 3 3v4M7 11l4-4 4 3 3 1M12 15l-2-4" stroke="#4fb3ff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="track seg"><div id="stamina" class="fill blue"></div></div></div>
+    <div class="bar"><svg viewBox="0 0 24 24" class="ico"><path d="M6 3v7a2 2 0 0 0 2 2v9M4 3v6M8 3v6M16 21V3c2.5 1 4 4 4 8h-4" stroke="#ffcf4a" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg><div class="track seg"><div id="hunger" class="fill yellow"></div></div></div>
+    <div class="bar"><svg viewBox="0 0 24 24" class="ico"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" fill="#4cff8a" opacity=".9"/></svg><div class="track seg"><div id="hullbar" class="fill green"></div></div></div>
+    <div class="bar hidden" id="breathrow"><svg viewBox="0 0 24 24" class="ico"><circle cx="8" cy="15" r="4" stroke="#58e0f0" stroke-width="2" fill="none"/><circle cx="16" cy="8" r="3" stroke="#58e0f0" stroke-width="2" fill="none"/><circle cx="17" cy="17" r="2" fill="#58e0f0"/></svg><div class="track seg"><div id="breathbar" class="fill cyan"></div></div></div>
   </div>
+  <div id="bookbadge"><svg viewBox="0 0 24 24" class="ico"><path d="M2 5c3-1.3 6-1.3 10 1 4-2.3 7-2.3 10-1v14c-3-1.3-6-1.3-10 1-4-2.3-7-2.3-10-1z M12 6v14" stroke="#f2ead6" stroke-width="1.6" fill="none"/></svg><kbd>TAB</kbd> handbook</div>
   <div id="status"></div>
   <div id="score"></div>
   <div id="carry"></div>
@@ -30,9 +31,11 @@
   <div id="prompt"></div>
   <div id="progress" class="hidden"><div id="progressfill"></div></div>
   <div id="messages"></div>
-  <div id="station" class="hidden"><h2 id="stationtitle"></h2><pre id="stationhelp"></pre></div>
+  <div id="station" class="hidden"><h2 id="stationtitle"></h2><pre id="stationhelp"></pre>
+    <div class="mousehint"><svg viewBox="0 0 16 24" class="ico"><rect x="1.5" y="1.5" width="13" height="21" rx="6.5" stroke="#f2ead6" stroke-width="1.5" fill="none"/><path d="M8 1.5v8M1.5 9.5h6.5" stroke="#f2ead6" stroke-width="1.5"/><path d="M2.2 9V8a6 6 0 0 1 5.6-6v7z" fill="#ffd34d"/></svg>click buttons, keys and switches on the panel</div></div>
   <div id="scope" class="hidden"><div class="reticle"></div><div id="scopeinfo"></div></div>
   <div id="labels"></div>
+  <div id="handbook" class="hidden"></div>
   <div id="crew"></div>
   <div id="flash"></div>
 </div>

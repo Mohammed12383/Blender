@@ -128,6 +128,7 @@ def build_library():
     add(pcx.periscope)
     add(pcx.sonar_station)
     add(pcx.ballast_panel)
+    add(pcx.ship_status)
     # torpedo room
     add(pt.torpedo)
     add(pt.tube_bank)
@@ -335,6 +336,7 @@ def torpedo_room(lib):
     r.put("SupplyCrate", (5.05, 1.85, 0), 5)
     r.put("SparePartsCrate", (5.0, 1.85, 0.45), -4)
     r.stbd("Workbench", 6.15)
+    r.stbd("FireExtinguisher", 6.15 - 0.7, 0.9 + 0.2, inset=r.wall - 0.03)   # on its outline on the tool board
     r.put("Toolbox", (5.75, -(w - 0.3), 0.9), 172)
     r.aft_face("BilgePump", -1.25, 0)
     r.stbd("VentPanel", 2.35, 1.35)
@@ -411,7 +413,7 @@ def control_room(lib):
     r.put("NavConsole", (12.0, -(WALL - 0.31), 0), 180)
     r.stbd("Sign_Voltage", 8.45, 2.15, WALL_DECAL)
     r.stbd("JunctionBox", 13.0, 2.0, WALL_DECAL)
-    r.put("EquipmentRack", (14.3, -WALL, 0), 180)
+    r.put("ShipStatus", (14.3, -(WALL - 0.27), 0), 180)          # diagnostics: system pages + general alarm
     # escape trunk: ladder on the aft bulkhead up to a ceiling hatch
     r.aft_face("Ladder", -1.35, 0)
     r.put("CeilingHatch", (r.x1 - 0.2 - 0.18, -1.35, shell.CEIL), 0)

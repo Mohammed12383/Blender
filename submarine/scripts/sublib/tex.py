@@ -887,6 +887,44 @@ def tag_strip(name="tag_strip", n=8, w=1024, h=128):
     img.save(path(name))
 
 
+def tool_board(name="sign_tool_board", w=1600, h=800):
+    """Shadow board behind the workbench: perforated hardboard with painted outlines where each tool hangs."""
+    if not needed(name):
+        return
+    img = Image.new("RGB", (w, h), (214, 210, 198))
+    d = ImageDraw.Draw(img)
+    for y in range(20, h, 40):            # perforations
+        for x in range(20, w, 40):
+            d.ellipse([x - 5, y - 5, x + 5, y + 5], fill=(92, 88, 82))
+    sh = (150, 40, 34)                      # painted tool shadows (signal red)
+
+    def wrench(cx, cy, L, ang=0):
+        ca, sa = math.cos(ang), math.sin(ang)
+        P = lambda u, v: (cx + u * ca - v * sa, cy + u * sa + v * ca)
+        d.polygon([P(-L / 2, -16), P(L / 2, -16), P(L / 2, 16), P(-L / 2, 16)], fill=sh)
+        for e in (-1, 1):
+            ex, ey = P(e * L / 2, 0)
+            d.ellipse([ex - 44, ey - 44, ex + 44, ey + 44], fill=sh)
+            jx, jy = P(e * (L / 2 + 34), 0)
+            d.ellipse([jx - 22, jy - 22, jx + 22, jy + 22], fill=(214, 210, 198))
+
+    wrench(330, 260, 420, 0.0)              # big adjustable wrench (the one the game hangs here)
+    wrench(330, 470, 300, 0.0)
+    d.rectangle([700, 140, 730, 520], fill=sh); d.rectangle([660, 120, 770, 190], fill=sh)          # hammer
+    for k, L in enumerate([300, 260, 220]):                                                        # screwdrivers
+        x = 860 + k * 70
+        d.rounded_rectangle([x - 22, 140, x + 22, 260], radius=14, fill=sh); d.rectangle([x - 6, 260, x + 6, 140 + L], fill=sh)
+    d.polygon([(1110, 160), (1150, 160), (1190, 420), (1160, 430), (1130, 260), (1100, 430), (1070, 420)], fill=sh)  # pliers
+    d.rounded_rectangle([1280, 150, 1350, 420], radius=20, fill=sh); d.rectangle([1265, 140, 1365, 200], fill=sh)  # torch
+    d.rounded_rectangle([1440, 120, 1560, 560], radius=40, fill=sh)                                # extinguisher
+    f = BOLD(34)
+    for x, t in [(330, "WRENCH"), (715, "HAMMER"), (930, "DRIVERS"), (1130, "PLIERS"), (1315, "TORCH"), (1500, "EXT.")]:
+        bb = d.textbbox((0, 0), t, font=f)
+        d.text((x - (bb[2] - bb[0]) / 2, 660), t, fill=(60, 58, 54), font=f)
+    d.rectangle([0, 0, w - 1, h - 1], outline=(120, 116, 108), width=10)
+    img.save(path(name))
+
+
 def periscope_view(name="screen_periscope", w=1024, h=540, seed=7):
     """Placeholder sea view in the eyepiece (the game renders the live view over it)."""
     if not needed(name):
@@ -946,6 +984,8 @@ def generate_all():
     camera_feed("screen_cam_aft", "CAM 2  AFT", seed=4, tint="#c8e0d8")
     periscope_display()
     periscope_view()
+    tool_board()
+    text_screen("screen_status", ["NOISE    LOW", "AIR      98 %", "LEAKS    NONE", "POWER    ON"], color="#7dd8ff", title="SHIP STATUS")
     compass_card()
     tag_strip()
     gauge_face("gauge_pressure", "PRESSURE", 10, 1, red_from=8, unit="BAR")
@@ -960,7 +1000,8 @@ def generate_all():
                     ("bilge", "BILGE PUMP"), ("fuel_transfer", "FUEL TRANSFER PUMP"), ("smoke", "SMOKE EXTRACT"),
                     ("main_breaker", "MAIN BREAKER"), ("engine_control", "ENGINE CONTROL"), ("switchboard", "MAIN SWITCHBOARD"),
                     ("medical", "MEDICAL"), ("stores", "STORES"), ("down", "TORPEDO ROOM ▼"),
-                    ("target_id", "TARGET IDENTIFICATION")]:
+                    ("target_id", "TARGET IDENTIFICATION"), ("ship_status", "SHIP STATUS"), ("tools", "TOOLS"),
+                    ("general_alarm", "GENERAL ALARM"), ("route", "ROUTE PLANNING")]:
         label_plate("label_" + nm, txt)
     label_plate("label_engine_maker", "DEEPWATER MOTOR WORKS · 8 CYL", fg="#1d1d1f", bg="#c9a24a", w=1024, h=160, font_fn=BOLD)
     for nm, txt in [("start", "START"), ("stop", "STOP"), ("oil", "OIL"), ("coolant", "COOLANT"), ("fuel", "FUEL")]:
@@ -970,7 +1011,10 @@ def generate_all():
     for k in range(1, 5):
         label_plate(f"label_tube{k}", str(k), fg="#1d1d1f", bg="#efb81d", w=256, h=256, font_fn=BLACK)
     for nm, txt in [("view", "VIEW"), ("zoom", "ZOOM"), ("fire", "FIRE"), ("arm", "ARM"), ("flood", "FLOOD"),
-                    ("vent", "VENT"), ("blow", "BLOW"), ("mark", "MARK"), ("clear", "CLEAR"), ("tilt", "TILT")]:
+                    ("vent", "VENT"), ("blow", "BLOW"), ("mark", "MARK"), ("clear", "CLEAR"), ("tilt", "TILT"),
+                    ("aim", "AIM"), ("decoy", "DECOY"), ("add_wpt", "ADD WPT"), ("del_wpt", "DEL WPT"),
+                    ("pg_noise", "NOISE"), ("pg_air", "AIR"), ("pg_engines", "ENGINES"), ("pg_power", "POWER"),
+                    ("pg_leaks", "LEAKS"), ("pg_flood", "FLOOD"), ("pg_fire", "FIRE"), ("pg_crew", "CREW")]:
         label_plate("label_" + nm, txt, fg="#f3ead2", bg="#222426", w=512, h=160, border=False, font_fn=BOLD)
     label_plate("hull_number", "27", fg="#f3ead2", bg="#244f55", w=512, h=384, border=False, font_fn=BLACK)
     label_plate("frigate_number", "F 41", fg="#f4f4f0", bg="#7d858c", w=768, h=256, border=False, font_fn=BLACK)
