@@ -24,6 +24,17 @@ Then open <http://localhost:8080/game/> and pick a role.
 `ws://192.168.1.20:8080` into the *Multiplayer server* box before picking a role. The first player to
 join hosts the simulation. Up to 4 players can join, each seeing the others as their crew character. Any role can run any station.
 
+## Video tour
+
+**[media/deepwater_tour.mp4](media/deepwater_tour.mp4)** (about 5 minutes) is recorded from the real game and uses
+every control on the boat: the helm and autopilot, ballast and the dive profile, tagging ships through the periscope,
+listening on sonar, planning a route, the ship-status pages and general alarm, the mission wall and CCTV, aiming and
+firing a torpedo, reloading a tube, the diesels, fuel, oil and coolant, the switchboard, a hull leak, flooding and
+swimming, the bilge pump, a fire, smoke extract, the galley, the sick bay, the bridge and the crew handbook.
+The scripts that record it are in [tools/video](tools/video/README.md).
+
+![Frames from the video tour](media/tour_sheet.jpg)
+
 ## The boat
 
 The boat has two decks. Stairs in the forward quarters lead down to the lower deck.

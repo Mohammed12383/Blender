@@ -20,7 +20,7 @@ A browser game that uses these models: 1–4 players crew the submarine, drive a
 convoys through the periscope, plan a route on the chart table, aim and fire torpedoes, reload them by hand, and
 fight enemy subs, sharks and a giant squid. A ship-status console shows every system at a glance. Keep the boat alive: fix hull leaks with a wrench, pump out rising flood water (and swim when it
 gets deep), fight fires and clear the smoke, run and repair the diesels, and reset the switchboard.
-See **[game/README.md](game/README.md)**.
+See **[game/README.md](game/README.md)**, or watch the **[5-minute video tour](game/media/deepwater_tour.mp4)** that uses every control on the boat.
 
 ```bash
 cd game && npm install && npm start      # then open http://localhost:8080/game/
