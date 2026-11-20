@@ -131,7 +131,7 @@ def nav_console(name="NavConsole"):
     p.plate(0.6, 0.11, (0, D / 2 - 0.25 - 0.004, 1.58), "label_navigation")
     for k in range(4):
         indicator(p, (-0.3 + k * 0.2, D / 2 - 0.252, 1.38), m=["LampGreen", "LampGreen", "LampAmber", "LampGreen"][k], r=0.014)
-    p.use_camera((0, -0.62, 1.62), (0, -0.02, 1.2), lens=26)
+    p.use_camera((0, -1.0, 1.66), (0, -0.12, 1.12), lens=24)                # stand back enough to see the wheel and the scope
     p.hand("R", (0.2, -D / 2 - 0.25, 1.07), "grip", control="SteerWheel")
     p.hand("L", (-0.2, -D / 2 - 0.25, 1.07), "grip", control="SteerWheel")
     p.anchor("operate", (0, -D / 2 - 0.45, 0))

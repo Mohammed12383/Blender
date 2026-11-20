@@ -31,11 +31,11 @@ The boat has two decks. Stairs in the forward quarters lead down to the lower de
 | Deck | Room | What you do there |
 |---|---|---|
 | Upper | **Forward quarters** | Bunks, and the **sick bay**: lie on the med bed to heal; first-aid kits in the cabinet and on the shelf. The **stairwell** goes down to the torpedo room. |
-| Upper | **Control room** | **Helm**: engine telegraph, rudder and route autopilot. **Ballast panel**: flood or blow tanks, dive planes, and the DIVE PROFILE screen. **Periscope**, **sonar**, **fire control** (with an AIM stick and DECOY button), the **chart table** with its route-planning pod, and the **SHIP STATUS** diagnostics console with the general alarm. Ladder to the bridge, and a hull-shock switch on the electrical cabinet. |
+| Upper | **Control room** | **Helm**: engine telegraph, rudder and route autopilot. **Ballast panel**: flood or blow tanks, dive planes, and the DIVE PROFILE screen. **Periscope**, **sonar**, **fire control** (with an AIM stick and DECOY button), the **chart table** with its route-planning pod, the **SHIP STATUS** diagnostics console with the general alarm, the **MISSION WALL** (big mission map with the islands, the mission board, bow and stern cameras) and the **CAMERAS** console (CCTV of every compartment). Ladder to the bridge, and a hull-shock switch on the electrical cabinet. |
 | Upper | **Crew mess** | Eat at the table, drink coffee for stamina, rest in a bunk, watch the outside cameras on the wall TVs. |
 | Upper | **Galley** | Take raw steaks from the fridge or shelves and cook them on the griddle. Leave them too long and they burn. |
 | Upper | **Engine passage** | A grated walkway with railings, over a pit full of pipework. |
-| Upper | **Engine room** | Two big **diesels** in a pit, with a catwalk between them. On the aft platform: the **engine controls**, the **fuel day tank** with its hand transfer pump, a **bilge pump**, and spare jerrycans and oil cans. |
+| Upper | **Engine room** | Two big **diesels** in a pit, with a catwalk between them and a **DIESEL panel** for each (POWER, status screen, TALK). On the aft platform: the **engine controls**, the **fuel day tank** with its hand transfer pump, a **bilge pump**, and spare jerrycans and oil cans. |
 | Lower | **Torpedo room** | Take torpedoes from the racks, open a tube's breech door, load it, close it. A **tool board** behind the workbench: every tool hangs on its painted outline (take the wrench and the extinguisher from there). A **bilge pump**. |
 | Lower | **Battery room** | The **main switchboard** (breakers and the MAIN BREAKER), battery banks, a **bilge pump**, and **stores** with jerrycans and oil cans. |
 
@@ -54,13 +54,16 @@ When you use a station the camera moves in close and you see your own hands on t
 
 | Station | Keys |
 |---|---|
-| Helm | `W`/`S` engine telegraph (Full Astern … Flank) · `A`/`D` rudder · `X` centre · `T` autopilot along the chart route · `C` external 3D view |
+| Helm | `W`/`S` engine telegraph (Full Astern … Flank) · `A`/`D` rudder (steering wheel) · `X` centre · `T` autopilot along the chart route · `C` external 3D view |
 | Chart table | `WASD` or drag the CURSOR stick · `Space` ADD WPT at the cursor · `Backspace` DEL WPT · `Z`/`X` or wheel zoom · `R` cursor back to the boat |
-| Ship status | `1`–`8` or `Q`/`E` pages: NOISE · AIR · ENGINES · POWER · LEAKS · FLOOD · FIRE · CREW (a page key flashes red when that system needs help) · `G` GENERAL ALARM |
+| Ship status | `1`–`8` or `Q`/`E` pages: NOISE · AIR · ENGINES · POWER · LEAKS · FLOOD · FIRE · HEAT (a page key flashes red when that system needs help) · `G` GENERAL ALARM |
+| Mission map | `Z`/`X` or wheel zoom the big map · the mission board shows the goal, the next action, stealth and the crew |
+| Cameras | `1`–`6` or `Q`/`E`: TORPEDO · BATTERY · ENGINES · GALLEY · MESS · QUARTERS |
+| Diesel panel | `P` POWER (start / stop that diesel) · `T` TALK (report to the control room) |
 | Ballast & planes | `F` flood (dive) · `B` blow (surface) · `H` hold · `W`/`S` planes rise/dive · `X` level |
 | Periscope | hold the mouse button and drag, or `A`/`D`, to train the head (you turn with it) · `W`/`S` or the TILT knob · wheel or `Z`/`X` for the ZOOM knob · `1`–`8` or `Q`/`E` move the tag slider · `Space` MARK the ship in the crosshair with that tag · `C` CLEAR the tag · `V` or right-click to put your eye to the eyepiece · `R` raise/lower (only above 14 m) |
-| Sonar | `P` active ping (shows everything, but they hear you) · `N` lock the next contact |
-| Fire control | `1`–`4` tube · `F` flood · `O` outer door · `K` arm key · `G` guard · `Space` FIRE · `A`/`D` or drag: AIM stick (torpedo course when nothing is locked) · `N` DECOY (noisemaker) |
+| Sonar | `A`/`D` or drag: TRAIN wheel (aim the hydrophone and listen; the SIGNAL meter rises when something is there) · `W`/`S` GAIN · `L` LOCK what you hear · `P` active ping (shows everything, but they hear you) · `N` next contact |
+| Fire control | `1`–`4` or `Q`/`E` (TUBE −/+) tube · `F` flood · `O` outer door · `K` arm key · `G` guard · `Space` FIRE · `A`/`D` or drag: AIM stick (torpedo course when nothing is locked) · `N` DECOY (noisemaker) |
 | Tube breech | `E` open/close the breech · carry a torpedo here to load |
 | Griddle | `P` power · `E` put raw food on / take cooked food off |
 | Engine controls | `1` / `2` start or stop diesel 1 / 2 |
@@ -68,6 +71,13 @@ When you use a station the camera moves in close and you see your own hands on t
 | Bilge pump | **click** (or `W`/`S`) to work the handle up and down: every stroke lifts water out of that room |
 | Main switchboard | `1`–`8` close or open a breaker · `M`, `Space` or click for the MAIN BREAKER |
 | Bridge (ladder, when surfaced) | mouse to look · right-click for binoculars |
+
+## The sea
+
+The patrol area has five **islands** (with a lighthouse on Sentinel Isle) and a shoal. They show on every chart and
+through the periscope. Ships steer round them; the boat runs aground on a shore or stops against a rock wall if it
+tries to sail through, and torpedoes blow up on the rocks. Compartments have a **temperature**: running diesels and
+fires heat them, the ventilation fans cool them, and a hot room tires you out.
 
 ## How a fight goes
 
@@ -113,7 +123,7 @@ Sink a whole convoy and the next, bigger wave arrives.
 | File | What it does |
 |---|---|
 | `src/sim.js` | The simulation: sub physics, enemies, creatures, torpedoes, depth charges, damage, leaks, flooding by volume, smoke, fires, diesels, fuel, switchboard, noise, route and autopilot, general alarm. No rendering. |
-| `src/consoles.js` | Draws the console screens: SHIP STATUS pages with a two-deck plan, the DIVE PROFILE, the fire-control target scope, the chart route overlay. |
+| `src/consoles.js` | Draws the console screens: SHIP STATUS pages with a two-deck plan, the DIVE PROFILE, the fire-control target scope, the sonar compass, the MISSION MAP and board, the diesel panels, islands and the route on the charts. |
 | `src/nav.js` | Walkable areas of the two decks (floors, stairs, catwalks, the aft platform, doors), built from `submarine/models/nav.json`. |
 | `src/particles.js` | GPU particles with per-particle size, colour and alpha, used for flames, embers, smoke, splashes and diesel exhaust. |
 | `src/exterior.js` | The outside world: sky, animated ocean, underwater fog, ships, creature swimming, explosions, smoke; periscope, bridge and chase cameras. |
@@ -122,4 +132,4 @@ Sink a whole convoy and the next, bigger wave arrives.
 | `src/sound.js` | Synthesised audio. No sound files needed. |
 | `src/net.js`, `server.js` | Co-op: a static file server plus a WebSocket relay. The first player hosts the simulation. |
 
-Run `npm test` for the headless checks: 25 simulation tests (diving, firing, aimed torpedoes, the route autopilot, noise, reloading, leaks, flooding, doors, the stairwell, bilge pumps, diesels, fuel, smoke, vents, the switchboard, squid, crush depth, battery) and 8 navigation tests (stairs, doors, catwalks, swimming). For testing, URL parameters skip the menu: `?role=navigator`, `&station=helm`, and `&test=leaks|flood|fire|engines|squid|convoy|surface|deep`.
+Run `npm test` for the headless checks: 29 simulation tests (diving, firing, aimed torpedoes, the route autopilot, noise, islands and grounding, heat, the hydrophone, reloading, leaks, flooding, doors, the stairwell, bilge pumps, diesels, fuel, smoke, vents, the switchboard, squid, crush depth, battery) and 8 navigation tests (stairs, doors, catwalks, swimming). For testing, URL parameters skip the menu: `?role=navigator`, `&station=helm`, and `&test=leaks|flood|fire|engines|squid|convoy|surface|deep`.

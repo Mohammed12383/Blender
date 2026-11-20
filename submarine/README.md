@@ -56,6 +56,9 @@ Upper cross-section: 5 m wide, 2.9 m to the deckhead. Lower deck: 4.8 m wide, 2.
 |---|---|---|
 | **Diesels** | `DieselEngineP/S`: 8 cylinders, red rocker covers, copper injector lines, lagged exhaust manifold, turbocharger, bellows uptake, flywheel guard, local gauge panel. `MotorP/S`: motor-generators. `ShaftLine` | `Flywheel` (spins), `CoolantValve`, `OilFiller`, `StartButton`, `StopButton`, `FaultLamp`, gauge needles, `INTERACT_fault_point` (injectors), `CAM_panel` |
 | **Engine controls** | `EngineConsole` with live `screen_engine` | `Start1/2`, `Stop1/2`, `Throttle1/2`, `Fault1/2` lamps, RPM / temp / oil needles, `ChargeAmmeter` |
+| **Diesel panels** | `MotorPanel1/2` on posts beside the catwalk, live `screen_motor1/2` | `PowerButton`, `Throttle`, `TalkButton`, warning lamps, oil funnel |
+| **Mission wall** | `MissionWall` with live `screen_mission_map`, `screen_mission`, `screen_extcam1/2` | `MapZoom` knob, `CamSwitch`, keyboards, lamps, side handles |
+| **CCTV** | `CameraConsole` with live `screen_cctv` | `Cam1`–`Cam6` keys, side handles |
 | **Fuel** | `FuelStation` (day tank with sight glass, filler, hand transfer pump), `Jerrycan`, `OilCan`, `StoresShelf` | `PumpLever` (rocks ±28°), `FuelLevel` (scale Z = fuel fraction), `FillerCap` |
 | **Bilge** | `BilgePump` ×3 (torpedo room, battery room, engine room) | `Lever` (rocks ±25°), hand targets on the handle |
 | **Smoke extract** | `VentPanel` ×8 (one per room), `DuctFan` ×8 | `FanSwitch`, `Fan` (spins) |
@@ -70,8 +73,8 @@ platform, the stairwell opening and the pits) so a game can build its navigation
 
 | Player | Station(s) | Interactive parts on the model |
 |---|---|---|
-| **Navigator** | Chart table, nav console, ballast panel, ship status console | joystick, zoom dial, buttons, map markers, ruler and dividers, a route-planning pod on the chart table (cursor stick, ADD/DEL WPT keys, zoom knob), BLOW/VENT/FLOOD wheels, trim levers, depth gauge needle, DIVE PROFILE screen; SHIP STATUS console with eight back-lit page keys, a guarded GENERAL ALARM button and side handles |
-| **Weapons officer** | Fire control, periscope, sonar | 4 tube-select toggles, ARM key, guarded FIRE button (flip guard), AIM stick, DECOY button, handset; periscope head trains 360° with a twin-ocular eyepiece in a rubber hood, bearing compass, TARGET IDENTIFICATION screen, MARK/CLEAR buttons, 1–8 tag slider, knurled ZOOM and TILT knobs and fold-down training handles on angled brackets; sonar knobs and headphones |
+| **Navigator** | Chart table, nav console, ballast panel, ship status console | joystick, zoom dial, buttons, map markers, ruler and dividers, a route-planning pod on the chart table (cursor stick, ADD/DEL WPT keys, zoom knob), BLOW/VENT/FLOOD wheels, trim levers, depth gauge needle, DIVE PROFILE screen; SHIP STATUS console with eight back-lit page keys, a guarded GENERAL ALARM button and side handles; a steering wheel on the nav console |
+| **Weapons officer** | Fire control, periscope, sonar, mission wall | 4 tube-select toggles, TUBE +/- keys, ARM key, guarded FIRE button (flip guard), AIM stick, DECOY button, handset; MISSION WALL with the big map screen, mission board and BOW/STERN camera monitors; CAMERAS console with six room keys; periscope head trains 360° with a twin-ocular eyepiece in a rubber hood, bearing compass, TARGET IDENTIFICATION screen, MARK/CLEAR buttons, 1–8 tag slider, knurled ZOOM and TILT knobs and fold-down training handles on angled brackets; sonar knobs, hydrophone TRAIN wheel, SIGNAL meter, PING/LOCK buttons, GAIN slider and headphones |
 | **Torpedo loader** | Torpedo room | 4 breech doors (hinged), locking wheels, latches, flood valves; loading cradle (carriage slides, tray lifts to the upper/lower tubes); chain hoist (trolley slides, hook lowers); torpedoes are carryable with spinning propellers |
 | **Cook** | Galley | griddle power button and knobs, cupboard doors, 4 cook slots; food in raw and cooked versions (steak, drumstick, patty); fridge doors, taps, knife; coffee urn tap |
 

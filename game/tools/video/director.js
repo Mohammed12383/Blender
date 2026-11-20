@@ -55,6 +55,9 @@
   // keep the tour tidy: enemies don't attack, no new waves, and each scene holds the boat at a chosen depth
   let holdDepth = 0;
   const hold = (d) => { holdDepth = d; };
+  // the scripted fire stays one fire (no spreading while the tour shows how to put it out)
+  let mainFire = null;
+  const oneFire = () => sim.fires.forEach((q) => { if (q !== mainFire && !q.out) { q.out = true; sim.events.push({ type: 'fireOut', fire: q }); } });
   sim.spawnWave = () => {};
   // no random hits during the tour (each scene makes its own leak or fire), and none of the alarms that go with them
   sim.damage = () => {};
@@ -130,9 +133,13 @@
     at(t, 18.3, () => press('c'), st);
   });
 
-  // 5. sonar
-  shot(6.0, () => { leave(); g.enterStation('sonar'); caption('SONAR', '<kbd>P</kbd> active ping (they hear you!) · <kbd>N</kbd> lock the next contact'); },
-    (t, st) => { at(t, 1.5, () => press('p'), st); at(t, 3.5, () => press('n'), st); at(t, 4.5, () => press('n'), st); });
+  // 5. sonar: train the hydrophone, listen, lock, ping
+  shot(10.0, () => { leave(); g.enterStation('sonar'); caption('SONAR', 'Turn the TRAIN wheel <kbd>A</kbd> <kbd>D</kbd> to aim the hydrophone · the SIGNAL meter rises when a ship is there'); },
+    (t, st) => {
+      at(t, 0.8, () => down('a'), st); at(t, 3.0, () => { up('a'); down('d'); }, st); at(t, 5.0, () => up('d'), st);
+      at(t, 5.6, () => caption('SONAR', '<kbd>L</kbd> LOCK what you hear for fire control · <kbd>P</kbd> active ping (they hear you!)'), st);
+      at(t, 6.0, () => press('l'), st); at(t, 7.4, () => press('p'), st); at(t, 9.0, () => press('n'), st);
+    });
 
   // 6. chart table: plan a route
   shot(11.0, () => {
@@ -161,7 +168,7 @@
     sim.leaks.push(l); sim.events.push({ type: 'leak', leak: l }); sim.water[7] = 0.35;
     sim.addFire(3); const f = sim.fires[sim.fires.length - 1]; f.intensity = 0.4;
     g.enterStation('status');
-    caption('SHIP STATUS', 'Every system on one console: <kbd>1</kbd>–<kbd>8</kbd> pages · a key flashes red when that system needs help');
+    caption('SHIP STATUS', 'Every system on one console: <kbd>1</kbd>–<kbd>8</kbd> pages, from NOISE to HEAT · a key flashes red when that system needs help');
   }, (t, st) => {
     ['1', '2', '3', '4', '5', '6', '7', '8'].forEach((k, i) => at(t, 1.0 + i * 1.1, () => press(k), st));
     at(t, 9.9, () => caption('GENERAL ALARM', 'Flip the guard and press: klaxon and beacons for the whole crew'), st);
@@ -174,6 +181,11 @@
     sim.water[7] = Math.min(sim.water[7], 0.35);
   });
 
+  // 6d. the mission wall and the CCTV console
+  shot(8.0, () => { leave(); g.enterStation('mission'); caption('MISSION MAP', 'Islands, contacts, tags and the route · the MISSION board: goal, next action, stealth, crew · bow and stern cameras'); },
+    (t, st) => { at(t, 2.5, () => press('x'), st); at(t, 3.3, () => press('x'), st); at(t, 5.5, () => press('z'), st); at(t, 6.3, () => press('z'), st); });
+  shot(8.0, () => { leave(); g.enterStation('cameras'); caption('CAMERAS', 'CCTV of every compartment: <kbd>1</kbd>–<kbd>6</kbd> TORPEDO · BATTERY · ENGINES · GALLEY · MESS · QUARTERS'); },
+    (t, st) => { ['1', '2', '3', '4', '5', '6'].forEach((k, i) => at(t, 0.8 + i * 1.15, () => press(k), st)); });
   // 7. fire control and a torpedo run
   shot(14.0, () => {
     leave(); sim.setAutopilot(false); sim.setTelegraph(1); sim.weapons.lock = null; sim.setAim(0); g.enterStation('weapons');
@@ -222,6 +234,8 @@
     place(42.6, 0, -0.2, Math.PI / 2, -0.1); g.enterStation('engines');
     caption('ENGINE CONTROLS', 'Start the diesels <kbd>1</kbd> <kbd>2</kbd> · they need air: snorkel depth (12 m) or surfaced');
   }, (t, st) => { at(t, 1.5, () => press('1'), st); at(t, 3.0, () => press('2'), st); });
+  shot(6.0, () => { leave(); place(34.2, 0, 0.0, 0, -0.1); g.enterStation('motor1'); caption('DIESEL PANEL', 'Each diesel has its own panel: POWER, revs, load and warnings · <kbd>T</kbd> TALK reports to the control room'); },
+    (t, st) => { at(t, 2.0, () => press('t'), st); sim.sub.depth = 8; });
   shot(6.0, () => { leave(); place(41.6, 0, 0.0, Math.PI / 2, -0.32); caption('TWIN DIESELS', 'Running and charging the battery'); },
     (t) => { player.yaw = Math.PI / 2 + Math.sin(t * 0.5) * 0.25; sim.sub.depth = 8; });
 
@@ -293,16 +307,17 @@
   // 16. fire, smoke and the smoke extract
   shot(7.0, () => {
     leave(); sim.water[6] = 0; hold(30); sim.fires.forEach((f) => { f.out = true; }); sim.smoke.fill(0);
-    sim.addFire(2); const f = sim.fires[sim.fires.length - 1]; f.intensity = 1.0; f.x = 19.3; f.z = 0.3; f.y = 0.05;
+    sim.addFire(2); const f = sim.fires[sim.fires.length - 1]; f.intensity = 1.0; f.x = 19.3; f.z = 0.3; f.y = 0.05; mainFire = f;
     inn.fireViews.forEach((v) => { if (v.fire === f) v.base.set(19.3, 0.05, 0.3); });
     sim.smoke[2] = 0.3; place(22.0, 0, 0.0, Math.PI / 2 + 0.1, -0.05);
     caption('FIRE', 'Flames, sparks and thick smoke: it spreads, burns oxygen and hurts');
-  }, () => { sim.sub.depth = 30; });
+  }, () => { sim.sub.depth = 30; oneFire(); });
   shot(8.0, () => {
     const ext = find('extinguisher', (i) => i.pos.x > 16.4 && i.pos.x < 22.7); place(ext.pos.x + 0.6, 0, ext.pos.z, 0, -0.3); lookAt(ext.pos); g.interact(ext);
     place(20.8, 0, 0.3, Math.PI / 2, -0.2);
     caption('EXTINGUISHER', 'Hold <kbd>E</kbd> at the flames');
   }, (t, st) => {
+    oneFire();
     const fire = find('fire');
     if (fire) lookAt(fire.pos);
     at(t, 0.6, () => down('e'), st); at(t, 6.5, () => up('e'), st);
@@ -310,7 +325,7 @@
   shot(8.0, () => {
     g.drop(); sim.fires.forEach((f) => { if (!f.out) { f.out = true; sim.events.push({ type: 'fireOut', fire: f }); } }); const v = find('vent', (i) => i.data === 2); place(v.pos.x - 1.2, 0, v.pos.z * 0.4, 0, 0); lookAt(v.pos); sim.smoke[2] = 0.75;
     caption('SMOKE EXTRACT', 'Switch on the room\'s fans to suck the smoke out (they need power)');
-  }, (t, st) => { const v = find('vent', (i) => i.data === 2); at(t, 1.0, () => g.interact(v), st); if (t > 2.5) { player.pitch = 0.25; } });
+  }, (t, st) => { const v = find('vent', (i) => i.data === 2); at(t, 1.0, () => { if (sim.vents[2]) sim.setVent(2, false); g.interact(v); }, st); if (t > 2.5) { player.pitch = 0.25; } });
 
   // 17. galley: cook and eat
   shot(9.0, () => {

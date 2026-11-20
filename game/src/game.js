@@ -314,13 +314,16 @@ const HELP = {
   status: ['SHIP STATUS', '1-8 or Q / E  page: NOISE  AIR  ENGINES  POWER\n                    LEAKS  FLOOD  FIRE  CREW\nA page key blinks red when that system needs help.\nG  GENERAL ALARM (flip the guard, press)\nEsc leave'],
   ballast: ['BALLAST & DIVE PLANES', 'F  FLOOD tanks (dive)     B  BLOW tanks (surface)\nH  HOLD (close valves)\nW / S  planes rise / dive (hold)    X level planes\nPeriscope depth is ' + PERISCOPE_DEPTH + ' m. Hull limit ' + TEST_DEPTH + ' m.\nEsc leave'],
   periscope: ['PERISCOPE', 'A / D or mouse  train left & right (you turn with it)\nW / S  tilt (TILT knob)    Wheel / Z X  zoom (ZOOM knob)\n1-8 or Q / E  move the tag slider\nSpace / Click  MARK the contact in the crosshair\nC  CLEAR that tag    V or right-click  eye to the eyepiece\nR  raise / lower      Esc  leave'],
-  sonar: ['SONAR', 'P  active PING (reveals everything, but they hear you)\nN  lock next contact for fire control\nEsc leave'],
-  weapons: ['FIRE CONTROL', '1-4  select tube     F  flood / drain tube\nO    open / close outer door\nK    ARM key          G  lift guard\nA / D  AIM stick: torpedo course when nothing is locked\nSPACE  FIRE           N  DECOY (noisemaker)\nEsc leave'],
+  sonar: ['SONAR', 'A / D  turn the TRAIN wheel: aim the hydrophone and listen\nThe SIGNAL meter rises when something is out there\nW / S  GAIN slider    L  LOCK what you hear for fire control\nP  active PING (shows everything, but they hear you)\nN  next known contact      Esc leave'],
+  mission: ['MISSION MAP', 'The big map: islands, shallows, contacts, tags and the route.\nThe MISSION board: goal, next action, stealth, crew.\nBOW and STERN cameras on the left.\nZ / X or wheel  zoom the map    Esc leave'],
+  cameras: ['CAMERAS', '1-6 or Q / E  TORPEDO  BATTERY  ENGINES  GALLEY  MESS  QUARTERS\nWatch every compartment from the control room.\nEsc leave'],
+  weapons: ['FIRE CONTROL', '1-4 or Q / E (TUBE - / +)  select tube\nF  flood / drain tube     O  open / close outer door\nK  ARM key                G  lift guard\nA / D  AIM stick: torpedo course when nothing is locked\nSPACE  FIRE           N  DECOY (noisemaker)\nEsc leave'],
   griddle: ['GRIDDLE', 'P  power on / off\nE  put raw food on / take cooked food off\nCook ~8 s. Leave it too long and it burns!\nEsc leave'],
 };
 for (let n = 1; n <= 4; n++) HELP[`tube${n}`] = [`TUBE ${n} BREECH`, 'E  open / close the breech door\nCarry a torpedo here with the door open to load\nEsc leave'];
 HELP.engines = ['ENGINE CONTROLS', `1 / 2   start / stop DIESEL 1 / 2\nThe diesels charge the battery but need air:\nsurface or snorkel at ${SNORKEL_DEPTH} m or shallower.\nWatch TEMP (coolant valves on the engines),\nOIL (oil cans) and the DAY TANK (fuel pump).\nEsc leave`];
 HELP.fuel = ['FUEL TRANSFER PUMP', 'CLICK (or W / S)  pump the lever up and down\nEvery stroke lifts diesel from the main bunkers\ninto the day tank (sight glass on the left).\nNo fuel left? Pour JERRYCANS into the filler on top.\nEsc leave'];
+for (const n of [1, 2]) HELP[`motor${n}`] = [`DIESEL ${n} PANEL`, `P or POWER  start / stop this diesel\nThe screen shows its revs, load and warnings (HOT, OIL,\nCOOLANT, INJECTOR, FUEL, FIRE).\nT  TALK: report to the control room\nEsc leave`];
 HELP.switchboard = ['MAIN SWITCHBOARD', '1 - 8   close / open the breakers\nM or CLICK   MAIN BREAKER (restores power once\n        every tripped breaker is closed)\nEsc leave'];
 for (const r of [RI.TorpedoRoom, RI.BatteryRoom, RI.EngineRoom]) HELP[`bilge${r}`] = [`BILGE PUMP - ${ROOMS[r].label}`, 'CLICK (or W / S)  pump the handle up and down\nEvery stroke lifts water out of this compartment.\nFix the leaks first or you will never keep up!\nEsc leave'];
 const stationInput = { press: false };
@@ -377,14 +380,17 @@ function stationKey(k, down) {
     if (k === 'e') periscopeTag(inn.periTag + 1);
     if (k === 'v' && sim.sub.periscopeUp) player.mode = player.mode === 'scope' ? 'station' : 'scope';
   } else if (key === 'sonar') {
-    if (k === 'p') sim.sonarPing();
+    if (k === 'p') { sim.sonarPing(); inn.pressed = { ...inn.pressed, ping: inn.time + 0.25 }; reach('PingButton'); }
+    if (k === 'l') { sim.act('lockBeam'); inn.pressed = { ...inn.pressed, lock: inn.time + 0.25 }; reach('LockButton'); }
     if (k === 'n') {
       const ids = [...sim.contacts.keys()].filter((id) => sim.entities.some((e) => e.id === id && e.alive));
       if (ids.length) { const i = (ids.indexOf(sim.weapons.lock) + 1) % ids.length; sim.weapons.lock = ids[i]; const e = sim.entities.find((q) => q.id === ids[i]); sim.message(`Fire control locked on ${e.kind.toUpperCase()}.`); }
     }
   } else if (key === 'weapons') {
     const w = sim.weapons;
-    if ('1234'.includes(k)) w.selected = +k;
+    if (k.length === 1 && '1234'.includes(k)) w.selected = +k;
+    if (k === 'q') { w.selected = ((w.selected + 2) % 4) + 1; inn.pressed = { ...inn.pressed, tubedown: inn.time + 0.2 }; reach('TubeDown'); }
+    if (k === 'e') { w.selected = (w.selected % 4) + 1; inn.pressed = { ...inn.pressed, tubeup: inn.time + 0.2 }; reach('TubeUp'); }
     if (k === 'f') sim.floodTube(w.selected);
     if (k === 'o') sim.openOuter(w.selected);
     if (k === 'k') w.armed = !w.armed;
@@ -402,6 +408,24 @@ function stationKey(k, down) {
     if (k === 'g') {
       sim.act('setAlarm', !sim.alarm); inn.pressed = { ...inn.pressed, alarm: inn.time + 0.25 }; reach('AlarmButton', 'palm', 700);
       if (sim.alarm) sound.klaxon(); else sound.click();
+    }
+  } else if (key === 'cameras') {
+    let n = -1;
+    if (k.length === 1 && '123456'.includes(k)) n = +k - 1;
+    if (k === 'q') n = (inn.cctvSel + 5) % 6;
+    if (k === 'e') n = (inn.cctvSel + 1) % 6;
+    if (n >= 0) { inn.cctvSel = n; reach(`Cam${n + 1}`); sound.click(); cctvTimer = 0; }
+  } else if (key === 'mission') {
+    if (k === 'z') inn.mapZoom = Math.min(4, inn.mapZoom * 1.25);
+    if (k === 'x') inn.mapZoom = Math.max(0.5, inn.mapZoom / 1.25);
+    if (k === 'z' || k === 'x') reach('MapZoom', 'knob');
+  } else if (key.startsWith('motor')) {
+    const i = +key.slice(5) - 1;
+    if (k === 'p' || k === ' ') { sim.act('toggleEngine', i); inn.pressed = { ...inn.pressed, [`engine${i}`]: inn.time + 0.25 }; reach('PowerButton'); sound.click(); }
+    if (k === 't') {
+      const e = sim.engines[i];
+      sim.message(`DIESEL ${i + 1} to control room: ${e.fault ? 'FAULT - ' + ENGINE_FAULTS[e.fault] : e.running ? `running ${e.rpm.toFixed(0)} rpm, ${e.temp.toFixed(0)} degrees` : 'stopped'}.`, 'alert');
+      reach('TalkButton'); sound.bell();
     }
   } else if (key === 'chart') {
     const c = inn.chartCursor;
@@ -620,12 +644,14 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); keys.delete(k); if (k === 'e') { player.repairing = null; player.hold = 0; player.spraying = null; player.task = null; } });
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement === canvas || player.mode === 'scope' || player.mode === 'bridge' || player.mode === 'chase'
-    || (player.mode === 'station' && ['periscope', 'chart', 'weapons'].includes(player.station) && e.buttons & 1)) { mouseDX += e.movementX; mouseDY += e.movementY; }
+    || (player.mode === 'station' && ['periscope', 'chart', 'weapons', 'sonar'].includes(player.station) && e.buttons & 1)) { mouseDX += e.movementX; mouseDY += e.movementY; }
 });
 addEventListener('wheel', (e) => { wheel += Math.sign(e.deltaY); });
 // clicking a control on a station panel works like its key (page keys, alarm, waypoint keys, FIRE, ARM, tube switches...)
 const CLICK_KEYS = { AlarmButton: 'g', AlarmGuard: 'g', AddWaypoint: ' ', DelWaypoint: 'backspace', FireButton: ' ', ArmKey: 'k',
   FireGuard: 'g', DecoyButton: 'n', MarkButton: ' ', ClearButton: 'c', Start1: '1', Start2: '2' };
+Object.assign(CLICK_KEYS, { PingButton: 'p', LockButton: 'l', TubeUp: 'e', TubeDown: 'q', PowerButton: 'p', TalkButton: 't', MapZoom: 'z' });
+for (let n = 1; n <= 6; n++) CLICK_KEYS[`Cam${n}`] = String(n);
 for (let n = 1; n <= 8; n++) CLICK_KEYS[`Page${n}`] = String(n);
 for (let n = 1; n <= 4; n++) CLICK_KEYS[`TubeSelect${n}`] = String(n);
 const raycaster = new THREE.Raycaster();
@@ -674,27 +700,38 @@ Use the keys shown in the corner, or click the buttons on the panel. Any crew me
 <li><b>Attack</b> at FIRE CONTROL: choose a tube, flood it, open the outer door, turn the ARM key, lift the guard, FIRE.</li>
 <li><b>Reload</b> in the torpedo room: carry a torpedo from the racks to an open breech.</li>
 <li><b>Survive</b>: stay quiet (SHIP STATUS - NOISE), fix leaks, pump water, fight fires, keep the power and air up.</li></ol></section>
-<section><h2>HELM (navigation console)</h2><p>Engine telegraph <kbd>W</kbd>/<kbd>S</kbd>, rudder <kbd>A</kbd>/<kbd>D</kbd>, centre <kbd>X</kbd>.
+<section><h2>HELM (navigation console)</h2><p>Engine telegraph <kbd>W</kbd>/<kbd>S</kbd>, rudder <kbd>A</kbd>/<kbd>D</kbd> (the steering wheel turns with it), centre <kbd>X</kbd>.
 <kbd>T</kbd> autopilot steers along the chart route. The round scope shows contacts, the route and the course to the next waypoint.</p></section>
 <section><h2>BALLAST &amp; TRIM</h2><p><kbd>F</kbd> flood the tanks to dive, <kbd>B</kbd> blow them to surface, <kbd>H</kbd> hold.
 Dive planes <kbd>W</kbd>/<kbd>S</kbd>. The DIVE PROFILE screen shows the sea floor ahead, the periscope depth and the hull limit (${TEST_DEPTH} m).</p></section>
 <section><h2>PERISCOPE</h2><p>Only at ${PERISCOPE_DEPTH} m or shallower. Train it with the handles (<kbd>A</kbd>/<kbd>D</kbd> or drag), ZOOM and TILT knobs,
 pick a tag 1-8 on the slider and press MARK on the ship in the crosshair. The TARGET IDENTIFICATION screen names it.</p></section>
-<section><h2>SONAR</h2><p><kbd>P</kbd> sends an active ping: it shows everything around you, but every enemy hears it. <kbd>N</kbd> hands the next contact to fire control.</p></section>
-<section><h2>FIRE CONTROL</h2><p>Tube switches 1-4, <kbd>F</kbd> flood, <kbd>O</kbd> outer door, <kbd>K</kbd> ARM key, <kbd>G</kbd> guard, <kbd>Space</kbd> FIRE.
+<section><h2>SONAR</h2><p>Turn the TRAIN wheel (<kbd>A</kbd>/<kbd>D</kbd>) to aim the hydrophone and listen: the SIGNAL meter rises when a ship is out
+there, and after a moment it shows up as a contact. <kbd>W</kbd>/<kbd>S</kbd> GAIN, <kbd>L</kbd> LOCK what you hear for fire control.
+<kbd>P</kbd> sends an active PING: it shows everything around you, but every enemy hears it.</p></section>
+<section><h2>MISSION MAP</h2><p>The big wall screen: islands, shallows, every contact, periscope tags and the route. Beside it the MISSION board
+(goal, next action, how loud you are, whether you have been detected, the crew) and the BOW and STERN cameras.</p></section>
+<section><h2>CAMERAS</h2><p>The CCTV console shows any compartment: TORPEDO, BATTERY, ENGINES, GALLEY, MESS, QUARTERS (<kbd>1</kbd>-<kbd>6</kbd>).
+Check on a fire or the flooding without leaving the control room.</p></section>
+<section><h2>ISLANDS</h2><p>The sea is dotted with islands and a shoal. Ships steer round them; you run aground if you try to sail through,
+and a rock wall stops a deep boat too. Torpedoes that hit land just blow up on the rocks. Use them to hide.</p></section>
+<section><h2>FIRE CONTROL</h2><p>Tube switches 1-4 or TUBE +/- (<kbd>Q</kbd>/<kbd>E</kbd>), <kbd>F</kbd> flood, <kbd>O</kbd> outer door, <kbd>K</kbd> ARM key, <kbd>G</kbd> guard, <kbd>Space</kbd> FIRE.
 With a lock the torpedo homes in; without one it runs along the course set with the AIM stick (<kbd>A</kbd>/<kbd>D</kbd>).
 DECOY (<kbd>N</kbd>) throws a noisemaker to spoil an enemy torpedo.</p></section>
 <section><h2>CHART TABLE - ROUTE PLANNING</h2><p>Move the cursor with the CURSOR stick (<kbd>WASD</kbd> or drag), ADD WPT (<kbd>Space</kbd>) drops a waypoint,
 DEL WPT (<kbd>Backspace</kbd>) removes the last. Zoom <kbd>Z</kbd>/<kbd>X</kbd>.</p></section>
-<section><h2>SHIP STATUS</h2><p>Eight pages: NOISE, AIR, ENGINES, POWER, LEAKS, FLOOD, FIRE, CREW (<kbd>1</kbd>-<kbd>8</kbd>). A page key flashes red when that
+<section><h2>SHIP STATUS</h2><p>Eight pages: NOISE, AIR, ENGINES, POWER, LEAKS, FLOOD, FIRE, HEAT (<kbd>1</kbd>-<kbd>8</kbd>). A page key flashes red when that
 system needs help. The guarded GENERAL ALARM (<kbd>G</kbd>) sounds the klaxon and lights the beacons for the whole crew.</p></section>
 <section><h2>NOISE &amp; STEALTH</h2><p>Speed, running diesels, a raised periscope, blowing tanks, being on the surface, pings and launches all make noise.
 The louder you are, the further away a frigate hears you. Go slow and deep to slip away.</p></section>
 <section><h2>AIR, BATTERY &amp; DIESELS</h2><p>Submerged, the oxygen slowly runs down and the motors drain the battery. Surface, or snorkel at ${SNORKEL_DEPTH} m
 with a diesel running, to refresh the air and charge. Diesels need fuel in the DAY TANK (fuel transfer pump, jerrycans), oil, and their
 coolant valves open.</p></section>
+<section><h2>DIESEL PANELS &amp; HEAT</h2><p>Each diesel has its own panel on the catwalk: POWER, a status screen with its revs, load and warnings,
+and TALK to report to the control room. Running diesels and fires heat the compartments: a hot room saps your stamina and makes
+the engines run hotter. Switch on the room's fans (SMOKE EXTRACT) - the HEAT page on SHIP STATUS shows every room.</p></section>
 <section><h2>POWER</h2><p>Big hits trip the breakers. At the MAIN SWITCHBOARD (battery room) close the tripped breakers, then the MAIN BREAKER.</p></section>
-<section><h2>LEAKS &amp; FLOODING</h2><p>Hits tear the hull. The deeper you are, the harder the sea jets in. Take a wrench from a tool board and hold <kbd>E</kbd> on the leak.
+<section><h2>LEAKS &amp; FLOODING</h2><p>Hits tear the hull. The deeper you are, the harder the sea jets in. Take a wrench from the tool board and hold <kbd>E</kbd> on the leak.
 Water spreads through open doors and down the stairs; work the hand BILGE PUMPS (click up and down). Chest deep, you swim.</p></section>
 <section><h2>FIRE &amp; SMOKE</h2><p>Take an extinguisher off the wall and hold <kbd>E</kbd> at the flames. Then switch on that room's SMOKE EXTRACT fans (they need power).</p></section>
 <section><h2>CREW CARE</h2><p>Hunger and stamina drain. Cook at the galley griddle and eat (<kbd>F</kbd>). Hurt? Lie on the med bed or use a first-aid kit.</p></section>`;
@@ -723,7 +760,7 @@ function drop() {
 }
 
 // -------------------------------------------------------------------- loop
-let last = nowMs(), monitorTimer = 0, screenTimer = 0;
+let last = nowMs(), monitorTimer = 0, screenTimer = 0, cctvTimer = 0;
 // short delays on the game clock (in capture mode setTimeout would follow the slow real clock instead)
 const timers = [];
 function later(ms, fn) { if (!CAPTURE) setTimeout(fn, ms); else timers.push({ at: nowMs() + ms, fn }); }
@@ -749,13 +786,14 @@ function updateStatusInfo() {
     leaks: sim.leaks.some((l) => !l.fixed),
     flood: sim.floodFraction() > 0.02,
     fire: sim.fires.some((f) => !f.out),
-    crew: player.health < 30 || player.hunger < 15,
+    heat: sim.heat.some((h) => h > 42),
   };
   const where = (st, x, y) => (st ? (HELP[st]?.[0] || st.toUpperCase()) : ROOMS[sim.roomAt(x, y)]?.label || 'ON DECK');
   const crew = [{ name: `YOU - ${$('pname')?.value || 'Sailor'}`, role: player.role.replace('_', ' ').toUpperCase(), where: where(player.station, player.pos.x, player.pos.y),
     health: player.health, hunger: player.hunger }];
   if (net) for (const p of net.peers.values()) crew.push({ name: p.name || 'Sailor', role: (p.role || '').replace('_', ' ').toUpperCase(), where: where(p.station, p.x || 0, p.y || 0) });
   inn.statusInfo.crew = crew.slice(0, 4);
+  inn.statusInfo.objective = objective();
 }
 
 // one frame of the game (the recorder calls this directly with a fixed dt)
@@ -781,6 +819,7 @@ function tick(dt) {
   screenTimer -= dt;
   if (screenTimer <= 0) { screenTimer = 0.1; updateStatusInfo(); inn.drawScreens(sim); }
   monitorTimer -= dt;
+  cctvTimer -= dt;
   const m = player.mode;
   if (window.__noRender) { updateHud(); return; }      // recorder dry runs: simulate only
   inn.lensOn.value = sim.sub.periscopeUp ? 1 : 0;
@@ -792,6 +831,10 @@ function tick(dt) {
   else if (m === 'chase') { ext.chaseCamera(sim, w / h); ext.render(); }
   else {
     if (monitorTimer <= 0) { monitorTimer = CAPTURE ? 1.5 : 0.3; inn.renderMonitors(ext, sim); }
+    if (cctvTimer <= 0) {
+      const near = player.station === 'cameras' || Math.hypot(player.pos.x - 10.3, player.pos.z + 2.0) < 5;
+      cctvTimer = near ? (CAPTURE ? 0.2 : 0.12) : 3; inn.renderCCTV(renderer, fp?.holder);
+    }
     renderer.render(inn.scene, camera);
   }
   updateHud();
@@ -833,6 +876,13 @@ function continuousInput(dt) {
     if (keys.has('x')) inn.chartZoom = Math.max(0.5, inn.chartZoom / (1 + dt * 1.5));
     if (mx || mz) reach('CursorStick', 'grip', 150);
   } else inn.cursorMove = null;
+  if (player.mode === 'station' && player.station === 'sonar') {
+    const a = (keys.has('a') ? 1 : 0) - (keys.has('d') ? 1 : 0), g = (keys.has('w') ? 1 : 0) - (keys.has('s') ? 1 : 0);
+    if (a || mouseDX) { sim.setHydro((s.hydro || 0) + a * dt * 0.7 - mouseDX * 0.004); reach('TrainWheel', 'grip', 150); }
+    if (g) sim.setGain(s.gain + g * dt * 3);
+    if ((a || g || mouseDX) && net) net.sendControls();
+  }
+  if (player.mode === 'station' && player.station === 'mission' && wheel) inn.mapZoom = Math.max(0.5, Math.min(4, inn.mapZoom * (wheel < 0 ? 1.25 : 0.8)));
   if (player.mode === 'station' && player.station === 'weapons') {
     const a = (keys.has('a') ? 1 : 0) - (keys.has('d') ? 1 : 0);
     if (a || mouseDX) { sim.setAim((sim.weapons.aim || 0) + a * dt * 0.7 - mouseDX * 0.003); if (net) net.sendControls(); }
@@ -871,6 +921,13 @@ function updatePlayer(dt) {
   const sprint = moving && !player.swim && keys.has('shift') && player.stamina > 5 && player.carry !== 'torpedo';
   const regen = player.hunger > 0 && sim.sub.oxygen > 15 ? 7 : 1;
   player.stamina = Math.max(0, Math.min(100, player.stamina + (sprint ? -14 : player.swim && moving ? -2 : regen) * dt));
+  // a hot compartment saps you; an oven-hot one hurts
+  const hr = sim.roomAt(player.pos.x, player.pos.y), heat = hr >= 0 ? sim.heat[hr] : 24;
+  if (heat > 40) {
+    player.stamina = Math.max(0, player.stamina - (heat - 40) * 0.6 * dt);
+    if (heat > 52) player.health = Math.max(0, player.health - (heat - 52) * 0.15 * dt);
+    if (!player.heatWarn || nowMs() - player.heatWarn > 20000) { player.heatWarn = nowMs(); sim.message(`It's ${heat.toFixed(0)}°C in the ${ROOMS[hr].label}: switch on its fans (SMOKE EXTRACT).`, 'warn'); }
+  }
   if (player.mode === 'down') {
     player.down -= dt;
     if (player.down <= 0) respawn();

@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { seabed, SNORKEL_DEPTH } from './sim.js';
+import { seabed, SNORKEL_DEPTH, ISLANDS } from './sim.js';
 import { Particles } from './particles.js';
 
 const MODELS = '../submarine/models/';
@@ -69,6 +69,7 @@ export class Exterior {
     this.snow = this.makeSnow();
     s.add(this.snow);
     this.makeSeabed();
+    this.makeIslands();
     this.makeFish();
     this.bubbles = this.trail();
     // models
@@ -105,6 +106,72 @@ export class Exterior {
     this.bedCenter = new THREE.Vector2(1e9, 1e9);
   }
 
+  // islands: terrain from the same sea-floor function (beach, grass, woods, rock), pine trees, a lighthouse
+  makeIslands() {
+    const sand = new THREE.Color(0xd9c79a), wet = new THREE.Color(0xa99a72), grass = new THREE.Color(0x6f9a4a),
+      wood = new THREE.Color(0x46703a), rock = new THREE.Color(0x85827a), deep = new THREE.Color(0x8c8466), c = new THREE.Color();
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+    this.islands = new THREE.Group();
+    let seed = 7;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed & 0xffff) / 0xffff; };
+    const trunks = [], crowns = [];
+    for (const is of ISLANDS) {
+      if (is.h <= 0) continue;
+      const R = is.r * Math.max(is.sx, 1) * 2.1, seg = 120;
+      const g = new THREE.PlaneGeometry(R * 2, R * 2, seg, seg);
+      g.rotateX(-Math.PI / 2);
+      const p = g.attributes.position, col = new Float32Array(p.count * 3);
+      for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i) + is.x, z = p.getZ(i) + is.z, y = -seabed(x, z);
+        p.setXYZ(i, x, y, z);
+        const n = Math.sin(x * 0.11) * Math.cos(z * 0.13) * 0.5 + 0.5;
+        if (y < -1.5) c.copy(deep).lerp(wet, Math.max(0, 1 + y / 20));
+        else if (y < 1.6) c.copy(wet).lerp(sand, Math.min(1, (y + 1.5) / 2));
+        else if (y < 5) c.copy(sand).lerp(grass, (y - 1.6) / 3.4);
+        else if (y < is.h * 0.72) c.copy(grass).lerp(wood, n * 0.8);
+        else c.copy(wood).lerp(rock, Math.min(1, (y - is.h * 0.72) / (is.h * 0.2)));
+        col.set([c.r, c.g, c.b], i * 3);
+      }
+      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      g.computeVertexNormals();
+      const m = new THREE.Mesh(g, mat);
+      this.islands.add(m);
+      // pines on the green slopes
+      for (let k = 0, tries = 0; k < 70 && tries < 900; tries++) {
+        const x = is.x + (rnd() - 0.5) * R * 1.4, z = is.z + (rnd() - 0.5) * R * 1.4, y = -seabed(x, z);
+        if (y < 6 || y > is.h * 0.8) continue;
+        const h = 6 + rnd() * 7;
+        trunks.push([x, y, z, h]); crowns.push([x, y + h * 0.35, z, h]); k++;
+      }
+    }
+    const put = (geo, mtl, list, f) => {
+      const im = new THREE.InstancedMesh(geo, mtl, list.length), M = new THREE.Matrix4();
+      list.forEach((v, i) => im.setMatrixAt(i, f(M, v)));
+      this.islands.add(im);
+    };
+    put(new THREE.CylinderGeometry(0.25, 0.4, 1, 6), new THREE.MeshStandardMaterial({ color: 0x5a4030, roughness: 1 }), trunks,
+      (M, [x, y, z, h]) => M.compose(new THREE.Vector3(x, y + h * 0.2, z), new THREE.Quaternion(), new THREE.Vector3(1, h * 0.4, 1)));
+    put(new THREE.ConeGeometry(1, 1, 7), new THREE.MeshStandardMaterial({ color: 0x2f5a30, roughness: 0.9, flatShading: true }), crowns,
+      (M, [x, y, z, h]) => M.compose(new THREE.Vector3(x, y + h * 0.3, z), new THREE.Quaternion(), new THREE.Vector3(h * 0.28, h * 0.75, h * 0.28)));
+    // a lighthouse on the seaward point of SENTINEL ISLE
+    const sen = ISLANDS.find((i) => i.name === 'SENTINEL ISLE');
+    if (sen) {
+      const lx = sen.x - sen.r * 0.75, lz = sen.z + sen.r * 0.1, ly = -seabed(lx, lz);
+      const lh = new THREE.Group();
+      const white = new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.7 }), red = new THREE.MeshStandardMaterial({ color: 0xb8322a, roughness: 0.6 });
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 3.0, 20, 20), white); tower.position.y = 10; lh.add(tower);
+      for (const yb of [5, 12]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(2.62 - yb * 0.05, 2.7 - yb * 0.05, 3, 20), red); b.position.y = yb; lh.add(b); }
+      const gallery = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, 0.4, 20), new THREE.MeshStandardMaterial({ color: 0x2a2f33 })); gallery.position.y = 20.2; lh.add(gallery);
+      const lamp = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 2.4, 16), new THREE.MeshStandardMaterial({ color: 0xffe9a0, emissive: 0xffd36a, emissiveIntensity: 2.5 })); lamp.position.y = 21.6; lh.add(lamp);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(1.9, 1.8, 16), red); cap.position.y = 23.7; lh.add(cap);
+      const house = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 5), white); house.position.set(5.5, 2, 1); lh.add(house);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(4.9, 2.4, 4), red); roof.position.set(5.5, 5.2, 1); roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, 0.75); lh.add(roof);
+      lh.position.set(lx, ly - 0.3, lz);
+      this.islands.add(lh);
+    }
+    this.scene.add(this.islands);
+  }
+
   updateSeabed(cx, cz) {
     if (Math.hypot(cx - this.bedCenter.x, cz - this.bedCenter.y) < 200) return;
     this.bedCenter.set(Math.round(cx / 50) * 50, Math.round(cz / 50) * 50);
@@ -112,7 +179,7 @@ export class Exterior {
     const sand = new THREE.Color(0xb8a77a), rock = new THREE.Color(0x585e5a), tmp = new THREE.Color();
     for (let i = 0; i < p.count; i++) {
       const x = b[i * 3] + this.bedCenter.x, z = b[i * 3 + 2] + this.bedCenter.y;
-      const y = -seabed(x, z);
+      const y = Math.min(-seabed(x, z), -4);
       p.array[i * 3] = x; p.array[i * 3 + 1] = y; p.array[i * 3 + 2] = z;
       const k = Math.min(1, Math.max(0, (215 + y + 60) / 120)) * 0.7 + Math.sin(x * 0.3) * Math.cos(z * 0.27) * 0.08;
       tmp.copy(sand).lerp(rock, Math.min(1, Math.max(0, k))); c.array.set([tmp.r, tmp.g, tmp.b], i * 3);
@@ -464,10 +531,18 @@ export class Exterior {
     this.setUnderwater();
   }
 
-  monitorCamera(sim, cam, aft) {
+  monitorCamera(sim, cam, aft, hull = false) {
     const s = sim.sub;
     const fwd = new THREE.Vector3(Math.cos(s.heading), 0, -Math.sin(s.heading));
     const sign = aft ? -1 : 1;
+    if (hull) {
+      // cameras on the hull looking back along it: the bow camera sees the casing and the sea ahead from above,
+      // the stern camera looks down the rudder and the wake
+      const up = aft ? 4.5 : 3.2;
+      cam.position.set(s.x + fwd.x * (aft ? -40 : 34), -s.depth + up, s.z + fwd.z * (aft ? -40 : 34));
+      cam.lookAt(s.x + fwd.x * (aft ? -5 : 5), -s.depth + 1.2, s.z + fwd.z * (aft ? -5 : 5));
+      return;
+    }
     cam.position.set(s.x + fwd.x * 26 * sign, -s.depth + 1.5, s.z + fwd.z * 26 * sign);
     cam.lookAt(s.x + fwd.x * 200 * sign, -s.depth + 1.5, s.z + fwd.z * 200 * sign);
   }

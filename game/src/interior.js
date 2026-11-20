@@ -6,7 +6,8 @@ import { DROP } from './exterior.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Nav } from './nav.js';
 import { Particles } from './particles.js';
-import { drawStatus, drawDiveProfile, drawFireScope, drawRoute, STATUS_PAGES } from './consoles.js';
+import { drawStatus, drawDiveProfile, drawFireScope, drawRoute, drawIslands, drawSonar, drawMissionMap, drawMission, drawMotor, STATUS_PAGES } from './consoles.js';
+export const CCTV = [['torpedo', 'TorpedoRoom'], ['battery', 'BatteryRoom'], ['engine', 'EngineRoom'], ['galley', 'Galley'], ['mess', 'CrewMess'], ['quarters', 'FwdQuarters']];
 
 const MODELS = '../submarine/models/';
 const LIGHT_POOL = 8;          // real point lights, moved to the lamps nearest the camera
@@ -198,10 +199,17 @@ export class Interior {
       ['fuel', 'fuel', /^FuelStation/, 'Use FUEL TRANSFER PUMP'],
       ['switchboard', 'switchboard', /^MainSwitchboard/, 'Use MAIN SWITCHBOARD (breakers / power)'],
       ['status', 'status', /^ShipStatus/, 'Use SHIP STATUS (diagnostics, general alarm)'],
+      ['mission', 'mission', /^MissionWall/, 'Use MISSION MAP (map, mission, outside cameras)'],
+      ['cameras', 'cameras', /^CameraConsole/, 'Use CAMERAS (CCTV of every compartment)'],
     ];
     for (const [key, st, re, label] of stationDefs) {
       const root = (byStation[st] || []).find((r) => re.test(r.name));
       if (root) station(key, root, label);
+    }
+    // a local panel beside each diesel
+    for (const root of byStation.motor || []) {
+      const n = root.userData.engine || (/2$/.test(baseName(root.name)) ? 2 : 1);
+      station(`motor${n}`, root, `Use DIESEL ${n} PANEL (power, status)`).engine = n - 1;
     }
     // hand bilge pumps (one per low compartment) and smoke-extract panels (one per room)
     this.pumps = [];
@@ -388,6 +396,11 @@ export class Interior {
     this.screens.screen_fire_control = make('screen_fire_control', 640, 480);
     this.screens.screen_ballast = make('screen_ballast', 544, 400);
     this.screens.screen_status = make('screen_status', 640, 412);
+    this.screens.screen_mission_map = make('screen_mission_map', 1024, 627);
+    this.screens.screen_mission = make('screen_mission', 360, 550);
+    this.screens.screen_motor1 = make('screen_motor1', 480, 320);
+    this.screens.screen_motor2 = make('screen_motor2', 480, 320);
+    this.mapZoom = 1;
     this.statusPage = 'noise';
     // some groups of panel indicator lamps blink (each group at its own pace); the rest stay lit.
     // (the export merges a prop's lamps of one colour into one mesh, so a group blinks together)
@@ -433,7 +446,20 @@ export class Interior {
     this.root.traverse((o) => { if (o.isMesh && [].concat(o.material).some((m) => m && m.name === 'screen_periscope')) o.material = lens; });
     this.periTag = 1;
     this.camTargets = {};
-    for (const n of ['screen_cam_fwd', 'screen_cam_aft']) {
+    // CCTV: the interior seen from a camera high in the corner of each compartment
+    this.cctvRT = new THREE.WebGLRenderTarget(400, 288, { type: THREE.HalfFloatType });
+    for (const m of mats.get('screen_cctv') || []) { m.emissiveMap = this.cctvRT.texture; m.map = this.cctvRT.texture; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = 1.6; m.needsUpdate = true; }
+    this.cctvSel = 0;
+    // camera spots chosen to look down each compartment's open aisle: [x, y, z] -> look at [x, y, z]
+    const SPOTS = { torpedo: [[6.7, -0.75, 1.0], [0.6, -2.3, 0]], battery: [[7.7, -0.75, 1.2], [15.5, -2.4, -0.4]],
+      engine: [[32.3, 2.3, 0.0], [40.5, 0.0, 0]], galley: [[23.2, 2.3, 1.6], [27.0, 0.6, -0.8]],
+      mess: [[16.9, 2.3, 1.6], [22.2, 0.6, -0.8]], quarters: [[6.7, 2.3, 1.2], [0.8, 0.6, -0.5]] };
+    this.cctvCams = CCTV.map(([key]) => {
+      const cam = new THREE.PerspectiveCamera(76, 400 / 288, 0.1, 60), [p, t] = SPOTS[key];
+      cam.position.set(...p); cam.lookAt(...t);
+      return cam;
+    });
+    for (const n of ['screen_cam_fwd', 'screen_cam_aft', 'screen_extcam1', 'screen_extcam2']) {
       const rt = new THREE.WebGLRenderTarget(384, 288, { type: THREE.HalfFloatType });
       for (const m of mats.get(n) || []) { m.emissiveMap = rt.texture; m.map = rt.texture; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = 1.2; m.needsUpdate = true; }
       this.camTargets[n] = { rt, cam: new THREE.PerspectiveCamera(60, 4 / 3, 0.5, 3000) };
@@ -454,6 +480,7 @@ export class Interior {
         ctx.beginPath(); ctx.moveTo((g - s.x % 200) * scale, -H); ctx.lineTo((g - s.x % 200) * scale, H); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(-W, (g - s.z % 200) * scale); ctx.lineTo(W, (g - s.z % 200) * scale); ctx.stroke();
       }
+      drawIslands(ctx, s, scale, round ? 'amber' : 'chart');
       for (const [id, c] of sim.contacts) {
         const e = sim.entities.find((q) => q.id === id);
         if (!e || !e.alive || sim.time - c.lastSeen > 30) continue;
@@ -481,23 +508,12 @@ export class Interior {
       sc.tex.needsUpdate = true;
     }
     const so = this.screens.screen_sonar;
-    if (so) {
-      const { ctx } = so, R = 230;
-      ctx.fillStyle = 'rgba(0,12,4,0.25)'; ctx.fillRect(0, 0, 512, 512);
-      ctx.save(); ctx.translate(256, 256);
-      ctx.strokeStyle = '#1f8f4a'; for (const r of [R / 3, 2 * R / 3, R]) { ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.stroke(); }
-      const sweep = (sim.time * 1.6) % (Math.PI * 2);
-      ctx.strokeStyle = '#53ff8a'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(sweep) * R, Math.sin(sweep) * R); ctx.stroke();
-      for (const [id] of sim.contacts) {
-        const e = sim.entities.find((q) => q.id === id); if (!e || !e.alive) continue;
-        const rel = Math.atan2(-(e.z - s.z), e.x - s.x) - s.heading;
-        const rng = Math.min(1, Math.hypot(e.x - s.x, e.z - s.z) / 1500) * R;
-        const x = Math.sin(rel) * -rng, y = -Math.cos(rel) * rng;
-        ctx.fillStyle = e.id === sim.weapons.lock ? '#ffffff' : '#7dffb0'; ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill();
-      }
-      ctx.restore();
-      so.tex.needsUpdate = true;
-    }
+    if (so) { drawSonar(so.ctx, 512, 512, sim); so.tex.needsUpdate = true; }
+    const mm = this.screens.screen_mission_map;
+    if (mm) { drawMissionMap(mm.ctx, 1024, 627, sim, { ...this.statusInfo, mapZoom: this.mapZoom }); mm.tex.needsUpdate = true; }
+    const mb = this.screens.screen_mission;
+    if (mb) { drawMission(mb.ctx, 360, 550, sim, this.statusInfo); mb.tex.needsUpdate = true; }
+    for (const k of [0, 1]) { const ms = this.screens[`screen_motor${k + 1}`]; if (ms) { drawMotor(ms.ctx, 480, 320, sim, k); ms.tex.needsUpdate = true; } }
     const fc = this.screens.screen_fire_control;
     if (fc) { drawFireScope(fc.ctx, 640, 480, sim); fc.tex.needsUpdate = true; }
     const bl = this.screens.screen_ballast;
@@ -604,9 +620,17 @@ export class Interior {
     }
   }
 
+  renderCCTV(renderer, hide) {
+    if (!this.cctvRT) return;
+    const cam = this.cctvCams[this.cctvSel];
+    if (hide) hide.visible = false;
+    renderer.setRenderTarget(this.cctvRT); renderer.render(this.scene, cam); renderer.setRenderTarget(null);
+    if (hide) hide.visible = true;
+  }
+
   renderMonitors(ext, sim) {
     for (const [n, m] of Object.entries(this.camTargets)) {
-      ext.monitorCamera(sim, m.cam, n.endsWith('aft'));
+      ext.monitorCamera(sim, m.cam, n.endsWith('aft') || n.endsWith('extcam2'), n.startsWith('screen_extcam'));
       const prev = ext.camera; ext.camera = m.cam; ext.setUnderwater(); ext.camera = prev;
       ext.render(m.rt, m.cam);
     }
@@ -1087,6 +1111,44 @@ export class Interior {
         b.userData.restPos ||= b.position.clone(); b.position.copy(b.userData.restPos);
         if ((this.pressed?.[key] || 0) > this.time) b.position.y -= 0.006;
       }
+    }
+    // helm wheel turns with the rudder
+    set(this.stations.helm?.parts.SteerWheel, NZ_AXIS, -sim.sub.rudder * 3.2);
+    // sonar: training wheel, signal meter, gain slider, PING / LOCK
+    const sn = this.stations.sonar;
+    if (sn) {
+      const P = sn.parts;
+      set(P.TrainWheel, NZ_AXIS, (sim.sub.hydro || 0) * 3);
+      dial(P.SignalGaugeNeedle, -60, Math.min(1, sim.sonarSignal));
+      if (P.GainSlider) { P.GainSlider.userData.restPos ||= P.GainSlider.position.clone(); P.GainSlider.position.x = P.GainSlider.userData.restPos.x + 0.1 + (sim.sub.gain - 5.5) / 4.5 * 0.17; }
+      for (const [nm, key] of [['PingButton', 'ping'], ['LockButton', 'lock']]) {
+        const b = P[nm]; if (!b) continue;
+        b.userData.restPos ||= b.position.clone(); b.position.copy(b.userData.restPos);
+        if ((this.pressed?.[key] || 0) > this.time) b.position.z -= 0.006;
+      }
+    }
+    // fire control TUBE + / TUBE -
+    for (const [nm, key] of [['TubeUp', 'tubeup'], ['TubeDown', 'tubedown']]) {
+      const b = this.stations.weapons?.parts[nm]; if (!b) continue;
+      b.userData.restPos ||= b.position.clone(); b.position.copy(b.userData.restPos);
+      if ((this.pressed?.[key] || 0) > this.time) b.position.y -= 0.006;
+    }
+    // CCTV keys: the camera on show stays pushed in
+    const cc = this.stations.cameras;
+    if (cc) for (let k = 0; k < 6; k++) {
+      const b = cc.parts[`Cam${k + 1}`]; if (!b) continue;
+      b.userData.restPos ||= b.position.clone(); b.position.copy(b.userData.restPos);
+      if (k === this.cctvSel) b.position.z -= 0.006;
+    }
+    // mission wall zoom knob
+    set(this.stations.mission?.parts.MapZoom, Y_AXIS, (this.mapZoom - 1) * 1.4);
+    // diesel panels: POWER button, throttle follows the revs
+    for (const k of [1, 2]) {
+      const mp = this.stations[`motor${k}`]; if (!mp) continue;
+      const e = sim.engines[k - 1];
+      set(mp.parts.Throttle, X_AXIS, e ? -0.5 + Math.min(1, e.rpm / 900) * 0.9 : 0);
+      const b = mp.parts.PowerButton;
+      if (b) { b.userData.restPos ||= b.position.clone(); b.position.copy(b.userData.restPos); if ((this.pressed?.[`engine${k - 1}`] || 0) > this.time) b.translateY(0.008); }
     }
     // indicator lamps that blink (racks, cabinets, consoles)
     for (const b of this.blinkers || []) {
