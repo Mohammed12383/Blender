@@ -74,6 +74,15 @@ def nav_table(name="NavTable"):
         p.decal(0.08, 0.026, (bx, pod.y - 0.055, pod.z + 0.017), f"label_{lbl}", rot=(-76, 0, 0))
     knob(p, (pod.x + 0.17, pod.y + 0.01, pod.z + 0.03), rot=(-76, 0, 0), r=0.024, name="ChartZoom", interact="dial", m="Bakelite")
     p.decal(0.36, 0.05, (pod.x, pod.y + 0.075, pod.z + 0.055), "label_route", rot=(-76, 0, 0))
+    # the watch keeps its coffee and sandwiches on the end of the frame
+    for k, (y, mm) in enumerate([(0.36, "EnamelCream"), (-0.34, "EnamelBlue")]):
+        p.add(bm_lathe([(0, 0), (0.038, 0), (0.042, 0.1), (0.036, 0.1), (0.032, 0.012), (0, 0.012)], 20), mm, (-L / 2 + 0.1, y, H), smooth=40, name="mug")
+        p.add(bm_torus(0.026, 0.006, 12, 6, "Y"), mm, (-L / 2 + 0.1, y + 0.045, H + 0.055), smooth=180)
+        p.cyl(0.033, 0.004, (-L / 2 + 0.1, y, H + 0.09), "Coffee", segs=16)
+    p.cyl(0.085, 0.012, (-L / 2 + 0.1, 0.02, H + 0.006), "PaintWhite", segs=24, bevel=0.003)
+    for k in range(2):
+        p.box((0.075, 0.075, 0.03), (-L / 2 + 0.1 + (k - 0.5) * 0.03, 0.02 + (k - 0.5) * 0.04, H + 0.03 + k * 0.03), "Bun",
+              rot=(0, 0, 20 + k * 35), bevel=0.008)
     # end stand with NAVIGATION plate
     p.box((0.05, 0.4, 0.3), (L / 2 + 0.04, 0, H + 0.08), "PaintGraphite", rot=(0, -12, 0), bevel=0.008)
     p.plate(0.36, 0.068, (L / 2 + 0.07, 0, H + 0.14), "label_navigation", rot=(0, 0, 90))
@@ -109,6 +118,9 @@ def nav_console(name="NavConsole"):
                 interact="dial", m="Bakelite")
     for k, mm in enumerate(["PaintRed", "PaintMustard", "PaintTeal", "PaintWhite"]):
         push_button(p, (-0.3 + k * 0.2, -D / 2 - 0.002, 0.88), m=mm, r=0.022, name=f"Button{k + 1}")
+    # steering wheel on a column in front of the console (turns with the rudder)
+    p.cyl(0.035, 0.22, (0, -D / 2 - 0.08, 0.98), "DarkSteel", axis="Y", segs=16, rot=(-25, 0, 0), bevel=0.006)
+    handwheel(p, (0, -D / 2 - 0.2, 1.03), rot=(-25, 0, 0), r=0.2, name="SteerWheel", interact="steer_wheel", m="PaintRed", spokes=6)
     p.decal(0.11, 0.035, (-0.24, -0.29, 1.07), "label_zoom", rot=(rx, 0, 0))
     p.decal(0.11, 0.035, (0.22, -0.29, 1.07), "label_view", rot=(rx, 0, 0))
     louver(p, (0, -D / 2 - 0.001, 0.42), w=0.6, h=0.22, n=5)
@@ -120,8 +132,8 @@ def nav_console(name="NavConsole"):
     for k in range(4):
         indicator(p, (-0.3 + k * 0.2, D / 2 - 0.252, 1.38), m=["LampGreen", "LampGreen", "LampAmber", "LampGreen"][k], r=0.014)
     p.use_camera((0, -0.62, 1.62), (0, -0.02, 1.2), lens=26)
-    p.hand("R", (0.22, -0.3, 1.28), "grip", control="Joystick")
-    p.hand("L", (-0.24, -0.235, 1.15), "pinch", control="ZoomDial")
+    p.hand("R", (0.2, -D / 2 - 0.25, 1.07), "grip", control="SteerWheel")
+    p.hand("L", (-0.2, -D / 2 - 0.25, 1.07), "grip", control="SteerWheel")
     p.anchor("operate", (0, -D / 2 - 0.45, 0))
     return p.finish()
 
@@ -162,6 +174,10 @@ def fire_control(name="FireControl"):
     p.cyl(0.008, 0.09, (0, 0, 0.09), "Chrome", segs=12, parent=stick)
     p.add(bm_lathe([(0, 0.13), (0.02, 0.14), (0.024, 0.18), (0.02, 0.21), (0.0, 0.22)], 20), "BlackPlastic", parent=stick)
     p.decal(0.1, 0.034, (-0.09, -0.24, desk_z + 0.001), "label_aim", rot=(-90, 0, 0))
+    # TUBE + / TUBE - step the tube selection
+    for k, (dx, nm, lbl) in enumerate([(0, "TubeUp", "label_tube_up"), (0.1, "TubeDown", "label_tube_down")]):
+        push_button(p, (-W / 2 + 0.1 + dx, -0.12, desk_z + 0.006), rot=(-90, 0, 0), m="PaintCream", r=0.022, name=nm, interact="button")
+        p.decal(0.09, 0.03, (-W / 2 + 0.1 + dx, -0.2, desk_z + 0.001), lbl, rot=(-90, 0, 0))
     # DECOY (noisemaker) launch button
     p.cyl(0.042, 0.012, (0.43, -0.12, desk_z + 0.006), "DarkSteel", segs=24, bevel=0.003)
     push_button(p, (0.43, -0.12, desk_z + 0.012), rot=(-90, 0, 0), m="PaintNavy", r=0.032, name="DecoyButton", interact="decoy")
@@ -351,7 +367,7 @@ def periscope(name="Periscope", ceiling=2.9):
     return p.finish()
 
 
-STATUS_PAGES = ["noise", "air", "engines", "power", "leaks", "flood", "fire", "crew"]
+STATUS_PAGES = ["noise", "air", "engines", "power", "leaks", "flood", "fire", "heat"]
 
 
 def ship_status(name="ShipStatus"):
@@ -415,6 +431,90 @@ def ship_status(name="ShipStatus"):
     return p.finish()
 
 
+def mission_wall(name="MissionWall"):
+    """Control-room wall unit: big MISSION MAP screen, MISSION board, BOW and STERN camera monitors, desk. Faces -Y."""
+    p = Prop(name, category="station", station="mission")
+    W = 1.95
+    # desk cabinets
+    p.box((W - 0.08, 0.44, 0.1), (0, -0.25, 0.05), "PaintGraphite", bevel=0.01)
+    p.box((W, 0.5, 0.86), (0, -0.25, 0.1 + 0.43), "PaintCream", bevel=0.02, segs=3)
+    p.box((W + 0.04, 0.56, 0.05), (0, -0.27, 0.985), "PaintGraphite", bevel=0.01)
+    for k in range(3):
+        x = -0.64 + k * 0.64
+        p.box((0.56, 0.014, 0.66), (x, -0.505, 0.52), "PaintCream", bevel=0.008)
+        louver(p, (x, -0.515, 0.52), w=0.4, h=0.3, n=6)
+        p.box((0.012, 0.02, 0.12), (x + 0.24, -0.522, 0.6), "Chrome", bevel=0.003)
+    # upper unit, set back against the hull
+    p.box((W, 0.22, 1.14), (0, -0.11, 1.01 + 0.57), "PaintCream", bevel=0.02, segs=3)
+    p.box((W + 0.02, 0.26, 0.04), (0, -0.12, 2.17), "PaintGraphite", bevel=0.008)
+    yf = -0.222
+    p.box((1.12, 0.012, 0.86), (-0.12, yf - 0.004, 1.6), "PaintSeafoam", bevel=0.006)
+    p.screen(0.98, 0.6, (-0.12, yf - 0.01, 1.58), "screen_mission_map", bezel=0.04, depth=0.04)
+    p.plate(0.5, 0.07, (-0.12, yf - 0.014, 1.99), "label_mission_map")
+    p.screen(0.34, 0.52, (0.69, yf, 1.58), "screen_mission", bezel=0.03, depth=0.035)
+    p.plate(0.3, 0.06, (0.69, yf - 0.004, 1.95), "label_mission")
+    for k, (z, lbl) in enumerate([(1.8, "label_bow_cam"), (1.38, "label_stern_cam")]):
+        p.screen(0.3, 0.22, (-0.81, yf, z), f"screen_extcam{k + 1}", bezel=0.025, depth=0.03)
+        p.decal(0.18, 0.032, (-0.81, yf - 0.02, z - 0.138), lbl)
+    # map zoom knob and camera switch on the desk, a strip of lamps, two keyboards
+    knob(p, (-0.62, -0.3, 1.01), rot=(-90, 0, 0), r=0.035, name="MapZoom", interact="dial", m="Bakelite")
+    p.decal(0.1, 0.032, (-0.62, -0.39, 1.011), "label_zoom", rot=(-90, 0, 0))
+    push_button(p, (-0.81, -0.3, 1.012), rot=(-90, 0, 0), m="PaintMustard", r=0.026, name="CamSwitch", interact="button")
+    p.decal(0.1, 0.032, (-0.81, -0.39, 1.011), "label_view", rot=(-90, 0, 0))
+    for x, w in [(-0.12, 0.46), (0.69, 0.3)]:
+        p.box((w, 0.15, 0.022), (x, -0.33, 1.022), "BlackPlastic", rot=(7, 0, 0), bevel=0.006)
+        for row in range(3):
+            for col in range(int(w / 0.032)):
+                p.box((0.022, 0.022, 0.008), (x - w / 2 + 0.022 + col * 0.032, -0.37 + row * 0.035, 1.034 + row * 0.004),
+                      "PaintCream" if (row + col) % 7 else "PaintMustard", bevel=0.002, name="key")
+    for k in range(10):
+        indicator(p, (-0.75 + k * 0.17, yf - 0.004, 2.1), m=["LampGreen", "LampAmber", "LampGreen", "LampRed"][k % 4], r=0.01)
+    for side in (-1, 1):
+        grab_rail(p, (side * (W / 2 - 0.03), yf - 0.01, 1.2), (side * (W / 2 - 0.03), yf - 0.01, 1.9), standoff=0.06,
+                  axis_out=(0, -1, 0), r=0.017)
+    p.use_camera((0, -1.25, 1.62), (0, -0.2, 1.52), lens=21)
+    p.hand("L", (-0.5, -0.38, 1.03), "palm")
+    p.hand("R", (-0.62, -0.32, 1.06), "knob", control="MapZoom")
+    p.anchor("operate", (0, -0.9, 0))
+    return p.finish()
+
+
+CCTV_ROOMS = ["torpedo", "battery", "engine", "galley", "mess", "quarters"]
+
+
+def camera_console(name="CameraConsole"):
+    """Standing CCTV console: live screen of the compartment cameras, six CAM keys, side handles. Faces -Y."""
+    p = Prop(name, category="station", station="cameras")
+    W = 0.86
+    p.box((W - 0.08, 0.42, 0.1), (0, -0.02, 0.05), "PaintGraphite", bevel=0.01)
+    p.box((W, 0.46, 0.86), (0, -0.02, 0.1 + 0.43), "PaintCream", bevel=0.02, segs=3)
+    p.box((W + 0.04, 0.52, 0.05), (0, -0.04, 0.985), "PaintGraphite", bevel=0.01)
+    louver(p, (0, -0.252, 0.42), w=0.56, h=0.22, n=5)
+    yf = -0.03
+    p.box((W, 0.3, 0.98), (0, yf + 0.15, 1.01 + 0.49), "PaintCream", bevel=0.02, segs=3)
+    p.box((W + 0.02, 0.32, 0.04), (0, yf + 0.15, 2.0), "PaintGraphite", bevel=0.008)
+    p.box((W - 0.14, 0.012, 0.84), (0, yf - 0.006, 1.47), "PaintSeafoam", bevel=0.006)
+    yp = yf - 0.012
+    p.screen(0.5, 0.36, (0, yp, 1.64), "screen_cctv", bezel=0.035, depth=0.03)
+    for k, room in enumerate(CCTV_ROOMS):
+        x, z = -0.2 + (k % 3) * 0.2, 1.33 - (k // 3) * 0.085
+        p.box((0.17, 0.02, 0.07), (x, yp, z), "BlackPlastic", bevel=0.004)
+        key = p.pivot(f"Cam{k + 1}", (x, yp - 0.012, z), interact="page_button", translate_axis="Y", min=0, max=0.008, room=room)
+        p.box((0.155, 0.022, 0.058), (0, 0, 0), "PaintCream", parent=key, bevel=0.006)
+        p.decal(0.13, 0.03, (0, -0.0115, 0), f"label_cam_{room}", parent=key)
+    for k in range(5):
+        indicator(p, (-0.3 + k * 0.15, yp - 0.006, 1.86), m="LampRed" if k == 0 else "LampGreen", r=0.011)
+    p.plate(0.42, 0.075, (0, yp - 0.004, 1.94 - 0.03), "label_cameras")
+    for side in (-1, 1):
+        grab_rail(p, (side * (W / 2 - 0.03), yf - 0.01, 1.2), (side * (W / 2 - 0.03), yf - 0.01, 1.78), standoff=0.06,
+                  axis_out=(0, -1, 0), r=0.017)
+    p.use_camera((0, -0.8, 1.64), (0, -0.05, 1.47), lens=24)
+    p.hand("L", (-(W / 2 - 0.03), yf - 0.075, 1.45), "grip")
+    p.hand("R", (0.0, yp - 0.03, 1.29), "press", control="Cam2")
+    p.anchor("operate", (0, -0.75, 0))
+    return p.finish()
+
+
 def sonar_station(name="SonarStation"):
     """Wall desk with the green sonar CRT, knobs, headphones on a hook."""
     p = Prop(name, category="station", station="sonar")
@@ -429,11 +529,22 @@ def sonar_station(name="SonarStation"):
     p.add(bm_torus(0.26, 0.015, 48, 8, "Y"), "Chrome", (0, -0.33, 1.32), smooth=180)
     for k, (x, z, nm) in enumerate([(-0.4, 1.5, "Gain"), (-0.4, 1.3, "Bearing"), (0.4, 1.5, "Range"), (0.4, 1.3, "Filter")]):
         knob(p, (x, -0.302, z), r=0.035, name=nm + "Knob", interact="dial")
-    for k in range(5):
-        toggle(p, (-0.3 + k * 0.15, -0.302, 0.96), name=f"Switch{k + 1}", up=k in (0, 3))
-    indicator(p, (0.4, -0.302, 1.05), m="LampGreen")
-    indicator(p, (-0.4, -0.302, 1.05), m="LampAmber")
-    slots(p, (0.4, -0.302, 0.96), w=0.12, h=0.06, n=4)
+    # hydrophone training wheel on the desk front: turn it to listen in one direction
+    p.box((0.16, 0.08, 0.12), (0, -D + 0.02, 0.84), "PaintGraphite", bevel=0.01)
+    handwheel(p, (0, -D - 0.035, 0.86), rot=(0, 0, 0), r=0.13, name="TrainWheel", interact="sonar_wheel", m="PaintNavy", spokes=3)
+    p.decal(0.2, 0.04, (0, -D + 0.005, 0.735), "label_train")
+    # signal-strength meter beside the scope
+    gauge(p, (-0.4, -0.302, 1.08), r=0.06, face="gauge_signal", name="SignalGauge", needle_deg=-60)
+    # PING and LOCK push buttons
+    for x, nm, lbl, mm in [(0.3, "PingButton", "label_ping", "PaintRed"), (0.46, "LockButton", "label_lock", "PaintNavy")]:
+        push_button(p, (x, -0.302, 1.07), m=mm, r=0.03, name=nm, interact="button")
+        p.decal(0.11, 0.035, (x, -0.304, 1.0), lbl)
+    # GAIN slider 1..10
+    p.box((0.42, 0.012, 0.05), (0, -0.302, 0.96), "BlackPlastic", bevel=0.004)
+    p.decal(0.4, 0.04, (0, -0.31, 0.96), "sign_scale_10")
+    sl = p.pivot("GainSlider", (-0.1, -0.312, 0.96), interact="slider", translate_axis="X", min=-0.18, max=0.18)
+    p.box((0.03, 0.02, 0.06), (0, 0, 0), "PaintRed", parent=sl, bevel=0.005)
+    p.decal(0.12, 0.03, (-0.32, -0.304, 0.96), "label_gain")
     p.plate(0.5, 0.09, (0, -0.31, 1.69), "label_sonar")
     # headphones on a hook
     p.box((0.02, 0.06, 0.02), (W / 2 + 0.01, -0.12, 1.55), "Chrome", bevel=0.004)
@@ -444,8 +555,8 @@ def sonar_station(name="SonarStation"):
     p.tube([(0, 0.11, -0.05), (0.02, 0.12, -0.25), (-0.05, 0.05, -0.62), (-0.2, 0.05, -0.7)], 0.004, "BlackPlastic",
            round_r=0.1, parent=hp)
     p.use_camera((0, -0.9, 1.55), (0, -0.3, 1.32), lens=26)
-    p.hand("R", (0.4, -0.345, 1.5), "knob", control="RangeKnob")
-    p.hand("L", (-0.4, -0.345, 1.3), "knob", control="BearingKnob")
+    p.hand("R", (0.11, -D - 0.09, 0.9), "grip", control="TrainWheel")
+    p.hand("L", (-0.11, -D - 0.09, 0.9), "grip", control="TrainWheel")
     p.anchor("operate", (0, -D - 0.35, 0))
     return p.finish()
 

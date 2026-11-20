@@ -70,7 +70,7 @@ export class Net {
   sendControls() {
     const s = this.sim.sub, w = this.sim.weapons;
     if (!this.isHost) this.send({ t: 'ctl', sub: { telegraph: s.telegraph, rudder: s.rudder, planes: s.planes, valve: s.valve,
-      periscopeBearing: s.periscopeBearing, periscopePitch: s.periscopePitch, periscopeUp: s.periscopeUp },
+      periscopeBearing: s.periscopeBearing, periscopePitch: s.periscopePitch, periscopeUp: s.periscopeUp, hydro: s.hydro, gain: s.gain },
       weapons: { selected: w.selected, armed: w.armed, guardOpen: w.guardOpen, lock: w.lock, aim: w.aim }, tubes: this.sim.tubes });
   }
   event(ev) {
@@ -104,6 +104,7 @@ export class Net {
       if (m.smoke) sim.smoke = m.smoke;
       if (m.tags) sim.tags = m.tags;
       if (m.route) { sim.route = m.route; sim.autopilot = m.autopilot; sim.noiseLevel = m.noiseLevel; }
+      if (m.heat) { sim.heat = m.heat; sim.sonarSignal = m.sonarSignal; sim.sonarBeam = m.sonarBeam; }
       if (m.alarm !== undefined && m.alarm !== sim.alarm) { sim.alarm = m.alarm; sim.events.push({ type: 'alarm', on: m.alarm }); }
       if (m.vents) sim.vents = m.vents;
       if (m.breakers) sim.breakers = m.breakers;
@@ -134,7 +135,7 @@ export class Net {
       // shared machinery: only these simulation calls may be made remotely
       const ALLOWED = ['toggleEngine', 'startEngine', 'stopEngine', 'setCoolant', 'addOil', 'fixEngine', 'fuelStroke', 'pourFuel', 'bilgeStroke',
         'setVent', 'setBreaker', 'mainBreaker', 'toggleDoor', 'fixLeak', 'tagTarget', 'clearTag', 'markTarget',
-        'addWaypoint', 'delWaypoint', 'setAutopilot', 'setAlarm', 'setAim'];
+        'addWaypoint', 'delWaypoint', 'setAutopilot', 'setAlarm', 'setAim', 'lockBeam', 'toggleEngine'];
       if (ev.type === 'call' && ALLOWED.includes(ev.fn) && Array.isArray(ev.args)) sim[ev.fn](...ev.args);
     }
   }
@@ -149,7 +150,7 @@ export class Net {
       this.send({ t: 'state', sub: sim.sub, entities: sim.entities, torpedoes: sim.torpedoes, charges: sim.charges.map(strip), tubes: sim.tubes,
         water: sim.water, doors: sim.doors, score: sim.score, torpedoStock: sim.torpedoStock, weapons: sim.weapons,
         smoke: sim.smoke, vents: sim.vents, tags: sim.tags, breakers: sim.breakers, fuel: sim.fuel, engines: sim.engines,
-        route: sim.route, autopilot: sim.autopilot, alarm: sim.alarm, noiseLevel: sim.noiseLevel,
+        route: sim.route, autopilot: sim.autopilot, alarm: sim.alarm, noiseLevel: sim.noiseLevel, heat: sim.heat, sonarSignal: sim.sonarSignal, sonarBeam: sim.sonarBeam,
         contacts: [...sim.contacts], leaks: sim.leaks, fires: sim.fires, power: sim.power, events: this.outEvents || [] });
       this.outEvents = [];
     }

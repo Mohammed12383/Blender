@@ -253,6 +253,46 @@ def shaft_line(name="ShaftLine", length=2.6):
     return p.finish()
 
 
+def motor_panel(name="MotorPanel1", engine_id=1):
+    """Local control panel for one diesel, clamped to the catwalk railing beside it (faces -Y, origin on the rail line).
+
+    Status screen (engine picture, load bar, warnings), big POWER button, throttle lever, TALK button, warning lamps,
+    and a red oil funnel hanging on a hook.
+    """
+    p = Prop(name, category="station", station="motor", engine=engine_id)
+    yb = 0.07                                         # housing behind the rail, over the pit
+    p.box((0.06, 0.06, 2.3), (0, yb + 0.06, -1.2 + 1.15), "PaintEngine", bevel=0.008)          # post from the pit floor
+    for z in (0.5, 0.95):
+        p.box((0.05, 0.12, 0.04), (0, yb - 0.02, z), "DarkSteel", bevel=0.006)                  # rail clamps
+    hz = 1.32
+    p.box((0.62, 0.12, 0.46), (0, yb, hz), "PaintEngine", rot=(-12, 0, 0), bevel=0.02, segs=2)
+    yf = yb - 0.062
+    tilt = (-12, 0, 0)
+    p.screen(0.3, 0.2, (-0.08, yf, hz + 0.06), f"screen_motor{engine_id}", rot=tilt, bezel=0.022, depth=0.025)
+    # big POWER button in a guard ring, throttle lever, TALK button, lamps
+    p.cyl(0.05, 0.012, (0.2, yf + 0.004, hz + 0.1), "DarkSteel", rot=tilt, axis="Y", segs=24, bevel=0.003)
+    push_button(p, (0.2, yf, hz + 0.1), rot=tilt, m="PaintRed", r=0.036, name="PowerButton", interact="button")
+    p.decal(0.11, 0.032, (0.2, yf - 0.006, hz + 0.025), "label_power", rot=tilt)
+    thr = p.pivot("Throttle", (0.2, yf - 0.01, hz - 0.1), tilt, interact="lever", rotate_axis="X", min_deg=-30, max_deg=30)
+    p.box((0.05, 0.02, 0.03), (0, 0, 0), "DarkSteel", parent=thr, bevel=0.005)
+    p.cyl(0.008, 0.08, (0, -0.04, 0), "Chrome", axis="Y", segs=10, parent=thr)
+    p.sphere(0.018, (0, -0.085, 0), "BlackPlastic", parent=thr, segs=12, rings=8)
+    push_button(p, (-0.2, yf, hz - 0.12), rot=tilt, m="PaintNavy", r=0.024, name="TalkButton", interact="button")
+    p.decal(0.1, 0.03, (-0.2, yf - 0.006, hz - 0.17), "label_talk", rot=tilt)
+    for k, mm in enumerate(["LampGreen", "LampAmber", "LampRed"]):
+        indicator(p, (-0.02 + k * 0.06, yf, hz - 0.12), rot=tilt, m=mm, r=0.011)
+    p.plate(0.32, 0.06, (0, yb - 0.04, hz + 0.29), f"label_diesel{engine_id}")
+    # red oil funnel on a hook at the side
+    p.box((0.012, 0.04, 0.012), (0.33, yb - 0.02, hz + 0.1), "Chrome", bevel=0.002)
+    p.add(bm_lathe([(0.0, -0.2), (0.012, -0.2), (0.012, -0.08), (0.075, 0.0), (0.078, 0.01), (0.0, 0.01)], 24), "PaintRed",
+          (0.36, yb - 0.03, hz + 0.06), smooth=40, name="funnel")
+    p.use_camera((0, -0.75, 1.62), (0, 0.0, 1.3), lens=24)
+    p.hand("R", (0.2, yf - 0.03, hz + 0.1), "press", control="PowerButton")
+    p.hand("L", (-0.2, yf - 0.03, hz - 0.12), "press", control="TalkButton")
+    p.anchor("operate", (0, -0.6, 0))
+    return p.finish()
+
+
 def engine_console(name="EngineConsole"):
     """Manoeuvring console for both diesels: gauges, START/STOP, throttles, fault lamps, live status screen."""
     p = Prop(name, category="station", station="engine_control")

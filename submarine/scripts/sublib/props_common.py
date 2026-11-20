@@ -448,3 +448,17 @@ def floor_hatch(name="FloorHatch", w=0.7):
     p.bolts([(sx * (w / 2 + 0.02), sy * (w / 2 + 0.02), 0.007) for sx in (-1, 1) for sy in (-1, 1)], axis="Z", r=0.01, h=0.004)
     p.box((w * 0.6, 0.004, 0.0015), (w / 2, w / 2 - 0.06, 0.003), "Hazard", parent=lid, bevel=0)
     return p.finish()
+
+
+def cable_bundle(name="CableBundle", span=1.6, sag=0.35, n=5):
+    """A loom of cables slung between two deckhead hangers, sagging in the middle (along X, hangers at z=0)."""
+    p = Prop(name, category="decor")
+    for sx in (-1, 1):
+        p.box((0.06, 0.16, 0.08), (sx * span / 2, 0, -0.04), "DarkSteel", bevel=0.01)
+    mats = ["BlackPlastic", "PaintNavy", "BlackPlastic", "PaintRed", "BlackPlastic", "PaintMustard", "BlackPlastic"]
+    for k in range(n):
+        dy = (k - (n - 1) / 2) * 0.026
+        sg = sag * (0.75 + 0.5 * ((k * 37) % 10) / 10)
+        pts = [(sx * span / 2 * t, dy, -0.08 - sg * (1 - t * t)) for t in [i / 8 for i in range(-8, 9)] for sx in (1,)]
+        p.tube(pts, 0.011, mats[k % len(mats)], segs=8)
+    return p.finish()

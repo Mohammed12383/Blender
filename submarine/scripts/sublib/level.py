@@ -129,6 +129,10 @@ def build_library():
     add(pcx.sonar_station)
     add(pcx.ballast_panel)
     add(pcx.ship_status)
+    add(pcx.mission_wall)
+    add(pcx.camera_console)
+    add(pc.cable_bundle)
+    add(pc.cable_bundle, "CableBundleLong", span=2.6, sag=0.45, n=7)
     # torpedo room
     add(pt.torpedo)
     add(pt.tube_bank)
@@ -176,6 +180,8 @@ def build_library():
     add(pe.diesel_engine, "DieselEngineS", s=1, label="label_diesel2", engine_id=2)
     add(pe.motor_generator, "MotorP", s=-1, engine_id=1)
     add(pe.motor_generator, "MotorS", s=1, engine_id=2)
+    add(pe.motor_panel, "MotorPanel1", engine_id=1)
+    add(pe.motor_panel, "MotorPanel2", engine_id=2)
     add(pe.shaft_line, "ShaftLine", length=round(44.0 - (MOTOR_X + 2.4), 2))
     add(pe.engine_console)
     add(pe.fuel_station)
@@ -396,7 +402,7 @@ def control_room(lib):
     # port side: weapons, sonar, ballast
     r.put("ElectricalCabinet", (7.85, WALL, 0), 0)
     r.put("FireControl", (9.05, WALL - 0.3, 0), 0)
-    r.put("EquipmentRack", (10.3, WALL, 0), 0)
+    r.put("CameraConsole", (10.3, WALL - 0.27, 0), 0)               # CCTV of every compartment
     r.port("Intercom", 11.25, 1.35, WALL_DECAL)
     r.port("SonarStation", 12.65)
     r.put("Stool", (12.65, 1.45, 0), 15)
@@ -406,12 +412,11 @@ def control_room(lib):
     # centre: periscope and chart table
     r.put("Periscope", (9.9, 0.0, 0), 0)
     r.put("NavTable", (12.0, -0.55, 0), 0)
-    # starboard side: nav console and equipment
-    r.put("EquipmentRack", (7.85, -WALL, 0), 180)
-    r.put("ElectricalCabinet", (8.85, -WALL, 0), 180)
+    # starboard side: mission centre (map, mission board, outside cameras), nav console and equipment
+    r.stbd("MissionWall", 8.4)
     r.stbd("Poster_Quiet", 10.9, 1.55, WALL_DECAL)
     r.put("NavConsole", (12.0, -(WALL - 0.31), 0), 180)
-    r.stbd("Sign_Voltage", 8.45, 2.15, WALL_DECAL)
+    r.stbd("Sign_Voltage", 9.75, 2.15, WALL_DECAL)
     r.stbd("JunctionBox", 13.0, 2.0, WALL_DECAL)
     r.put("ShipStatus", (14.3, -(WALL - 0.27), 0), 180)          # diagnostics: system pages + general alarm
     # escape trunk: ladder on the aft bulkhead up to a ceiling hatch
@@ -427,6 +432,8 @@ def control_room(lib):
     r.put("FloorHatch", (14.6, 0.55, 0), 90)
     r.lamps([(8.6, 0.0), (11.3, 0.0), (13.9, 0.0)])
     r.fan(10.5)
+    r.put("CableBundleLong", (12.4, -1.55, shell.CEIL - 0.02), 0)        # cable looms slung under the deckhead
+    r.put("CableBundle", (8.6, 1.55, shell.CEIL - 0.02), 0)
     # crew spawn points (one per player)
     for k, (x, y, rz) in enumerate([(9.05, 1.3, 90), (12.0, -1.5, 90), (9.9, -0.9, 90), (13.5, 0.4, 180)]):
         r.spawn(f"SPAWN_Player{k + 1}", (x, y, 0), rz)
@@ -552,6 +559,8 @@ def engine_room(lib):
         r.put("Motor" + name, (MOTOR_X, y, -depth), 0)
         r.put("ShaftLine", (MOTOR_X + 2.4, y, -depth + 0.82), 0)
     r.put("EngineCatwalk", (CATWALK[0], 0, 0), 0)
+    r.put("MotorPanel1", (34.2, 0.6, 0), 0)                          # local panels clamped to the catwalk rails
+    r.put("MotorPanel2", (34.2, -0.6, 0), 180)
     r.put("AftPlatform", (PLATFORM_X, 0, 0), 0)
     rails = [
         ("Rail_FwdP", [(px0 + 0.03, 0.65, 0), (px0 + 0.03, shell.HALF_W - 0.1, 0)]),

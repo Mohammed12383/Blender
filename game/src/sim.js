@@ -47,12 +47,50 @@ export const ENGINE_FAULTS = { injector: 'injector fault', overheat: 'overheated
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
-// Sea floor depth (m) at a world position: rolling plains, ridges and the odd trench.
+// Islands: land rising out of the sea with sandy shelves around them (h < 0: a shoal that stays under water).
+export const ISLANDS = [
+  { name: 'GULL ROCK', x: 1300, z: -750, r: 220, h: 34, sx: 1.0, rot: 0.0 },
+  { name: 'LONG KEY', x: -1050, z: -1550, r: 330, h: 62, sx: 2.1, rot: 0.6 },
+  { name: 'SENTINEL ISLE', x: 2450, z: 1250, r: 290, h: 88, sx: 1.25, rot: 1.1 },
+  { name: 'TWIN PEAKS', x: -2100, z: 1000, r: 320, h: 104, sx: 1.45, rot: -0.4 },
+  { name: 'NORTH SHOAL', x: 650, z: 2250, r: 260, h: -7, sx: 1.6, rot: 0.2 },
+];
+const smooth = (a, b, t) => { const k = Math.max(0, Math.min(1, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
+// local frame of an island: t = 1 on the coastline (wobbly), 0 at the peak
+function islandT(is, x, z) {
+  const dx = x - is.x, dz = z - is.z, c = Math.cos(is.rot), sn = Math.sin(is.rot);
+  const u = (dx * c + dz * sn) / is.sx, v = -dx * sn + dz * c;
+  const a = Math.atan2(v, u);
+  return Math.hypot(u, v) / (is.r * (1 + 0.16 * Math.sin(a * 3 + is.x * 0.01) + 0.09 * Math.sin(a * 7 + is.z * 0.01)));
+}
+// a contour line around an island as world points (t = 1 is the coastline)
+export function islandOutline(is, t = 1, n = 72) {
+  const c = Math.cos(is.rot), sn = Math.sin(is.rot), pts = [];
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2, rr = is.r * (1 + 0.16 * Math.sin(a * 3 + is.x * 0.01) + 0.09 * Math.sin(a * 7 + is.z * 0.01)) * t;
+    const along = rr * Math.cos(a) * is.sx, cross = rr * Math.sin(a);
+    pts.push([is.x + along * c - cross * sn, is.z + along * sn + cross * c]);
+  }
+  return pts;
+}
+// Sea floor depth (m) at a world position: rolling plains, ridges, the odd trench - and the islands (negative = land).
 export function seabed(x, z) {
   const n = Math.sin(x * 0.0021) * Math.cos(z * 0.0017) * 45 + Math.sin((x + z) * 0.0063) * 14 + Math.cos(x * 0.011 - z * 0.007) * 6;
   const ridge = Math.max(0, Math.sin(x * 0.0011 + z * 0.0009) - 0.75) * 260;
-  return 215 + n - ridge;
+  let d = 215 + n - ridge;
+  for (const is of ISLANDS) {
+    const reach = is.r * Math.max(is.sx, 1) * 3.6;
+    if (Math.abs(x - is.x) > reach || Math.abs(z - is.z) > reach) continue;
+    const t = islandT(is, x, z);
+    if (t > 3.2) continue;
+    let id;
+    if (is.h > 0) id = t < 1 ? -is.h * (1 - t * t) * (0.88 + 0.12 * Math.sin(x * 0.03) * Math.cos(z * 0.027)) : d * Math.pow(smooth(1, 3.2, t), 1.15);
+    else id = -is.h + (d + is.h) * Math.pow(smooth(0, 3.2, t), 1.15);
+    d = Math.min(d, id);
+  }
+  return d;
 }
+export function islandAt(x, z, margin = 1.3) { return ISLANDS.find((is) => islandT(is, x, z) < margin) || null; }
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
@@ -65,6 +103,7 @@ export class Sim {
       telegraph: 0, rudder: 0, planes: 0, ballast: 0.35, valve: 'hold', air: 100,
       hull: 100, battery: 100, oxygen: 100, periscopeUp: false, periscopeBearing: 0, periscopePitch: 0, periscopeZoom: 1,
       noise: 0, lost: false, lostReason: '', countermeasures: 4, shockCooldown: 0, sonarPingCooldown: 0,
+      hydro: 0, gain: 6,         // sonar: hydrophone bearing (relative to the bow) and receiver gain 1..10
     };
     this.tubes = [1, 2, 3, 4].map((n) => ({ n, loaded: n <= 2, flooded: false, outerOpen: false, breechOpen: false }));
     this.weapons = { selected: 1, armed: false, guardOpen: false, lock: null, gyro: 0, aim: 0 };   // aim: course offset from our heading (AIM stick)
@@ -73,6 +112,9 @@ export class Sim {
     this.autopilot = false;    // helm steers along the route
     this.alarm = false;        // general alarm (ship status console)
     this.noiseLevel = 0;       // how loud we are right now (0 silent .. ~20 very loud)
+    this.heat = ROOMS.map(() => 24);   // compartment temperature, deg C (diesels and fires heat, fans cool)
+    this.sonarSignal = 0;      // strength of the loudest sound in the hydrophone beam (0..1+)
+    this.sonarBeam = null;     // entity id in the beam
     this.torpedoStock = 6;     // spares in the racks
     this.water = ROOMS.map(() => 0);   // flood depth per room above its lowest point (m)
     this.smoke = ROOMS.map(() => 0);   // smoke density per room 0..1
@@ -102,8 +144,9 @@ export class Sim {
     const s = this.sub;
     this.score.wave += 1;
     const w = this.score.wave;
-    const ang = s.heading + rand(-0.6, 0.6);
-    const cx = s.x + Math.cos(ang) * rand(700, 1000), cz = s.z - Math.sin(ang) * rand(700, 1000);
+    let ang = s.heading + rand(-0.6, 0.6), dist = rand(700, 1000);
+    for (let k = 0; k < 12 && seabed(s.x + Math.cos(ang) * dist, s.z - Math.sin(ang) * dist) < 60; k++) ang += 0.55;
+    const cx = s.x + Math.cos(ang) * dist, cz = s.z - Math.sin(ang) * dist;
     const course = rand(0, Math.PI * 2);
     for (let i = 0; i < 1 + Math.min(w, 3); i++) {
       this.add({ kind: 'freighter', x: cx + i * 70 * Math.cos(course + 1.57), z: cz - i * 70 * Math.sin(course + 1.57),
@@ -133,6 +176,51 @@ export class Sim {
   setTelegraph(v) { this.sub.telegraph = Math.max(-2, Math.min(4, v)); }
   setRudder(v) { this.sub.rudder = Math.max(-1, Math.min(1, v)); }
   setPlanes(v) { this.sub.planes = Math.max(-1, Math.min(1, v)); }
+  setHydro(a) { this.sub.hydro = wrap(a); }
+  setGain(g) { this.sub.gain = Math.max(1, Math.min(10, g)); }
+  lockBeam() {
+    const e = this.entities.find((q) => q.id === this.sonarBeam && q.alive);
+    if (!e) return this.message('Nothing loud enough in the hydrophone beam to lock.', 'warn');
+    this.reveal(e, true); this.weapons.lock = e.id; this.message(`Fire control locked on ${e.kind.toUpperCase()} from the hydrophone bearing.`);
+  }
+  // passive sonar: what the hydrophone hears in the direction it is trained
+  listen(dt) {
+    const s = this.sub, beam = s.heading + s.hydro;
+    let best = null, bestSig = 0;
+    for (const e of this.entities) {
+      if (!e.alive || e.sinking) continue;
+      const d = dist2(e, s); if (d > 3200) continue;
+      const loud = { frigate: 1.3, freighter: 1.0, enemySub: 0.55, shark: 0.12, squid: 0.25 }[e.kind] || 0.5;
+      const off = Math.abs(wrap(Math.atan2(-(e.z - s.z), e.x - s.x) - beam));
+      const sig = loud * (0.45 + (e.speed || 0) / 10) * Math.max(0, 1 - off / 0.3) * Math.min(1.4, (450 / Math.max(60, d)) ** 1.2) * (s.gain / 6);
+      if (sig > bestSig) { bestSig = sig; best = e; }
+    }
+    const self = Math.abs(s.speed) * 0.035 + this.engines.filter((e) => e.running).length * 0.07;   // our own noise masks faint sounds
+    this.sonarSignal += (Math.min(1.3, bestSig + self * 0.5) - this.sonarSignal) * Math.min(1, dt * 4);
+    this.sonarBeam = best && bestSig > 0.08 + self ? best.id : null;
+    if (this.sonarBeam && bestSig > 0.16 + self) {
+      this._listen = (this._listen || 0) + dt;
+      if (this._listen > 1.2 && !this.contacts.has(best.id)) {
+        this.reveal(best, false);
+        this.message(`Sonar: ${best.kind === 'enemySub' ? 'SUBMARINE' : best.kind.toUpperCase()} heard bearing ${this.deg(Math.atan2(-(best.z - s.z), best.x - s.x))}.`, 'alert');
+      }
+    } else this._listen = 0;
+  }
+  // compartment heat: running diesels and fires warm a room, its ventilation fans cool it
+  updateHeat(dt) {
+    const running = this.engines.filter((e) => e.running).length;
+    ROOMS.forEach((r, i) => {
+      let target = 23;
+      if (r.name === 'EngineRoom') target += running * 11;
+      if (r.name === 'Passageway') target += running * 4;
+      if (r.name === 'BatteryRoom' && this.sub.charging) target += 5;
+      if (r.name === 'Galley') target += 3;
+      for (const f of this.fires) if (!f.out && f.room === i) target += 30 * f.intensity;
+      const fans = this.vents[i] && this.power;
+      if (fans) target -= 8;
+      this.heat[i] += (target - this.heat[i]) * Math.min(1, dt * (fans ? 0.06 : 0.025));
+    });
+  }
   setAim(a) { this.weapons.aim = Math.max(-Math.PI * 0.75, Math.min(Math.PI * 0.75, a)); }
   // route planning (chart table)
   addWaypoint(x, z) {
@@ -501,8 +589,16 @@ export class Sim {
     const steer = Math.min(1, 0.25 + Math.abs(s.speed) / 5);
     s.heading = wrap(s.heading + s.rudder * 0.09 * steer * Math.sign(s.speed || 1) * dt);
     s.roll += ((-s.rudder * Math.abs(s.speed) * 0.012) - s.roll) * Math.min(1, dt * 2);
-    s.x += Math.cos(s.heading) * s.speed * dt;
-    s.z -= Math.sin(s.heading) * s.speed * dt;
+    {
+      const nx = s.x + Math.cos(s.heading) * s.speed * dt, nz = s.z - Math.sin(s.heading) * s.speed * dt;
+      const ahead = seabed(nx, nz);
+      if (ahead < 5 || ahead < s.depth + 1) {           // the shore, or a wall of rock taller than the keel can scrape over
+        const isl = islandAt(nx, nz);
+        if (Math.abs(s.speed) > 2.5) this.damage(Math.round(Math.abs(s.speed) * 2.2), ahead < 5 ? `Ran aground on ${isl ? isl.name : 'the shore'}` : 'Rammed the sea floor', 0.04);
+        else if (!this._groundMsg || this.time - this._groundMsg > 6) { this._groundMsg = this.time; this.message(ahead < 5 ? `AGROUND${isl ? ' on ' + isl.name : ''}! Back off: astern.` : 'Rock wall ahead - surface or turn!', 'warn'); }
+        s.speed = -Math.sign(s.speed) * 0.3;
+      } else { s.x = nx; s.z = nz; }
+    }
 
     // ballast and planes
     if (s.valve === 'flood') s.ballast = Math.min(1, s.ballast + dt * 0.05);
@@ -539,6 +635,8 @@ export class Sim {
     s.shockCooldown = Math.max(0, s.shockCooldown - dt);
 
     this.updateFlooding(dt);
+    this.updateHeat(dt);
+    this.listen(dt);
     if (this.floodFraction() > 0.55) this.lose('The boat flooded.');
 
     this.updateEntities(dt, noise);
@@ -615,7 +713,7 @@ export class Sim {
         e.rpm += ((e.fault === 'injector' ? 480 + Math.random() * 120 : 720) - e.rpm) * Math.min(1, dt * 1.5);
         this.fuel.day = Math.max(0, this.fuel.day - dt * 0.07);
         e.oil = Math.max(0, e.oil - dt * 0.05);
-        e.temp += ((e.coolant ? 82 : 140) - e.temp) * dt * 0.035;
+        e.temp += ((e.coolant ? 82 + Math.max(0, this.heat[R.EngineRoom] - 35) * 1.2 : 140) - e.temp) * dt * 0.035;   // a hot engine room runs them hotter
         e.faultTimer -= dt;
         if (e.faultTimer <= 0 && !e.fault) {
           e.faultTimer = rand(120, 280);
@@ -713,8 +811,10 @@ export class Sim {
           if (d < 14 && Math.abs(e.depth - s.depth) < 10) { e.attached = true; e.grabTimer = 3; this.events.push({ type: 'grab' }); this.message('GIANT SQUID ON THE HULL! Use HULL SHOCK at the electrical cabinet or surface!', 'danger'); }
         }
       }
-      e.x += Math.cos(e.heading) * e.speed * dt;
-      e.z -= Math.sin(e.heading) * e.speed * dt;
+      const nx = e.x + Math.cos(e.heading) * e.speed * dt, nz = e.z - Math.sin(e.heading) * e.speed * dt;
+      const need = e.kind === 'freighter' || e.kind === 'frigate' ? 10 : (e.depth || 0) + 6;
+      if (e.speed > 0 && seabed(nx + Math.cos(e.heading) * 40, nz - Math.sin(e.heading) * 40) < need) e.heading = wrap(e.heading + dt * 0.6 * (e.id % 2 ? 1 : -1));
+      if (seabed(nx, nz) >= need) { e.x = nx; e.z = nz; }
     }
   }
 
@@ -732,6 +832,7 @@ export class Sim {
       }
       tp.x += Math.cos(tp.heading) * tp.speed * dt;
       tp.z -= Math.sin(tp.heading) * tp.speed * dt;
+      if (seabed(tp.x, tp.z) < tp.depth + 1) { tp.life = 0; this.events.push({ type: 'explosion', x: tp.x, z: tp.z, depth: Math.max(0, tp.depth), surface: tp.depth < 5 }); continue; }
       if (tp.owner === 'player') {
         for (const e of this.entities) {
           if (!e.alive || e.sinking || e.kind === 'shark' || e.kind === 'squid' && !e.attached) continue;

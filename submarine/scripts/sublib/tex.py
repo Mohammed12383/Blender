@@ -887,6 +887,21 @@ def tag_strip(name="tag_strip", n=8, w=1024, h=128):
     img.save(path(name))
 
 
+def slider_scale(name="sign_scale_10", w=800, h=80):
+    """Printed 1..10 scale behind a slider."""
+    if not needed(name):
+        return
+    img = Image.new("RGB", (w, h), (30, 32, 34))
+    d = ImageDraw.Draw(img)
+    f = BOLD(30)
+    for k in range(10):
+        x = 40 + k * (w - 80) / 9
+        d.line([x, 6, x, 26], fill=(220, 214, 196), width=3)
+        bb = d.textbbox((0, 0), str(k + 1), font=f)
+        d.text((x - (bb[2] - bb[0]) / 2, 34), str(k + 1), fill=(240, 234, 214), font=f)
+    img.save(path(name))
+
+
 def tool_board(name="sign_tool_board", w=1600, h=800):
     """Shadow board behind the workbench: perforated hardboard with painted outlines where each tool hangs."""
     if not needed(name):
@@ -985,12 +1000,17 @@ def generate_all():
     periscope_display()
     periscope_view()
     tool_board()
+    for nm, title in [("screen_mission_map", "MISSION MAP"), ("screen_mission", "MISSION"), ("screen_extcam1", "BOW CAM"),
+                      ("screen_extcam2", "STERN CAM"), ("screen_cctv", "CAMERAS"), ("screen_motor1", "DIESEL 1"), ("screen_motor2", "DIESEL 2")]:
+        text_screen(nm, ["", "NO SIGNAL"], color="#7dd8ff", title=title)
     text_screen("screen_status", ["NOISE    LOW", "AIR      98 %", "LEAKS    NONE", "POWER    ON"], color="#7dd8ff", title="SHIP STATUS")
     compass_card()
     tag_strip()
     gauge_face("gauge_pressure", "PRESSURE", 10, 1, red_from=8, unit="BAR")
     gauge_face("gauge_depth", "DEPTH", 300, 50, red_from=250, unit="METRES")
     gauge_face("gauge_air", "AIR", 200, 25, red_from=None, unit="PSI x10")
+    gauge_face("gauge_signal", "SIGNAL", 10, 1, red_from=None, unit="HYDROPHONE")
+    slider_scale()
     clock_face()
     for nm, txt in [("navigation", "NAVIGATION"), ("fire_control", "FIRE CONTROL"), ("sonar", "SONAR"),
                     ("periscope", "PERISCOPE"), ("ballast", "BALLAST & TRIM"), ("control_room", "CONTROL ROOM"),
@@ -1001,7 +1021,8 @@ def generate_all():
                     ("main_breaker", "MAIN BREAKER"), ("engine_control", "ENGINE CONTROL"), ("switchboard", "MAIN SWITCHBOARD"),
                     ("medical", "MEDICAL"), ("stores", "STORES"), ("down", "TORPEDO ROOM ▼"),
                     ("target_id", "TARGET IDENTIFICATION"), ("ship_status", "SHIP STATUS"), ("tools", "TOOLS"),
-                    ("general_alarm", "GENERAL ALARM"), ("route", "ROUTE PLANNING")]:
+                    ("general_alarm", "GENERAL ALARM"), ("route", "ROUTE PLANNING"), ("mission_map", "MISSION MAP"),
+                    ("mission", "MISSION"), ("cameras", "CAMERAS")]:
         label_plate("label_" + nm, txt)
     label_plate("label_engine_maker", "DEEPWATER MOTOR WORKS · 8 CYL", fg="#1d1d1f", bg="#c9a24a", w=1024, h=160, font_fn=BOLD)
     for nm, txt in [("start", "START"), ("stop", "STOP"), ("oil", "OIL"), ("coolant", "COOLANT"), ("fuel", "FUEL")]:
@@ -1014,7 +1035,11 @@ def generate_all():
                     ("vent", "VENT"), ("blow", "BLOW"), ("mark", "MARK"), ("clear", "CLEAR"), ("tilt", "TILT"),
                     ("aim", "AIM"), ("decoy", "DECOY"), ("add_wpt", "ADD WPT"), ("del_wpt", "DEL WPT"),
                     ("pg_noise", "NOISE"), ("pg_air", "AIR"), ("pg_engines", "ENGINES"), ("pg_power", "POWER"),
-                    ("pg_leaks", "LEAKS"), ("pg_flood", "FLOOD"), ("pg_fire", "FIRE"), ("pg_crew", "CREW")]:
+                    ("pg_leaks", "LEAKS"), ("pg_flood", "FLOOD"), ("pg_fire", "FIRE"), ("pg_crew", "CREW"), ("pg_heat", "HEAT"),
+                    ("train", "TRAIN"), ("ping", "PING"), ("lock", "LOCK"), ("gain", "GAIN"), ("tube_up", "TUBE +"), ("tube_down", "TUBE -"),
+                    ("bow_cam", "BOW CAM"), ("stern_cam", "STERN CAM"), ("power", "POWER"), ("talk", "TALK"),
+                    ("cam_torpedo", "TORPEDO"), ("cam_battery", "BATTERY"), ("cam_engine", "ENGINES"), ("cam_galley", "GALLEY"),
+                    ("cam_mess", "MESS"), ("cam_quarters", "QUARTERS")]:
         label_plate("label_" + nm, txt, fg="#f3ead2", bg="#222426", w=512, h=160, border=False, font_fn=BOLD)
     label_plate("hull_number", "27", fg="#f3ead2", bg="#244f55", w=512, h=384, border=False, font_fn=BLACK)
     label_plate("frigate_number", "F 41", fg="#f4f4f0", bg="#7d858c", w=768, h=256, border=False, font_fn=BLACK)

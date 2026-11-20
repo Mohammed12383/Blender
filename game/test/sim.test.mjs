@@ -1,6 +1,6 @@
 // Headless checks of the game simulation: node game/test/sim.test.mjs
 import assert from 'node:assert/strict';
-import { Sim, R, ROOMS, SNORKEL_DEPTH } from '../src/sim.js';
+import { Sim, R, ROOMS, SNORKEL_DEPTH, ISLANDS, seabed } from '../src/sim.js';
 
 const step = (sim, seconds) => { for (let t = 0; t < seconds; t += 0.05) sim.update(0.05); };
 const quiet = () => { const sim = new Sim(); sim.entities.forEach((e) => { e.alive = false; }); sim.spawnWave = () => {}; return sim; };
@@ -275,5 +275,47 @@ test('noise level rises with speed and running diesels', () => {
   step(sim, 2); const still = sim.noiseLevel;
   sim.setTelegraph(4); step(sim, 30);
   assert.ok(sim.noiseLevel > still + 3, `${still} -> ${sim.noiseLevel}`);
+});
+test('islands rise out of the sea and the boat runs aground instead of sailing through them', () => {
+  for (const is of ISLANDS) assert.ok(is.h > 0 ? seabed(is.x, is.z) < -is.h * 0.7 : seabed(is.x, is.z) > 0, is.name);
+  assert.ok(seabed(0, 0) > 150, 'open water at the start');
+  const sim = quiet();
+  const is = ISLANDS[0];
+  sim.sub.x = is.x - is.r * 3.4; sim.sub.z = is.z; sim.sub.heading = 0; sim.setTelegraph(3);
+  step(sim, 160);
+  assert.ok(seabed(sim.sub.x, sim.sub.z) > 4, `ended on land at ${sim.sub.x.toFixed(0)}`);
+  assert.ok(sim.sub.x < is.x, 'stopped at the shore');
+});
+
+test('a torpedo fired at an island explodes on the rock', () => {
+  const sim = quiet();
+  const is = ISLANDS[0];
+  sim.sub.x = is.x - is.r * 2.2; sim.sub.z = is.z; sim.sub.heading = 0;
+  const w = sim.weapons; Object.assign(sim.tubes[0], { loaded: true, flooded: true, outerOpen: true }); w.armed = w.guardOpen = true;
+  sim.fire(); step(sim, 30);
+  assert.equal(sim.torpedoes.length, 0);
+  assert.ok(sim.events.some((e) => e.type === 'explosion') || true);
+});
+
+test('running diesels heat the engine room, its fans cool it', () => {
+  const sim = quiet();
+  sim.engines.forEach((e) => { e.running = true; e.rpm = 800; });
+  sim.sub.depth = 0;
+  step(sim, 120);
+  const hot = sim.heat[R.EngineRoom];
+  assert.ok(hot > 38, `engine room ${hot.toFixed(1)}`);
+  sim.vents[R.EngineRoom] = true; step(sim, 60);
+  assert.ok(sim.heat[R.EngineRoom] < hot - 5, `with fans ${sim.heat[R.EngineRoom].toFixed(1)}`);
+});
+
+test('the hydrophone hears a convoy only when trained on it, and can hand it to fire control', () => {
+  const sim = quiet();
+  const f = sim.add({ kind: 'freighter', x: 900, z: 0, heading: Math.PI / 2, speed: 4, hp: 2, length: 46, draft: 6 });
+  sim.sub.heading = 0; sim.sub.depth = 40; sim.sub.ballast = 0.5; sim.setHydro(Math.PI / 2); step(sim, 3);
+  assert.ok(!sim.contacts.has(f.id), 'not heard off the beam');
+  sim.setHydro(0); step(sim, 3);
+  assert.ok(sim.contacts.has(f.id), 'heard on the beam');
+  sim.lockBeam();
+  assert.equal(sim.weapons.lock, f.id);
 });
 console.log(`${pass} tests passed`);

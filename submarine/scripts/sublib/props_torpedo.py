@@ -271,6 +271,14 @@ def workbench(name="Workbench"):
     p.cyl(0.032, 0.27, (x, -0.06, z), "PaintNavy", segs=16, bevel=0.006)
     p.cyl(0.045, 0.06, (x, -0.06, z + 0.14), "Chrome", segs=16, bevel=0.006)
     p.anchor("wrench_hook", B(330, 260), note="the game hangs a pick-up wrench here")
+    # welding kit on the bench: face shield with its dark visor, torch on a hose
+    p.add(bm_lathe([(0.0, 0.0), (0.11, 0.0), (0.12, 0.06), (0.1, 0.14), (0.0, 0.16)], 20), "BlackPlastic",
+          (-0.55, -0.38, H + 0.01), (0, 0, 0), smooth=40, name="weldmask")
+    p.box((0.12, 0.012, 0.05), (-0.55, -0.49, H + 0.09), "PaintNavy", rot=(-20, 0, 0), bevel=0.003)
+    p.cyl(0.02, 0.18, (-0.25, -0.42, H + 0.03), "PaintMustard", axis="X", segs=12, bevel=0.004)
+    p.cyl(0.009, 0.12, (-0.1, -0.42, H + 0.03), "Copper", axis="X", segs=10)
+    p.tube([(-0.34, -0.42, H + 0.03), (-0.42, -0.3, H + 0.02), (-0.6, -0.15, H + 0.02), (-0.72, -0.05, H - 0.4)], 0.008, "Rubber",
+           round_r=0.06, segs=8)
     # vise
     p.box((0.18, 0.2, 0.06), (0.55, -0.45, H + 0.03), "PaintNavy", bevel=0.008)
     p.box((0.18, 0.04, 0.12), (0.55, -0.37, H + 0.12), "PaintNavy", bevel=0.008)
