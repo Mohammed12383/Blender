@@ -314,11 +314,12 @@
   }, () => { sim.sub.depth = 30; oneFire(); });
   shot(8.0, () => {
     const ext = find('extinguisher', (i) => i.pos.x > 16.4 && i.pos.x < 22.7); place(ext.pos.x + 0.6, 0, ext.pos.z, 0, -0.3); lookAt(ext.pos); g.interact(ext);
+    sim.fires.forEach((q) => { if (q !== mainFire) inn.removeFire(q); }); // fires the last shot switched off directly leave no target behind
     place(20.8, 0, 0.3, Math.PI / 2, -0.2);
     caption('EXTINGUISHER', 'Hold <kbd>E</kbd> at the flames');
   }, (t, st) => {
     oneFire();
-    const fire = find('fire');
+    const fire = find('fire', (i) => mainFire && i.data === mainFire.id);
     if (fire) lookAt(fire.pos);
     at(t, 0.6, () => down('e'), st); at(t, 6.5, () => up('e'), st);
   });
@@ -350,8 +351,12 @@
   }, (t) => { g.ext.look.yaw = -0.6 + t * 0.12; });
 
   // the crew handbook
-  shot(6.0, () => { leave(); caption('CREW HANDBOOK', '<kbd>TAB</kbd> explains every station and system on the boat'); press('tab'); },
-    (t, st) => { const hb = document.getElementById('handbook'); if (hb) hb.scrollTop = Math.max(0, (t - 2) * 120); at(t, 5.8, () => press('tab'), st); });
+  shot(6.5, () => { leave(); caption('CREW HANDBOOK', '<kbd>TAB</kbd> explains every station and system on the boat'); },
+    (t, st) => {
+      at(t, 1.4, () => { press('tab'); caption(''); }, st); // the book has its own title: no caption over its text
+      const hb = document.getElementById('handbook'); if (hb) hb.scrollTop = Math.max(0, (t - 2.6) * 120);
+      at(t, 6.3, () => press('tab'), st);
+    });
   // end card
   shot(3.0, () => { leave(); showTitle('DEEPWATER CREW', 'Run every station together · sink the convoy · keep the boat alive'); caption(''); }, () => {});
 
