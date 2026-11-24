@@ -465,7 +465,7 @@ def dhow(ctx):
     cone(0.25, 0.0, 1.1, (2.35, 0, 1.2), wood, rot=(0, R(-40), 0), seg=16).parent = root
     box((1.3, 0.8, 0.5), (1.3, 0, 1.4), dark, bevel=0.06).parent = root
     cyl(0.07, 3.6, (-0.2, 0, 2.7), dark, seg=12).parent = root
-    cyl(0.05, 3.0, (-0.2, 0, 3.0), dark, rot=(0, R(-62), 0), seg=10, loc=(0.4, 0, 3.4)).parent = root
+    cyl(0.05, 3.0, (0.4, 0, 3.4), dark, rot=(0, R(-62), 0), seg=10).parent = root
     sail = prism_xz([(-0.1, 1.0), (-2.2, 1.3), (1.2, 4.2)], 0.04, mat("#fff4d6", 0.7, sss=0.1, coat=0), "sail", 0.0)
     sail.parent = root
     sail.location = (0.0, 0.0, 0.0)

@@ -49,7 +49,7 @@ for nm, (a, b) in TURBANS.items():
         def f(ctx):
             kit.studio(scale=1.5)
             turban_stand(a, b)
-            kit.camera((0, -9.0, 2.6), (0, 0, 1.5), lens=46)
+            kit.camera((0, -6.2, 2.2), (0, 0, 1.25), lens=46)
             ctx.still()
         return f
     asset(f"turban_{nm}", size=(420, 460), samples=34, group=G)(_mk())
@@ -94,7 +94,7 @@ for nm, (c, f) in {"green": ("#1f8f5f", "#1f8f5f"), "blue": ("#2a5fbf", "#2a5fbf
         def fn(ctx):
             kit.studio(scale=1.6)
             army(c, f)
-            kit.camera((0, -10.5, 3.6), (0, 0.3, 1.2), lens=44)
+            kit.camera((0, -7.6, 3.4), (0, 0.4, 1.3), lens=44)
             ctx.still()
         return fn
     asset(f"army_{nm}", size=(460, 400), samples=32, group=G)(_mk())

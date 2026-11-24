@@ -14,6 +14,39 @@
 "t": "s",
 "w": 600
 },
+"army_blue": {
+"f": "png/army_blue.png",
+"h": 400,
+"t": "s",
+"w": 460
+},
+"army_green": {
+"f": "png/army_green.png",
+"h": 400,
+"t": "s",
+"w": 460
+},
+"army_red": {
+"f": "png/army_red.png",
+"h": 400,
+"t": "s",
+"w": 460
+},
+"beach_scene": {
+"f": "png/beach_scene.png",
+"h": 400,
+"t": "s",
+"w": 520
+},
+"beach_tide": {
+"d": "seq/beach_tide",
+"ext": "png",
+"fps": 12,
+"h": 440,
+"n": 36,
+"t": "l",
+"w": 560
+},
 "bg_agra": {
 "f": "png/bg_agra.jpg",
 "h": 720,
@@ -40,6 +73,12 @@
 "n": 48,
 "t": "l",
 "w": 560
+},
+"book_open_icon": {
+"f": "png/book_open_icon.png",
+"h": 400,
+"t": "s",
+"w": 480
 },
 "boulder_field": {
 "f": "png/boulder_field.png",
@@ -77,6 +116,60 @@
 "t": "s",
 "w": 640
 },
+"city_baghdad": {
+"f": "png/city_baghdad.png",
+"h": 440,
+"t": "s",
+"w": 480
+},
+"city_cairo": {
+"f": "png/city_cairo.png",
+"h": 440,
+"t": "s",
+"w": 480
+},
+"city_damascus": {
+"f": "png/city_damascus.png",
+"h": 440,
+"t": "s",
+"w": 480
+},
+"city_kufa": {
+"f": "png/city_kufa.png",
+"h": 440,
+"t": "s",
+"w": 480
+},
+"city_madinah": {
+"f": "png/city_madinah.png",
+"h": 440,
+"t": "s",
+"w": 480
+},
+"city_oman_fort": {
+"f": "png/city_oman_fort.png",
+"h": 440,
+"t": "s",
+"w": 480
+},
+"city_rome": {
+"f": "png/city_rome.png",
+"h": 440,
+"t": "s",
+"w": 480
+},
+"city_town_a": {
+"f": "png/city_town_a.png",
+"h": 440,
+"t": "s",
+"w": 480
+},
+"city_town_b": {
+"f": "png/city_town_b.png",
+"h": 440,
+"t": "s",
+"w": 480
+},
 "cliff_waves": {
 "d": "seq/cliff_waves",
 "ext": "png",
@@ -86,11 +179,44 @@
 "t": "l",
 "w": 600
 },
+"coast_arch": {
+"f": "png/coast_arch.png",
+"h": 440,
+"t": "s",
+"w": 620
+},
+"coast_bay": {
+"f": "png/coast_bay.png",
+"h": 440,
+"t": "s",
+"w": 620
+},
 "coast_cave": {
 "f": "png/coast_cave.png",
 "h": 440,
 "t": "s",
 "w": 620
+},
+"coast_stack": {
+"f": "png/coast_stack.png",
+"h": 440,
+"t": "s",
+"w": 620
+},
+"conquest_map": {
+"d": "seq/conquest_map",
+"ext": "png",
+"fps": 12,
+"h": 420,
+"n": 48,
+"t": "l",
+"w": 640
+},
+"coriolis_globe": {
+"f": "png/coriolis_globe.png",
+"h": 440,
+"t": "s",
+"w": 440
 },
 "delta_arc": {
 "f": "png/delta_arc.png",
@@ -115,6 +241,12 @@
 "h": 440,
 "t": "s",
 "w": 620
+},
+"dhow": {
+"f": "png/dhow.png",
+"h": 520,
+"t": "s",
+"w": 520
 },
 "drop_idle_open": {
 "f": "png/drop_idle_open.png",
@@ -515,11 +647,50 @@
 "t": "s",
 "w": 420
 },
+"lantern_icon": {
+"f": "png/lantern_icon.png",
+"h": 520,
+"t": "s",
+"w": 380
+},
+"library_bg": {
+"f": "png/library_bg.jpg",
+"h": 720,
+"t": "s",
+"w": 1280
+},
+"library_stack": {
+"f": "png/library_stack.png",
+"h": 520,
+"t": "s",
+"w": 460
+},
 "loess_cliff": {
 "f": "png/loess_cliff.png",
 "h": 440,
 "t": "s",
 "w": 620
+},
+"longshore_drift": {
+"d": "seq/longshore_drift",
+"ext": "png",
+"fps": 12,
+"h": 420,
+"n": 36,
+"t": "l",
+"w": 640
+},
+"majlis_bg": {
+"f": "png/majlis_bg.jpg",
+"h": 720,
+"t": "s",
+"w": 1280
+},
+"majlis_table": {
+"f": "png/majlis_table.png",
+"h": 400,
+"t": "s",
+"w": 520
 },
 "maryam_cheer_grin": {
 "f": "png/maryam_cheer_grin.png",
@@ -734,6 +905,12 @@
 "min_quartz": {
 "f": "png/min_quartz.png",
 "h": 420,
+"t": "s",
+"w": 420
+},
+"mushaf_spear": {
+"f": "png/mushaf_spear.png",
+"h": 560,
 "t": "s",
 "w": 420
 },
@@ -1361,6 +1538,12 @@
 "t": "s",
 "w": 640
 },
+"scroll_two": {
+"f": "png/scroll_two.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
 "sediment_layers": {
 "d": "seq/sediment_layers",
 "ext": "png",
@@ -1390,6 +1573,12 @@
 "n": 36,
 "t": "l",
 "w": 540
+},
+"ship_icon": {
+"f": "png/ship_icon.png",
+"h": 440,
+"t": "s",
+"w": 520
 },
 "soil_profile": {
 "f": "png/soil_profile.png",
@@ -1573,6 +1762,66 @@
 "n": 48,
 "t": "l",
 "w": 480
+},
+"throne_chair": {
+"f": "png/throne_chair.png",
+"h": 520,
+"t": "s",
+"w": 420
+},
+"turban_blue": {
+"f": "png/turban_blue.png",
+"h": 460,
+"t": "s",
+"w": 420
+},
+"turban_gold": {
+"f": "png/turban_gold.png",
+"h": 460,
+"t": "s",
+"w": 420
+},
+"turban_green": {
+"f": "png/turban_green.png",
+"h": 460,
+"t": "s",
+"w": 420
+},
+"turban_orange": {
+"f": "png/turban_orange.png",
+"h": 460,
+"t": "s",
+"w": 420
+},
+"turban_purple": {
+"f": "png/turban_purple.png",
+"h": 460,
+"t": "s",
+"w": 420
+},
+"turban_red": {
+"f": "png/turban_red.png",
+"h": 460,
+"t": "s",
+"w": 420
+},
+"turban_row": {
+"f": "png/turban_row.png",
+"h": 300,
+"t": "s",
+"w": 760
+},
+"turban_teal": {
+"f": "png/turban_teal.png",
+"h": 460,
+"t": "s",
+"w": 420
+},
+"turban_white": {
+"f": "png/turban_white.png",
+"h": 460,
+"t": "s",
+"w": 420
 },
 "turtle_elephants": {
 "f": "png/turtle_elephants.png",
