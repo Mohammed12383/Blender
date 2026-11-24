@@ -249,7 +249,7 @@ def _delta(shape):
     else:
         pts = [(-4, 0), (4, 0), (0, -14)]
         pts = [(x * 6, y * 1.6) for x, y in pts]
-    o, c = poly_slab(pts, 0.1, 0.3, sand, 0.04, "delta")
+    o, c = poly_slab(pts, 0.17, 0.3, sand, 0.04, "delta")
     o.location = (0, 1.9 - 0.0, 0.0)
     cu = curve([(0, 4.0, 0.12), (0, 2.6, 0.12), (0, 1.9, 0.12)], 0.28, watermat(), name="river")
     cu.scale = (1, 1, 0.3)

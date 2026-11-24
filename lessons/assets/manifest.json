@@ -8,6 +8,12 @@
 "t": "l",
 "w": 1024
 },
+"alluvial_fan": {
+"f": "png/alluvial_fan.png",
+"h": 440,
+"t": "s",
+"w": 600
+},
 "bg_agra": {
 "f": "png/bg_agra.jpg",
 "h": 720,
@@ -70,6 +76,39 @@
 "h": 460,
 "t": "s",
 "w": 640
+},
+"cliff_waves": {
+"d": "seq/cliff_waves",
+"ext": "png",
+"fps": 12,
+"h": 440,
+"n": 48,
+"t": "l",
+"w": 600
+},
+"coast_cave": {
+"f": "png/coast_cave.png",
+"h": 440,
+"t": "s",
+"w": 620
+},
+"delta_arc": {
+"f": "png/delta_arc.png",
+"h": 420,
+"t": "s",
+"w": 620
+},
+"delta_bird": {
+"f": "png/delta_bird.png",
+"h": 420,
+"t": "s",
+"w": 620
+},
+"delta_tri": {
+"f": "png/delta_tri.png",
+"h": 420,
+"t": "s",
+"w": 620
 },
 "desert_depression": {
 "f": "png/desert_depression.png",
@@ -187,6 +226,12 @@
 "n": 48,
 "t": "l",
 "w": 640
+},
+"floodplain": {
+"f": "png/floodplain.png",
+"h": 440,
+"t": "s",
+"w": 560
 },
 "fold_layers": {
 "d": "seq/fold_layers",
@@ -1011,6 +1056,15 @@
 "f": "png/river_parts.png",
 "h": 520,
 "t": "s",
+"w": 640
+},
+"river_transport": {
+"d": "seq/river_transport",
+"ext": "png",
+"fps": 12,
+"h": 400,
+"n": 48,
+"t": "l",
 "w": 640
 },
 "river_young": {
