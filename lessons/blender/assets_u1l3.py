@@ -228,7 +228,7 @@ def sediment_layers(ctx):
         for k, l in enumerate(layers):
             p = max(0.0, min(1.0, (t * 5.6 - k)))
             e = p * p * (3 - 2 * p)
-            l.scale = (1, 1, max(0.001, e))
+            l.scale = (6.0, 2.6, max(0.001, 0.5 * e))
             l.location.z = k * 0.5 + 0.25 * e
         for g, ph, x, y in grains:
             p = (t * 3 + ph) % 1.0

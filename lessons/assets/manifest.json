@@ -35,11 +35,41 @@
 "t": "l",
 "w": 560
 },
+"boulder_field": {
+"f": "png/boulder_field.png",
+"h": 460,
+"t": "s",
+"w": 640
+},
 "bull_earth": {
 "f": "png/bull_earth.png",
 "h": 520,
 "t": "s",
 "w": 640
+},
+"butte_pillar": {
+"f": "png/butte_pillar.png",
+"h": 520,
+"t": "s",
+"w": 440
+},
+"camel_idle": {
+"f": "png/camel_idle.png",
+"h": 560,
+"t": "s",
+"w": 520
+},
+"cave_stalactites": {
+"f": "png/cave_stalactites.png",
+"h": 460,
+"t": "s",
+"w": 640
+},
+"desert_depression": {
+"f": "png/desert_depression.png",
+"h": 440,
+"t": "s",
+"w": 620
 },
 "drop_idle_open": {
 "f": "png/drop_idle_open.png",
@@ -76,6 +106,30 @@
 "h": 520,
 "t": "s",
 "w": 420
+},
+"dunes_barchan": {
+"f": "png/dunes_barchan.png",
+"h": 420,
+"t": "s",
+"w": 620
+},
+"dunes_linear": {
+"f": "png/dunes_linear.png",
+"h": 420,
+"t": "s",
+"w": 620
+},
+"dunes_star": {
+"f": "png/dunes_star.png",
+"h": 420,
+"t": "s",
+"w": 620
+},
+"dunes_transverse": {
+"f": "png/dunes_transverse.png",
+"h": 420,
+"t": "s",
+"w": 620
 },
 "earth_layers": {
 "f": "png/earth_layers.png",
@@ -143,6 +197,21 @@
 "t": "s",
 "w": 720
 },
+"frost_wedging": {
+"d": "seq/frost_wedging",
+"ext": "png",
+"fps": 12,
+"h": 440,
+"n": 48,
+"t": "l",
+"w": 560
+},
+"hammada": {
+"f": "png/hammada.png",
+"h": 440,
+"t": "s",
+"w": 620
+},
 "house_icon": {
 "f": "png/house_icon.png",
 "h": 420,
@@ -190,6 +259,12 @@
 "h": 560,
 "t": "s",
 "w": 820
+},
+"inselberg": {
+"f": "png/inselberg.png",
+"h": 440,
+"t": "s",
+"w": 620
 },
 "jidd_cheer_grin": {
 "f": "png/jidd_cheer_grin.png",
@@ -388,6 +463,12 @@
 "h": 600,
 "t": "s",
 "w": 420
+},
+"loess_cliff": {
+"f": "png/loess_cliff.png",
+"h": 440,
+"t": "s",
+"w": 620
 },
 "maryam_cheer_grin": {
 "f": "png/maryam_cheer_grin.png",
@@ -604,6 +685,12 @@
 "h": 420,
 "t": "s",
 "w": 420
+},
+"mushroom_rock": {
+"f": "png/mushroom_rock.png",
+"h": 520,
+"t": "s",
+"w": 440
 },
 "ophiolite_stack": {
 "f": "png/ophiolite_stack.png",
@@ -890,6 +977,42 @@
 "t": "l",
 "w": 700
 },
+"reg_plain": {
+"f": "png/reg_plain.png",
+"h": 440,
+"t": "s",
+"w": 620
+},
+"river_mature": {
+"f": "png/river_mature.jpg",
+"h": 720,
+"t": "s",
+"w": 1280
+},
+"river_old": {
+"f": "png/river_old.jpg",
+"h": 720,
+"t": "s",
+"w": 1280
+},
+"river_parts": {
+"f": "png/river_parts.png",
+"h": 520,
+"t": "s",
+"w": 640
+},
+"river_young": {
+"f": "png/river_young.jpg",
+"h": 720,
+"t": "s",
+"w": 1280
+},
+"rock_arch": {
+"f": "png/rock_arch.png",
+"h": 440,
+"t": "s",
+"w": 640
+},
 "rock_basalt": {
 "f": "png/rock_basalt.png",
 "h": 420,
@@ -943,6 +1066,15 @@
 "h": 300,
 "t": "s",
 "w": 760
+},
+"root_crack": {
+"d": "seq/root_crack",
+"ext": "png",
+"fps": 12,
+"h": 460,
+"n": 48,
+"t": "l",
+"w": 560
 },
 "rust_nail": {
 "f": "png/rust_nail.png",
@@ -1148,6 +1280,21 @@
 "t": "s",
 "w": 420
 },
+"sand_transport": {
+"d": "seq/sand_transport",
+"ext": "png",
+"fps": 12,
+"h": 400,
+"n": 48,
+"t": "l",
+"w": 640
+},
+"scree_slope": {
+"f": "png/scree_slope.png",
+"h": 460,
+"t": "s",
+"w": 640
+},
 "sediment_layers": {
 "d": "seq/sediment_layers",
 "ext": "png",
@@ -1177,6 +1324,12 @@
 "n": 36,
 "t": "l",
 "w": 540
+},
+"soil_profile": {
+"f": "png/soil_profile.png",
+"h": 520,
+"t": "s",
+"w": 600
 },
 "solar_system": {
 "d": "seq/solar_system",
@@ -1346,6 +1499,15 @@
 "t": "s",
 "w": 480
 },
+"thermal_flake": {
+"d": "seq/thermal_flake",
+"ext": "png",
+"fps": 12,
+"h": 480,
+"n": 48,
+"t": "l",
+"w": 480
+},
 "turtle_elephants": {
 "f": "png/turtle_elephants.png",
 "h": 600,
@@ -1375,5 +1537,20 @@
 "h": 660,
 "t": "s",
 "w": 820
+},
+"wind_erosion": {
+"d": "seq/wind_erosion",
+"ext": "png",
+"fps": 12,
+"h": 440,
+"n": 36,
+"t": "l",
+"w": 560
+},
+"yardang": {
+"f": "png/yardang.png",
+"h": 440,
+"t": "s",
+"w": 640
 }
 }

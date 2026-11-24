@@ -207,7 +207,7 @@ def thermal_flake(ctx):
             lift = max(0.0, day - 0.25 * k) * 0.55
             f.location = (math.cos(a) * 0.6 * lift * 2, -0.2 - lift * 0.9, 0.9 + math.sin(a) * 0.5 * lift + k * 0.05)
             f.rotation_euler = (R(60 * lift), R(25 * k), R(-30 * lift * (1 if k % 2 else -1)))
-            f.scale = (1.0 - 0.1 * k, 1.0, 1.0)
+            f.scale = (1.35 * (1.0 - 0.1 * k), 1.15, 0.12)
     ctx.loop(upd)
 
 

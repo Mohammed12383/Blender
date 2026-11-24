@@ -443,7 +443,7 @@ def longshore_drift(ctx):
         for k, w in enumerate(waves):
             p = (t + k / len(waves)) % 1.0
             w.location = (-3.0 + k * 1.6 + 1.6 * p, -2.4 + 3.6 * p, 0.2)
-            w.scale = (1, max(0.01, math.sin(p * 3.14)), 1)
+            w.scale = (3.0 * max(0.15, math.sin(p * 3.14)), 0.12, 0.12)
         for k, s in enumerate(peb):
             p = (t * 2 + k / len(peb)) % 1.0
             seg = (t * 2 + k / len(peb)) % 2.0

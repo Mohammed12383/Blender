@@ -350,7 +350,7 @@ def plates_diverge(ctx):
         d = 0.55 + 0.45 * math.sin(t * math.tau)
         a.location.x = -1.75 - d
         b.location.x = 1.75 + d
-        gap.scale = (2 * d + 0.3, 1, 1)
+        gap.scale = (2 * d + 0.3, 3.15, 0.5)
         for sx, v in zip((-1, 1), vol):
             v.location.x = sx * (0.2 + d * 0.5)
             v.scale = (1, 1, 0.5 + 0.5 * d)

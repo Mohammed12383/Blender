@@ -420,7 +420,7 @@
       svg.appendChild(p);
       const len = p.getTotalLength();
       const lx = 0.25 * sx + 0.5 * mx + 0.25 * ex, ly = 0.25 * sy + 0.5 * my + 0.25 * ey;
-      const lb = h('div', 'bubble', '', { left: (lx - 120) + 'px', top: (ly - 20) + 'px', width: '240px', textAlign: 'center', fontSize: (a.fs || 23) + 'px', padding: '6px 12px', background: a.dashed ? '#eef' : '#fff6cf' }); lb.style.setProperty('--x', '0');
+      const lo = a.lo || [0, 0]; const lb = h('div', 'bubble', '', { left: (lx - 120 + lo[0]) + 'px', top: (ly - 20 + lo[1]) + 'px', width: '240px', textAlign: 'center', fontSize: (a.fs || 23) + 'px', padding: '6px 12px', background: a.dashed ? '#eef' : '#fff6cf' }); lb.style.setProperty('--x', '0');
       lb.style.cssText += ';';
       const tx = S.txt(a.t, { at: t + 0.45 }); lb.appendChild(tx.el); S.add(lb, { kind: 'pop', at: t + 0.4, dur: 0.45 }); S.cue(t, 'swish', 0.8);
       const t0 = t; ar.push({ p, len, t0 });
