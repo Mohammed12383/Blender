@@ -232,6 +232,7 @@
     if (typeof o === 'string') { if (ASSET.man[o]) set.add(o); } else if (Array.isArray(o)) o.forEach((x) => collect(x, set)); else if (o && typeof o === 'object') Object.values(o).forEach((x) => collect(x, set));
   }
 
+  ENGINE.aspect = (n) => { const m = ASSET.man[n]; return m && m.w ? m.w / m.h : 1; };
   ENGINE.boot = async function (L) {
     LESSON = L;
     await loadManifest();

@@ -3,6 +3,8 @@
   const { SCENES, h, E, W, H, TR, WPS, rnd, clamp, Txt } = ENGINE;
   const PAL = ['#ffd23f', '#ff6b6b', '#3ddc97', '#4cc9f0', '#f72585', '#b5179e', '#fff'];
   const topY = (sp) => (sp.kicker || sp.title ? 122 : 56);
+  // keep the text column clear of the actor sprite on its left
+  const fitW = (sp, w) => { const a = sp.actor; if (!a || a.x == null) return w; const aw = a.w || (a.h ? a.h * ENGINE.aspect(a.img) : 300); return Math.max(420, Math.min(w, 1224 - (a.x + aw + 22))); };
   const wordsOf = (s) => String(s).replace(/[*^]/g, ' ').split(/\s+/).filter(Boolean).length;
 
   // append the scene's items into a container instead of the scene root
@@ -68,7 +70,7 @@
   // ───────────── idea / generic text card ─────────────
   SCENES.idea = (sp, S) => {
     S.hdr(sp.kicker === undefined ? 'الفكرة الرئيسية' : sp.kicker, sp.title);
-    const a = sp.actor; const w = a ? (sp.w || 760) : (sp.w || 1060);
+    const a = sp.actor; const w = fitW(sp, a ? (sp.w || 760) : (sp.w || 1060));
     const card = h('div', 'card', '', { right: '56px', top: topY(sp) + 'px', width: w + 'px', padding: '26px 36px' });
     const t = S.txt(sp.text, { at: 0.8 }); card.appendChild(t.el);
     if (sp.sub) { const t2 = S.txt(sp.sub, { at: 0.8 + t.dur + 0.3 }); t2.el.style.marginTop = '14px'; t2.el.style.fontSize = '0.82em'; card.appendChild(t2.el); }
@@ -83,7 +85,7 @@
   // ───────────── definition ─────────────
   SCENES.def = (sp, S) => {
     S.hdr(sp.kicker || 'التعريف', null);
-    const a = sp.actor; const w = a ? 800 : 1060;
+    const a = sp.actor; const w = fitW(sp, sp.w || (a ? 800 : 1060));
     const term = h('div', 'big', sp.term, { position: 'absolute', right: '56px', top: '112px', fontSize: (sp.termFs || 78) + 'px', color: 'var(--acc)', textShadow: '0 6px 0 rgba(0,0,0,.3)', lineHeight: 1.1 });
     S.add(term, { kind: 'spring', at: 0.3, dur: 0.7 }); S.cue(0.3, 'thud', 0.9);
     if (sp.en) { const en = h('div', '', sp.en, { position: 'absolute', right: '60px', top: '200px', fontSize: '30px', color: 'rgba(255,255,255,.85)', direction: 'ltr', fontFamily: 'Cairo' }); S.add(en, { kind: 'fade', at: 0.8 }); }
@@ -100,7 +102,7 @@
   // ───────────── list (bullets) ─────────────
   SCENES.list = (sp, S) => {
     S.hdr(sp.kicker, sp.title);
-    const a = sp.actor; const w = a ? (sp.w || 780) : (sp.w || 1168);
+    const a = sp.actor; const w = fitW(sp, a ? (sp.w || 780) : (sp.w || 1168));
     const box = h('div', 'abs', '', { right: '56px', top: topY(sp) + 'px', width: w + 'px', display: 'flex', flexDirection: 'column', gap: (sp.gap || 13) + 'px' });
     S.root.appendChild(box);
     let t = 0.55;
@@ -127,7 +129,7 @@
   // ───────────── steps (ordered process) ─────────────
   SCENES.steps = (sp, S) => {
     S.hdr(sp.kicker, sp.title);
-    const a = sp.actor; const w = a ? (sp.w || 800) : (sp.w || 1168);
+    const a = sp.actor; const w = fitW(sp, a ? (sp.w || 800) : (sp.w || 1168));
     const n = sp.steps.length;
     const box = h('div', 'abs', '', { right: '56px', top: topY(sp) + 'px', width: w + 'px', display: 'flex', flexDirection: 'column', gap: '12px' });
     S.root.appendChild(box);
@@ -154,7 +156,7 @@
   SCENES.table = (sp, S) => {
     const ttl = sp.title ? sp.title + (sp.pages > 1 ? ' (' + sp.page + '/' + sp.pages + ')' : '') : null;
     S.hdr(sp.kicker, ttl);
-    const a = sp.actor; const w = a ? (sp.w || 930) : (sp.w || 1168);
+    const a = sp.actor; const w = fitW(sp, a ? (sp.w || 930) : (sp.w || 1168));
     let y = topY(sp), t = 0.5;
     let introEl = null;
     if (sp.intro) {
@@ -188,12 +190,12 @@
   // ───────────── why (علّل) ─────────────
   SCENES.why = (sp, S) => {
     S.hdr(sp.kicker || 'علّل', null);
-    const q = h('div', 'card dark', '', { right: '56px', top: '110px', width: (sp.actor ? 800 : 1168) + 'px', padding: '18px 30px', background: 'rgba(14,10,40,.82)', fontSize: '36px' });
+    const q = h('div', 'card dark', '', { right: '56px', top: '110px', width: fitW(sp, sp.actor ? 800 : 1168) + 'px', padding: '18px 30px', background: 'rgba(14,10,40,.82)', fontSize: '36px' });
     q.appendChild(h('span', 'big', '؟', { color: 'var(--acc)', fontSize: '1.7em', marginLeft: '16px', verticalAlign: 'middle' }));
     const tq = S.txt(sp.q, { at: 0.6, cls: '' }); tq.el.style.display = 'inline'; q.appendChild(tq.el);
     S.add(q, { kind: 'pop', at: 0.3, dur: 0.6, idle: [{ t: 'sway', a: 0.5, s: 1.3 }] }); S.cue(0.3, 'boing', 0.9);
     let t = 0.6 + tq.dur + 0.5;
-    const box = h('div', 'abs', '', { right: '56px', top: '300px', width: (sp.actor ? 800 : 1168) + 'px', display: 'flex', flexDirection: 'column', gap: '12px' }); S.root.appendChild(box);
+    const box = h('div', 'abs', '', { right: '56px', top: '300px', width: fitW(sp, sp.actor ? 800 : 1168) + 'px', display: 'flex', flexDirection: 'column', gap: '12px' }); S.root.appendChild(box);
     const ans = [].concat(sp.a);
     let first = true;
     ans.forEach((x) => {
