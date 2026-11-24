@@ -40,7 +40,10 @@ tools/produce.py        ينتج الفيديو النهائي: إطارات →
 ```bash
 .venv/bin/python lessons/tools/make_all.py     # يولّد content/index.js ثم videos/index.mp4 ثم videos/all_lessons.mp4
 ```
-ملف `all_lessons.mp4` (~390 ميجا) لا يُرفع إلى Git بسبب حدّ GitHub (100 ميجا للملف)؛ يُعاد بناؤه بالأمر أعلاه.
+ملف `all_lessons.mp4` (~390 ميجا) مرفوع عبر Git LFS لأن حدّ GitHub للملف العادي 100 ميجا؛ ويمكن إعادة بنائه بالأمر أعلاه، أو دمج الملفات الفردية بـ `videos/concat.txt`:
+```bash
+cd lessons/videos && ffmpeg -f concat -safe 0 -i concat.txt -c copy all_lessons.mp4
+```
 
 ```bash
 # من جذر المستودع (بعد: pip install -r requirements.txt numpy scipy)
