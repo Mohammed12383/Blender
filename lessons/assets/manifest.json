@@ -1,4 +1,10 @@
 {
+"bg_agra": {
+"f": "png/bg_agra.jpg",
+"h": 720,
+"t": "s",
+"w": 1280
+},
 "bg_arctic": {
 "f": "png/bg_arctic.jpg",
 "h": 720,
@@ -26,6 +32,42 @@
 "t": "s",
 "w": 640
 },
+"drop_idle_open": {
+"f": "png/drop_idle_open.png",
+"h": 520,
+"t": "s",
+"w": 420
+},
+"drop_idle_smile": {
+"f": "png/drop_idle_smile.png",
+"h": 520,
+"t": "s",
+"w": 420
+},
+"drop_run_open": {
+"f": "png/drop_run_open.png",
+"h": 520,
+"t": "s",
+"w": 420
+},
+"drop_sleepy": {
+"f": "png/drop_sleepy.png",
+"h": 520,
+"t": "s",
+"w": 420
+},
+"drop_sleepy_flat": {
+"f": "png/drop_sleepy_flat.png",
+"h": 520,
+"t": "s",
+"w": 420
+},
+"drop_wave_open": {
+"f": "png/drop_wave_open.png",
+"h": 520,
+"t": "s",
+"w": 420
+},
 "earth_layers": {
 "f": "png/earth_layers.png",
 "h": 640,
@@ -41,6 +83,33 @@
 "t": "l",
 "w": 420
 },
+"fault_normal": {
+"d": "seq/fault_normal",
+"ext": "png",
+"fps": 12,
+"h": 400,
+"n": 36,
+"t": "l",
+"w": 560
+},
+"fault_reverse": {
+"d": "seq/fault_reverse",
+"ext": "png",
+"fps": 12,
+"h": 400,
+"n": 36,
+"t": "l",
+"w": 560
+},
+"fault_strike": {
+"d": "seq/fault_strike",
+"ext": "png",
+"fps": 12,
+"h": 400,
+"n": 36,
+"t": "l",
+"w": 560
+},
 "fit_puzzle": {
 "d": "seq/fit_puzzle",
 "ext": "png",
@@ -49,6 +118,27 @@
 "n": 48,
 "t": "l",
 "w": 640
+},
+"fold_layers": {
+"d": "seq/fold_layers",
+"ext": "png",
+"fps": 12,
+"h": 460,
+"n": 48,
+"t": "l",
+"w": 640
+},
+"fossil_layers": {
+"f": "png/fossil_layers.png",
+"h": 520,
+"t": "s",
+"w": 720
+},
+"house_icon": {
+"f": "png/house_icon.png",
+"h": 420,
+"t": "s",
+"w": 420
 },
 "icon_cold": {
 "f": "png/icon_cold.png",
@@ -85,6 +175,12 @@
 "h": 520,
 "t": "s",
 "w": 440
+},
+"igneous_types": {
+"f": "png/igneous_types.png",
+"h": 560,
+"t": "s",
+"w": 820
 },
 "jidd_cheer_grin": {
 "f": "png/jidd_cheer_grin.png",
@@ -482,6 +578,30 @@
 "t": "s",
 "w": 420
 },
+"metamorphic_press": {
+"f": "png/metamorphic_press.png",
+"h": 460,
+"t": "s",
+"w": 640
+},
+"min_calcite": {
+"f": "png/min_calcite.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"min_quartz": {
+"f": "png/min_quartz.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"ophiolite_stack": {
+"f": "png/ophiolite_stack.png",
+"h": 560,
+"t": "s",
+"w": 760
+},
 "pangaea_200": {
 "f": "png/pangaea_200.png",
 "h": 394,
@@ -541,6 +661,12 @@
 "n": 36,
 "t": "l",
 "w": 640
+},
+"porous_rock": {
+"f": "png/porous_rock.png",
+"h": 440,
+"t": "s",
+"w": 520
 },
 "prof_cheer_grin": {
 "f": "png/prof_cheer_grin.png",
@@ -740,6 +866,75 @@
 "t": "s",
 "w": 420
 },
+"quake_diagram": {
+"f": "png/quake_diagram.png",
+"h": 580,
+"t": "s",
+"w": 900
+},
+"quake_zones": {
+"d": "seq/quake_zones",
+"ext": "png",
+"fps": 12,
+"h": 394,
+"n": 24,
+"t": "l",
+"w": 700
+},
+"rock_basalt": {
+"f": "png/rock_basalt.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"rock_gneiss": {
+"f": "png/rock_gneiss.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"rock_granite": {
+"f": "png/rock_granite.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"rock_limestone": {
+"f": "png/rock_limestone.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"rock_magma": {
+"f": "png/rock_magma.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"rock_marble": {
+"f": "png/rock_marble.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"rock_metamorphic": {
+"f": "png/rock_metamorphic.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"rock_sandstone": {
+"f": "png/rock_sandstone.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"rocks_silica": {
+"f": "png/rocks_silica.png",
+"h": 300,
+"t": "s",
+"w": 760
+},
 "salem_cheer_grin": {
 "f": "png/salem_cheer_grin.png",
 "h": 600,
@@ -938,6 +1133,36 @@
 "t": "s",
 "w": 420
 },
+"sediment_layers": {
+"d": "seq/sediment_layers",
+"ext": "png",
+"fps": 12,
+"h": 460,
+"n": 48,
+"t": "l",
+"w": 640
+},
+"sediment_pile": {
+"f": "png/sediment_pile.png",
+"h": 420,
+"t": "s",
+"w": 420
+},
+"seismic_station": {
+"f": "png/seismic_station.png",
+"h": 520,
+"t": "s",
+"w": 520
+},
+"seismograph": {
+"d": "seq/seismograph",
+"ext": "png",
+"fps": 12,
+"h": 540,
+"n": 36,
+"t": "l",
+"w": 540
+},
 "solar_system": {
 "d": "seq/solar_system",
 "ext": "png",
@@ -955,6 +1180,12 @@
 "n": 48,
 "t": "l",
 "w": 560
+},
+"taj_mahal": {
+"f": "png/taj_mahal.png",
+"h": 520,
+"t": "s",
+"w": 640
 },
 "terra_cheer_grin": {
 "f": "png/terra_cheer_grin.png",
@@ -1105,5 +1336,29 @@
 "h": 600,
 "t": "s",
 "w": 720
+},
+"volcano_erupt": {
+"d": "seq/volcano_erupt",
+"ext": "png",
+"fps": 12,
+"h": 560,
+"n": 48,
+"t": "l",
+"w": 560
+},
+"volcano_model": {
+"d": "seq/volcano_model",
+"ext": "png",
+"fps": 12,
+"h": 520,
+"n": 36,
+"t": "l",
+"w": 520
+},
+"volcano_parts": {
+"f": "png/volcano_parts.png",
+"h": 660,
+"t": "s",
+"w": 820
 }
 }

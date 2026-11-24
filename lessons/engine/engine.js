@@ -236,7 +236,11 @@
     LESSON = L;
     await loadManifest();
     await document.fonts.ready;
-    await Promise.all(['Cairo', 'Lalezar', 'Amiri', 'AmiriQuran', 'ReemKufi', 'ArefRuqaa', 'Changa'].map((f) => document.fonts.load('700 30px ' + f, 'أبجد 123').catch(() => {})));
+    const loads = [];
+    for (const w of [400, 600, 700, 800, 900]) loads.push(document.fonts.load(w + ' 30px Cairo', 'أبجد 123 abc').catch(() => {}));
+    for (const f of ['Lalezar', 'AmiriQuran']) loads.push(document.fonts.load('400 30px ' + f, 'أبجد 123').catch(() => {}));
+    for (const f of ['Amiri', 'ReemKufi', 'ArefRuqaa', 'Changa']) for (const w of [400, 700]) loads.push(document.fonts.load(w + ' 30px ' + f, 'أبجد 123').catch(() => {}));
+    await Promise.all(loads);
     const th = THEMES[L.theme] || THEMES.space;
     buildBg(th);
     const host = document.getElementById('scenes');

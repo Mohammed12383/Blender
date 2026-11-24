@@ -49,7 +49,7 @@ def quake_diagram(ctx):
         else:
             house((x, -0.4, 0.15), s)
     tree = props.tree_palm((6.3, -0.5, 0.1), 1.4, 5, 0.7)
-    kit.camera((0.3, -12.5, 3.4), (0.3, 0, -0.9), lens=40)
+    kit.camera((0.2, -13.5, 3.4), (-0.2, 0, -0.9), lens=40)
     ctx.still()
 
 
@@ -58,51 +58,36 @@ def seismograph(ctx):
     kit.studio(scale=1.5)
     steel = mat("#5c6b7a", 0.35, metal=0.7, sss=0, coat=0.3)
     base = empty("base", (0, 0, 0))
-    box((5.0, 2.6, 0.3), (0, 0, 0.15), mat("#3a3f4a", 0.5), bevel=0.05).parent = base
-    box((0.3, 0.3, 3.6), (-1.8, 0.0, 2.0), steel, bevel=0.03).parent = base
-    box((2.4, 0.3, 0.3), (-0.65, 0.0, 3.7), steel, bevel=0.03).parent = base
-    # spring + heavy weight (stay still)
-    pts = [(0.6, 0, 3.55 - i * 0.04) for i in range(0)]
-    coil = curve([(0.6 + 0.16 * math.cos(i * 0.9), 0.16 * math.sin(i * 0.9), 3.55 - i * 0.075) for i in range(24)], 0.035, mat("#d4a017", 0.3, metal=0.8), name="spring")
-    weight = empty("weight", (0.6, 0, 0))
-    cyl(0.42, 0.9, (0, 0, 1.45), mat("#c0392b", 0.4, metal=0.2, coat=0.4), seg=32).parent = weight
-    sphere(0.1, (0, 0, 1.95), mat("#2b2b2b", 0.4)).parent = weight
-    cyl(0.03, 0.4, (0, -0.35, 1.45), steel, rot=(R(90), 0, 0)).parent = weight
-    # drum + paper
-    drum = empty("drum", (2.2, -0.1, 1.2))
-    cyl(0.75, 1.5, (0, 0, 0), mat("#fff7e0", 0.7, sss=0.1, coat=0), rot=(R(90), 0, 0), seg=64).parent = drum
-    for sy in (-1, 1):
-        cyl(0.8, 0.08, (0, sy * 0.78, 0), steel, rot=(R(90), 0, 0), seg=48).parent = drum
-    # zigzag trace around the paper
-    N = 120
-    tpts = []
+    box((5.6, 2.4, 0.3), (0.6, 0, 0.15), mat("#3a3f4a", 0.5), bevel=0.05).parent = base
+    box((0.3, 0.3, 3.9), (-1.7, 0.0, 2.1), steel, bevel=0.03).parent = base
+    box((2.6, 0.3, 0.3), (-0.45, 0.0, 4.0), steel, bevel=0.03).parent = base
+    coil = curve([(0.7 + 0.17 * math.cos(i * 0.9), 0.17 * math.sin(i * 0.9), 3.85 - i * 0.075) for i in range(24)], 0.035, mat("#d4a017", 0.3, metal=0.8), name="spring")
+    weight = empty("weight", (0.7, 0, 0))
+    cyl(0.45, 0.95, (0, 0, 1.7), mat("#c0392b", 0.4, coat=0.4), seg=32).parent = weight
+    cyl(0.03, 0.9, (0, 0, 2.35), steel, seg=8).parent = weight
+    # pen arm to the drum
+    cyl(0.03, 1.7, (0.95, 0, 1.95), steel, rot=(0, R(90), 0), seg=8).parent = weight
+    cone(0.06, 0.0, 0.22, (1.8, 0, 1.86), mat("#1c1230", 0.3), rot=(R(180), 0, 0), seg=12).parent = weight
+    # drum (axis along X) with a wavy trace on the paper
+    drum = empty("drum", (2.5, 0, 1.15))
+    cyl(0.75, 1.5, (0, 0, 0), mat("#fff7e0", 0.7, sss=0.1, coat=0), rot=(0, R(90), 0), seg=64).parent = drum
+    for sx in (-1, 1):
+        cyl(0.8, 0.08, (sx * 0.78, 0, 0), steel, rot=(0, R(90), 0), seg=48).parent = drum
+    N = 160
+    pts = []
     for i in range(N + 1):
         a = i / N * math.tau
-        env = math.sin(min(1, a / math.tau) * math.pi) ** 1.2
-        z = 0.25 * env * math.sin(a * 14) + 0.0
-        tpts.append((math.cos(a) * 0.76, z - 0.0, math.sin(a) * 0.76))
-    tr = curve([(x, y, zz) for x, y, zz in [(p[0], p[1] * 2.0, p[2]) for p in tpts]], 0.018, mat("#1c1230", 0.4, sss=0), name="trace")
+        env = math.sin(min(1, a / math.tau) * math.pi) ** 1.1
+        pts.append((0.28 * env * math.sin(a * 13), math.cos(a) * 0.76, math.sin(a) * 0.76))
+    tr = curve(pts, 0.022, mat("#1c1230", 0.4, sss=0), name="trace")
     tr.parent = drum
-    # pen arm: thin bar from the weight to the drum, tip rides the paper
-    pen = empty("pen", (0, 0, 0))
-    cyl(0.025, 1.6, (1.4, -0.35, 1.45), steel, rot=(0, R(90), 0)).parent = pen
-    pen.parent = weight
-    pen.location = (0, 0, 0)
-    pen.scale = (1, 1, 1)
-    kit.camera((1.6, -9.5, 4.2), (0.9, 0, 2.0), lens=42)
+    kit.camera((1.0, -9.6, 4.2), (1.2, 0, 2.0), lens=44)
 
     def upd(i, t):
         a = t * math.tau
-        amp = 0.09 * math.sin(a * 6) * (0.5 + 0.5 * math.sin(a))
-        base.location.x = amp * 2.0
-        drum.location.x = 2.2 + amp * 2.0
-        drum.rotation_euler = (0, 0, 0)
-        for o in drum.children:
-            pass
-        tr.rotation_euler = (0, -t * math.tau, 0)
-        for o in drum.children:
-            if o.type == "CURVE":
-                continue
+        amp = 0.07 * math.sin(a * 6) * (0.5 + 0.5 * math.sin(a))
+        base.location.x = amp * 1.5
+        tr.rotation_euler = (t * math.tau, 0, 0)
     ctx.loop(upd)
 
 

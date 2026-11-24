@@ -399,7 +399,7 @@ def mix(info, music_gain=0.34, sfx_gain=0.75):
     # loudness: bring the programme to about -18 dBFS RMS, then soft-limit
     rms = np.sqrt(np.mean(st[st.any(axis=1)] ** 2)) if st.any() else 1.0
     st = st * (0.125 / max(rms, 1e-4))
-    st = np.tanh(st * 1.15) / np.tanh(1.15) * 0.93
+    st = np.tanh(st * 1.15) / np.tanh(1.15) * 0.82
     return st
 
 

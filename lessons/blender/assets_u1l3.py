@@ -29,7 +29,7 @@ def _block(material, loc=(0, 0, 0), size=(1.8, 1.4, 1.2), bevel=0.12):
     return box(size, loc, material, bevel=bevel)
 
 
-def _icon(name, build, size=(420, 420), cam=((0, -6.6, 1.6), (0, 0, 0.45)), samples=28):
+def _icon(name, build, size=(420, 420), cam=((0, -4.6, 1.5), (0, 0, 0.72)), samples=28):
     def fn(ctx):
         kit.studio(scale=1.1)
         build()
@@ -89,8 +89,9 @@ def _calcite():
 
 
 def _magma():
-    sphere(1.0, (0, 0, 0.9), glow("#ff6a1a", 4), scale=(1.2, 1, 0.8), seg=48, rings=24)
-    sphere(0.7, (0.1, -0.5, 1.0), glow("#ffd23f", 6), scale=(1, 0.5, 0.7))
+    lava = tex_mat("noise", "#d92b0a", "#ffc02e", scale=2.4, detail=6, mid=0.5, contrast=0.35, rough=0.5, emit=2.2, sss=0, coat=0.2)
+    sphere(1.0, (0, 0, 0.9), lava, scale=(1.2, 1, 0.8), seg=64, rings=32)
+    sphere(0.35, (0.4, -0.7, 1.0), glow("#ffe27a", 4), scale=(1, 0.5, 0.7))
     rnd = random.Random(2)
     for k in range(6):
         sphere(rnd.uniform(0.1, 0.22), (rnd.uniform(-1, 1), rnd.uniform(-0.6, 0.2), rnd.uniform(1.3, 1.9)), glow("#ff9a2a", 5))

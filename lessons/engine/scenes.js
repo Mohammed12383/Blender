@@ -363,7 +363,7 @@
     const root = h('div', 'card', '', { left: (W / 2 - rootW / 2) + 'px', top: ry + 'px', width: rootW + 'px', height: rh + 'px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--acc)', color: '#2a1f00', textAlign: 'center', fontSize: (sp.rfs || 30) + 'px', padding: '6px 16px' });
     const rt = S.txt(sp.root, { at: 0.8 }); root.appendChild(rt.el); S.add(root, { kind: 'spring', at: 0.4, dur: 0.6 }); S.cue(0.4, 'pop', 1);
     let t = 0.8 + rt.dur + 0.2;
-    const by = 245, bh = 78, ly = 372, busY = ry + rh + 22, busY2 = by + bh + 18;
+    const by = 250, bh = 84, ly = 385, busY = ry + rh + 22, busY2 = by + bh + 18;
     const bcx = sp.branches.map((b, bi) => { const idx = leaves.map((x, i) => x.bi === bi ? i : -1).filter((i) => i >= 0); return { idx, cx: idx.reduce((a, i) => a + cxOf(i), 0) / idx.length }; });
     ln(W / 2 - 1.5, ry + rh, 3, 22, 0.8 + rt.dur);
     const bxs = bcx.map((b) => b.cx); ln(Math.min(...bxs), busY, Math.max(...bxs) - Math.min(...bxs) + 3, 3, 0.8 + rt.dur);
@@ -430,6 +430,33 @@
     });
     S.ups.push((lt) => { ar.forEach((a) => { const q = clamp((lt - a.t0) / 0.5); if (a.dashed) a.p.style.opacity = q; else a.p.style.strokeDashoffset = a.len * (1 - E.out(q)); }); });
     S.cur = t; finish(S);
+  };
+
+
+  // ───────────── quiz (question → countdown → answer) ─────────────
+  SCENES.quiz = (sp, S) => {
+    S.hdr(sp.kicker || 'اختبر نفسك', sp.title || null);
+    const think = sp.think || 3;
+    let t = 0.6; const counters = [];
+    sp.items.forEach((it, i) => {
+      const card = h('div', 'card', '', { right: '160px', left: '160px', top: '165px', padding: '26px 40px', textAlign: 'center', minHeight: '360px' });
+      const qn = h('div', 'tag', 'سؤال ' + (i + 1) + ' / ' + sp.items.length, { fontSize: '24px', marginBottom: '14px' });
+      card.appendChild(qn);
+      const tq = S.txt(it.q, { at: t + 0.4 }); tq.el.style.cssText = 'font-size:46px;line-height:1.5;margin-bottom:20px'; card.appendChild(tq.el);
+      const ring = h('div', 'big', '', { position: 'absolute', left: '34px', top: '30px', width: '84px', height: '84px', borderRadius: '50%', border: '8px solid var(--acc)', background: 'rgba(255,255,255,.9)', color: 'var(--k1)', fontSize: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 });
+      card.appendChild(ring);
+      const ans = h('div', '', '', { background: 'var(--acc2)', color: '#05301c', borderRadius: '24px', padding: '12px 28px', fontSize: '48px', fontFamily: 'Lalezar', boxShadow: '0 6px 0 rgba(0,0,0,.2)' });
+      const ta = new ENGINE.Txt(it.a, { noKaraoke: true }); ans.appendChild(ta.el); card.appendChild(ans);
+      const tRead = t + 0.4 + tq.dur, tReveal = tRead + think, tEnd = tReveal + (it.hold || 2.0);
+      S.add(card, { kind: 'pop', at: t, dur: 0.5, out: { at: tEnd, dur: 0.35 } }); S.cue(t, 'whoosh', 0.5);
+      S.add(ans, { kind: 'spring', at: tReveal, dur: 0.6 }); S.cue(tReveal, 'tada', 0.8); S.cue(tReveal - 0.05, 'ding', 0.8);
+      for (let k = 0; k < think; k++) S.cue(tRead + k, 'tick', 0.9, 1.1 - k * 0.1);
+      counters.push({ ring, tRead, tReveal });
+      t = tEnd + 0.3;
+    });
+    S.ups.push((lt) => { counters.forEach((c) => { if (lt < c.tRead || lt >= c.tReveal) { c.ring.style.visibility = 'hidden'; return; } c.ring.style.visibility = 'visible'; c.ring.textContent = Math.ceil(c.tReveal - lt); }); });
+    if (sp.actor) actor(S, sp.actor);
+    S.cur = t; finish(S, 0.6);
   };
 
   // ───────────── story (cinematic beats) ─────────────

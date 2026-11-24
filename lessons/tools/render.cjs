@@ -6,7 +6,7 @@ const lesson = argv[0];
 const opt = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? argv[i + 1] : d; };
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.resolve(opt('out', path.join(ROOT, 'out', lesson)));
-const WORKERS = +opt('workers', 4), CHUNK = +opt('chunk', 20), Q = +opt('q', 88), CRF = opt('crf', '26');
+const WORKERS = +opt('workers', 4), CHUNK = +opt('chunk', 20), Q = +opt('q', 88), CRF = opt('crf', '22');
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2' };
 const server = http.createServer((req, res) => {
   const p = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]));

@@ -284,7 +284,7 @@ def bigbang(ctx):
             halo.scale = (max(0.001, 0.65 * (1 - k)),) * 3
             fl = max(0.001, 1 - k * 5)
             flash.scale = (3.6 * (1 - fl) ** 0.5 * (fl ** 0.7) + 0.001,) * 3
-            ring.scale = (max(0.001, 3.8 * e),) * 3
+            ring.scale = (max(0.001, 3.8 * e * max(0.0, 1 - max(0.0, k - 0.35) / 0.4)),) * 3
             for o, d, s in parts:
                 o.location = d * (e * 3.3 * s)
                 o.scale = (max(0.001, fadeout * (1.0 - 0.4 * k)),) * 3
