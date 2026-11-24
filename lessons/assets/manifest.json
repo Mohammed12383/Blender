@@ -1,4 +1,13 @@
 {
+"acid_rain": {
+"d": "seq/acid_rain",
+"ext": "jpg",
+"fps": 12,
+"h": 576,
+"n": 36,
+"t": "l",
+"w": 1024
+},
 "bg_agra": {
 "f": "png/bg_agra.jpg",
 "h": 720,
@@ -934,6 +943,12 @@
 "h": 300,
 "t": "s",
 "w": 760
+},
+"rust_nail": {
+"f": "png/rust_nail.png",
+"h": 420,
+"t": "s",
+"w": 420
 },
 "salem_cheer_grin": {
 "f": "png/salem_cheer_grin.png",
