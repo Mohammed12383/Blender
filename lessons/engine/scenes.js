@@ -461,6 +461,33 @@
     S.cur = t; finish(S, 0.6);
   };
 
+
+  // ───────────── toc: chapter index shown fully from the very first frame ─────────────
+  SCENES.toc = (sp, S) => {
+    const n = sp.items.length, rows = Math.ceil(n / 2), cw = 568, gap = 14, chH = sp.cellH || 78, top0 = sp.top || 150;
+    const title = h('div', 'big', sp.title, { position: 'absolute', top: '22px', left: '230px', right: '56px', textAlign: 'center', fontSize: '50px', color: '#fff', textShadow: '0 5px 0 rgba(0,0,0,.28)', lineHeight: 1.1 });
+    S.add(title, { kind: 'none', at: 0 });
+    const sub = h('div', 'chip', sp.sub, { position: 'absolute', top: '88px', left: '230px', right: '56px', width: 'fit-content', margin: '0 auto', fontSize: '28px', padding: '6px 24px 10px', textAlign: 'center', background: 'var(--acc)', color: '#2a1f00' });
+    sub.style.left = '230px'; sub.style.right = '56px'; sub.style.width = 'auto'; sub.style.display = 'block';
+    S.add(sub, { kind: 'none', at: 0 });
+    const cols = { 1: '#ffb02e', 2: '#2ec4b6', 3: '#43d17a', 0: '#ff7eb6' };
+    sp.items.forEach((it, i) => {
+      const col = Math.floor(i / rows), r = i % rows;
+      const cell = h('div', 'card', '', { right: (56 + col * (cw + gap + 4)) + 'px', top: (top0 + r * (chH + 10)) + 'px', width: cw + 'px', height: chH + 'px', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: '16px', borderRight: '12px solid ' + (cols[it.unit] || cols[0]) });
+      const tm = h('div', '', '', { flex: 'none', width: '138px', textAlign: 'center' });
+      tm.appendChild(h('div', 'big', it.time, { fontSize: '38px', lineHeight: 1, color: 'var(--ink)', direction: 'ltr' }));
+      tm.appendChild(h('div', '', 'المدة ' + it.len, { fontSize: '17px', color: 'rgba(29,26,58,.6)', marginTop: '3px' }));
+      const tb = h('div', '', '', { flex: '1', lineHeight: 1.2 });
+      tb.appendChild(h('div', '', it.tag, { fontSize: '19px', color: 'rgba(29,26,58,.62)' }));
+      tb.appendChild(h('div', 'big', it.name, { fontSize: '31px', color: 'var(--k1)', marginTop: '2px' }));
+      cell.appendChild(tm); cell.appendChild(tb);
+      S.add(cell, { kind: 'none', at: 0 });
+    });
+    if (sp.terra) S.sp(sp.terra, { x: 40, y: 8, h: 132 }, { kind: 'none', at: 0, idle: [{ t: 'bob', a: 5, s: 3 }] });
+    S.cue(0.15, 'sparkle', 0.8); S.cue(0.4, 'chime', 0.7);
+    S.dur = sp.len;
+  };
+
   // ───────────── story (cinematic beats) ─────────────
   // beats: [{bg:'asset', actors:[{img,x,y,h,flip,kind,idle,at}], cap:'narration', say:{who:0,t:'dialogue'}, cam:{z0,z1,x0,x1}, sfx:[['name',dt,g]] , dur}]
   SCENES.story = (sp, S) => {
