@@ -219,7 +219,7 @@ def sediment_layers(ctx):
     kit.studio(scale=1.7, key=500)
     box((6.4, 2.8, 0.3), (0, 0, -0.15), mat("#6b7078", 0.7), bevel=0.05)
     cols = ["#e8c488", "#c9704a", "#d9c26a", "#8e6f9a", "#6aa8a0"]
-    layers = [box((6.0, 2.6, 0.5), (0, 0, 0.25 + k * 0.5), mat(c, 0.7, sss=0.08, coat=0), bevel=0.03) for k, c in enumerate(cols)]
+    layers = [box((6.0, 2.6, 0.5), (0, 0, 0.25 + k * 0.5), mat(c, 0.7, sss=0.08, coat=0), bevel=0.0) for k, c in enumerate(cols)]
     rnd = random.Random(3)
     grains = [(sphere(0.09, (0, 0, 3), mat(rnd.choice(cols), 0.5), seg=12, rings=8), rnd.uniform(0, 1), rnd.uniform(-2.5, 2.5), rnd.uniform(-1, 1)) for _ in range(40)]
     kit.camera((0, -10.0, 4.0), (0, 0, 1.2), lens=42)
